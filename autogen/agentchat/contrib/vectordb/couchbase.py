@@ -1,3 +1,9 @@
+# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
+# SPDX-License-Identifier: MIT
 import json
 import time
 from datetime import timedelta
@@ -130,7 +136,7 @@ class CouchbaseVectorDB(VectorDB):
         if not self.search_index_exists(index_name):
             self.create_vector_search_index(collection, index_name)
 
-    def get_collection(self, collection_name: str|None = None) -> Collection:
+    def get_collection(self, collection_name: str | None = None) -> Collection:
         """
         Get the collection from the vector database.
         Args:

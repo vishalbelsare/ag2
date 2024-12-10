@@ -1,3 +1,9 @@
+# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
+# SPDX-License-Identifier: MIT
 import logging
 import os
 import random
@@ -10,8 +16,6 @@ try:
 
     import couchbase
     import sentence_transformers
-    import sys
-    import os
 
     from autogen.agentchat.contrib.vectordb.couchbase import CouchbaseVectorDB
 except ImportError:
