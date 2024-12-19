@@ -191,6 +191,37 @@
     },
     {
       "items": [
+        {
+          "items": [
+            "reference/interop/crewai/crewai"
+          ],
+          "label": "interop.crewai",
+          "type": "category"
+        },
+        {
+          "items": [
+            "reference/interop/langchain/langchain"
+          ],
+          "label": "interop.langchain",
+          "type": "category"
+        },
+        {
+          "items": [
+            "reference/interop/pydantic_ai/pydantic_ai",
+            "reference/interop/pydantic_ai/pydantic_ai_tool"
+          ],
+          "label": "interop.pydantic_ai",
+          "type": "category"
+        },
+        "reference/interop/interoperability",
+        "reference/interop/interoperable",
+        "reference/interop/registry"
+      ],
+      "label": "interop",
+      "type": "category"
+    },
+    {
+      "items": [
         "reference/io/base",
         "reference/io/console",
         "reference/io/websockets"
@@ -223,6 +254,13 @@
         "reference/oai/together"
       ],
       "label": "oai",
+      "type": "category"
+    },
+    {
+      "items": [
+        "reference/tools/tool"
+      ],
+      "label": "tools",
       "type": "category"
     },
     "reference/browser_utils",

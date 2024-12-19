@@ -345,6 +345,33 @@
           ]
         },
         {
+          "group": "interop",
+          "pages": [
+            {
+              "group": "interop.crewai",
+              "pages": [
+                "docs/reference/interop/crewai/crewai"
+              ]
+            },
+            {
+              "group": "interop.langchain",
+              "pages": [
+                "docs/reference/interop/langchain/langchain"
+              ]
+            },
+            {
+              "group": "interop.pydantic_ai",
+              "pages": [
+                "docs/reference/interop/pydantic_ai/pydantic_ai",
+                "docs/reference/interop/pydantic_ai/pydantic_ai_tool"
+              ]
+            },
+            "docs/reference/interop/interoperability",
+            "docs/reference/interop/interoperable",
+            "docs/reference/interop/registry"
+          ]
+        },
+        {
           "group": "io",
           "pages": [
             "docs/reference/io/base",
@@ -375,6 +402,12 @@
             "docs/reference/oai/ollama",
             "docs/reference/oai/openai_utils",
             "docs/reference/oai/together"
+          ]
+        },
+        {
+          "group": "tools",
+          "pages": [
+            "docs/reference/tools/tool"
           ]
         },
         "docs/reference/browser_utils",
