@@ -11,19 +11,10 @@ class RealtimeObserver(ABC)
 
 Observer for the OpenAI Realtime API.
 
-### client
-
-```python
-@property
-def client() -> "OpenAIRealtimeClient"
-```
-
-Get the client associated with the observer.
-
 ### register\_client
 
 ```python
-def register_client(client: "OpenAIRealtimeClient") -> None
+def register_client(client)
 ```
 
 Register a client with the observer.
@@ -32,7 +23,7 @@ Register a client with the observer.
 
 ```python
 @abstractmethod
-async def run() -> None
+async def run(openai_ws)
 ```
 
 Run the observer.
@@ -41,7 +32,7 @@ Run the observer.
 
 ```python
 @abstractmethod
-async def update(message: dict[str, Any]) -> None
+async def update(message)
 ```
 
 Update the observer with a message from the OpenAI Realtime API.
