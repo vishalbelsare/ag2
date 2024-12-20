@@ -140,6 +140,18 @@
           "label": "agentchat.contrib",
           "type": "category"
         },
+        {
+          "items": [
+            "reference/agentchat/realtime_agent/client",
+            "reference/agentchat/realtime_agent/function_observer",
+            "reference/agentchat/realtime_agent/realtime_agent",
+            "reference/agentchat/realtime_agent/realtime_observer",
+            "reference/agentchat/realtime_agent/twilio_observer",
+            "reference/agentchat/realtime_agent/websocket_observer"
+          ],
+          "label": "agentchat.realtime_agent",
+          "type": "category"
+        },
         "reference/agentchat/agent",
         "reference/agentchat/assistant_agent",
         "reference/agentchat/chat",
