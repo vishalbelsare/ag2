@@ -39,9 +39,10 @@ from ..function_utils import get_function_schema, load_basemodels_if_needed, ser
 from ..io.base import IOStream
 from ..oai.client import ModelClient, OpenAIWrapper
 from ..runtime_logging import log_event, log_function_use, log_new_agent, logging_enabled
+from ..telemetry.telemetry_core import EventKind, SpanKind, get_current_telemetry
 from .agent import Agent, LLMAgent
 from .chat import ChatResult, a_initiate_chats, initiate_chats
-from .utils import consolidate_chat_info, gather_usage_summary
+from .utils import consolidate_chat_info, gather_usage_summary, print_trace
 
 __all__ = ("ConversableAgent",)
 
@@ -266,6 +267,24 @@ class ConversableAgent(LLMAgent):
             "process_message_before_send": [],
         }
 
+        # Print to console: "TRACE: " and the class name and then function name
+        print_trace(inspect.currentframe().f_code.co_name, self, None, self.name, self.__class__.__name__, None)
+
+        # Telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.AGENT_CREATION,
+                {
+                    "agent_type": self.__class__.__name__,
+                    "agent_name": name,
+                    "system_message": system_message,
+                    "description": description or "",
+                    "has_llm_config": bool(llm_config),
+                    "human_input_mode": human_input_mode,
+                },
+            )
+
     def _validate_llm_config(self, llm_config):
         assert llm_config in (None, False) or isinstance(
             llm_config, dict
@@ -362,6 +381,9 @@ class ConversableAgent(LLMAgent):
                 function.
             remove_other_reply_funcs (bool): whether to remove other reply functions when registering this reply function.
         """
+
+        print_trace(inspect.currentframe().f_code.co_name, self, None, self.name, self.__class__.__name__, None)
+
         if not isinstance(trigger, (type, str, Agent, Callable, list)):
             raise ValueError("trigger must be a class, a string, an agent, a callable or a list.")
         if remove_other_reply_funcs:
@@ -402,6 +424,8 @@ class ConversableAgent(LLMAgent):
         Returns:
             Tuple[bool, str]: A tuple where the first element indicates the completion of the chat, and the second element contains the summary of the last chat if any chats were initiated.
         """
+        print_trace(inspect.currentframe().f_code.co_name, None, "STATIC", None, "ConversableAgent", None)
+
         last_msg = messages[-1].get("content")
         chat_to_run = []
         for i, c in enumerate(chat_queue):
@@ -434,6 +458,8 @@ class ConversableAgent(LLMAgent):
         Returns:
             Tuple[bool, str]: A tuple where the first element indicates the completion of the chat, and the second element contains the summary of the last chat if any chats were initiated.
         """
+        print_trace(inspect.currentframe().f_code.co_name, None, "STATIC", None, "ConversableAgent", None)
+
         chat_to_run = ConversableAgent._get_chats_to_run(chat_queue, recipient, messages, sender, config)
         if not chat_to_run:
             return True, None
@@ -453,6 +479,8 @@ class ConversableAgent(LLMAgent):
         Returns:
             Tuple[bool, str]: A tuple where the first element indicates the completion of the chat, and the second element contains the summary of the last chat if any chats were initiated.
         """
+        print_trace(inspect.currentframe().f_code.co_name, None, "STATIC", None, "ConversableAgent", None)
+
         chat_to_run = ConversableAgent._get_chats_to_run(chat_queue, recipient, messages, sender, config)
         if not chat_to_run:
             return True, None
@@ -489,6 +517,8 @@ class ConversableAgent(LLMAgent):
             use_async: Uses a_initiate_chats internally to start nested chats. If the original chat is initiated with a_initiate_chats, you may set this to true so nested chats do not run in sync.
             kwargs: Ref to `register_reply` for details.
         """
+        print_trace(inspect.currentframe().f_code.co_name, self, None, self.name, self.__class__.__name__, None)
+
         if use_async:
             for chat in chat_queue:
                 if chat.get("chat_id") is None:
@@ -779,6 +809,11 @@ class ConversableAgent(LLMAgent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
+        if not silent:
+            trace_timestamp = print_trace(
+                inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+            )
+
         message = self._process_message_before_send(message, recipient, ConversableAgent._is_silent(self, silent))
         # When the agent composes and sends the message, the role of the message is "assistant"
         # unless it's "function".
@@ -788,6 +823,16 @@ class ConversableAgent(LLMAgent):
         else:
             raise ValueError(
                 "Message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
+            )
+
+        if not silent:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
             )
 
     async def a_send(
@@ -829,6 +874,10 @@ class ConversableAgent(LLMAgent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
+
         message = self._process_message_before_send(message, recipient, ConversableAgent._is_silent(self, silent))
         # When the agent composes and sends the message, the role of the message is "assistant"
         # unless it's "function".
@@ -839,6 +888,10 @@ class ConversableAgent(LLMAgent):
             raise ValueError(
                 "Message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
             )
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
 
     def _print_received_message(self, message: Union[Dict, str], sender: Agent, skip_head: bool = False):
         iostream = IOStream.get_default()
@@ -946,12 +999,28 @@ class ConversableAgent(LLMAgent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
+
         self._process_received_message(message, sender, silent)
         if request_reply is False or request_reply is None and self.reply_at_receive[sender] is False:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return
         reply = self.generate_reply(messages=self.chat_messages[sender], sender=sender)
         if reply is not None:
             self.send(reply, sender, silent=silent)
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
 
     async def a_receive(
         self,
@@ -983,6 +1052,8 @@ class ConversableAgent(LLMAgent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
+        print_trace(inspect.currentframe().f_code.co_name, self, None, self.name, self.__class__.__name__, None)
+
         self._process_received_message(message, sender, silent)
         if request_reply is False or request_reply is None and self.reply_at_receive[sender] is False:
             return
@@ -997,6 +1068,8 @@ class ConversableAgent(LLMAgent):
         prepare_recipient: bool = True,
         reply_at_receive: bool = True,
     ) -> None:
+        print_trace(inspect.currentframe().f_code.co_name, self, None, self.name, self.__class__.__name__, None)
+
         self.reset_consecutive_auto_reply_counter(recipient)
         self.reply_at_receive[recipient] = reply_at_receive
         if clear_history:
@@ -1123,6 +1196,22 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
+
+        telemetry = get_current_telemetry()
+        if telemetry:
+            chat_span_context = telemetry.start_span(
+                SpanKind.CHAT,
+                {
+                    "ag2.chat_function": inspect.currentframe().f_code.co_name,
+                    "ag2.agent.sender": self.name,
+                    "ag2.agent.recipient": recipient.name,
+                },
+                parent_context=kwargs.get("telemetry_parent_context"),
+            )
+
         _chat_info = locals().copy()
         _chat_info["sender"] = self
         consolidate_chat_info(_chat_info, uniform_sender=self)
@@ -1132,8 +1221,28 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = cache
         if isinstance(max_turns, int):
             self._prepare_chat(recipient, clear_history, reply_at_receive=False)
-            for _ in range(max_turns):
-                if _ == 0:
+            for i in range(max_turns):
+
+                print_trace(
+                    inspect.currentframe().f_code.co_name,
+                    self,
+                    f"[TURNS FOR LOOP START {i}]",
+                    self.name,
+                    self.__class__.__name__,
+                    trace_timestamp,
+                )
+                if telemetry:
+                    round_span_context = telemetry.start_span(
+                        SpanKind.ROUND,
+                        {
+                            "ag2.chat_function": inspect.currentframe().f_code.co_name,
+                            "ag2.round": i + 1,
+                            "ag2.rounds_max": max_turns,
+                        },
+                        parent_context=chat_span_context,
+                    )
+
+                if i == 0:
                     if isinstance(message, Callable):
                         msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
                     else:
@@ -1141,15 +1250,54 @@ class ConversableAgent(LLMAgent):
                 else:
                     msg2send = self.generate_reply(messages=self.chat_messages[recipient], sender=recipient)
                 if msg2send is None:
+                    print_trace(
+                        inspect.currentframe().f_code.co_name,
+                        self,
+                        f"[TURNS FOR LOOP END {i}]",
+                        self.name,
+                        self.__class__.__name__,
+                        trace_timestamp,
+                    )
+                    if telemetry:
+                        telemetry.end_span()
                     break
                 self.send(msg2send, recipient, request_reply=True, silent=silent)
+
+                print_trace(
+                    inspect.currentframe().f_code.co_name,
+                    self,
+                    f"[TURNS FOR LOOP END {i}]",
+                    self.name,
+                    self.__class__.__name__,
+                    trace_timestamp,
+                )
+                if telemetry:
+                    telemetry.end_span()  # Round Span
+
         else:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[NO TURNS START",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             self._prepare_chat(recipient, clear_history)
             if isinstance(message, Callable):
                 msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
             else:
                 msg2send = self.generate_init_message(message, **kwargs)
+
             self.send(msg2send, recipient, silent=silent)
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[NO TURNS END",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
         summary = self._summarize_chat(
             summary_method,
             summary_args,
@@ -1165,6 +1313,18 @@ class ConversableAgent(LLMAgent):
             cost=gather_usage_summary([self, recipient]),
             human_input=self._human_input,
         )
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
+        if telemetry:
+
+            # Update initiate chat span with history and result
+            telemetry.set_attribute(chat_span_context, "ag2.chat_result.chat_history", chat_result.chat_history)
+            telemetry.set_attribute(chat_span_context, "ag2.chat_result.summary", chat_result.summary)
+
+            telemetry.end_span()  # Chat Span
+
         return chat_result
 
     async def a_initiate_chat(
@@ -1190,6 +1350,9 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         _chat_info = locals().copy()
         _chat_info["sender"] = self
         consolidate_chat_info(_chat_info, uniform_sender=self)
@@ -1231,6 +1394,9 @@ class ConversableAgent(LLMAgent):
             cost=gather_usage_summary([self, recipient]),
             human_input=self._human_input,
         )
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return chat_result
 
     def _summarize_chat(
@@ -1260,8 +1426,31 @@ class ConversableAgent(LLMAgent):
         Returns:
             str: a chat summary from the agent.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
+
+        telemetry = get_current_telemetry()
+        if telemetry:
+            summary_span_context = telemetry.start_span(
+                SpanKind.SUMMARY,
+                {
+                    "ag2.agent.sender": self.name,
+                    "ag2.agent.recipient": recipient.name,
+                    "ag2.summary.function": summary_method,
+                },  # , parent_context=kwargs.get("telemetry_parent_context")
+            )
+
         summary = ""
         if summary_method is None:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return summary
         if "cache" not in summary_args:
             summary_args["cache"] = cache
@@ -1273,14 +1462,33 @@ class ConversableAgent(LLMAgent):
         if isinstance(summary_method, Callable):
             summary = summary_method(self, recipient, summary_args)
         else:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             raise ValueError(
                 "If not None, the summary_method must be a string from [`reflection_with_llm`, `last_msg`] or a callable."
             )
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
+
+        if telemetry:
+
+            telemetry.set_attribute(summary_span_context, "ag2.summary", summary)
+            telemetry.end_span()
+
         return summary
 
     @staticmethod
     def _last_msg_as_summary(sender, recipient, summary_args) -> str:
         """Get a chat summary from the last message of the recipient."""
+        print_trace(inspect.currentframe().f_code.co_name, None, "STATIC", None, "ConversableAgent", None)
         summary = ""
         try:
             content = recipient.last_message(sender)["content"]
@@ -1297,6 +1505,7 @@ class ConversableAgent(LLMAgent):
 
     @staticmethod
     def _reflection_with_llm_as_summary(sender, recipient, summary_args):
+        print_trace(inspect.currentframe().f_code.co_name, None, "STATIC", None, "ConversableAgent", None)
         prompt = summary_args.get("summary_prompt")
         prompt = ConversableAgent.DEFAULT_SUMMARY_PROMPT if prompt is None else prompt
         if not isinstance(prompt, str):
@@ -1334,6 +1543,9 @@ class ConversableAgent(LLMAgent):
             cache (AbstractCache or None): the cache client to be used for this conversation.
             role (str): the role of the message, usually "system" or "user". Default is "system".
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if not role:
             role = "system"
 
@@ -1352,6 +1564,9 @@ class ConversableAgent(LLMAgent):
         else:
             raise ValueError("No OpenAIWrapper client is found.")
         response = self._generate_oai_reply_from_client(llm_client=llm_client, messages=messages, cache=cache)
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return response
 
     def _check_chat_queue_for_sender(self, chat_queue: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1380,13 +1595,26 @@ class ConversableAgent(LLMAgent):
 
         Returns: a list of ChatResult objects corresponding to the finished chats in the chat_queue.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
+
         _chat_queue = self._check_chat_queue_for_sender(chat_queue)
         self._finished_chats = initiate_chats(_chat_queue)
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return self._finished_chats
 
     async def a_initiate_chats(self, chat_queue: List[Dict[str, Any]]) -> Dict[int, ChatResult]:
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         _chat_queue = self._check_chat_queue_for_sender(chat_queue)
         self._finished_chats = await a_initiate_chats(_chat_queue)
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return self._finished_chats
 
     def get_chat_results(self, chat_index: Optional[int] = None) -> Union[List[ChatResult], ChatResult]:
@@ -1466,18 +1694,35 @@ class ConversableAgent(LLMAgent):
         config: Optional[OpenAIWrapper] = None,
     ) -> Tuple[bool, Union[str, Dict, None]]:
         """Generate a reply using autogen.oai."""
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         client = self.client if config is None else config
         if client is None:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return False, None
         if messages is None:
             messages = self._oai_messages[sender]
         extracted_response = self._generate_oai_reply_from_client(
             client, self._oai_system_message + messages, self.client_cache
         )
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return (False, None) if extracted_response is None else (True, extracted_response)
 
     def _generate_oai_reply_from_client(self, llm_client, messages, cache) -> Union[str, Dict, None]:
         # unroll tool_responses
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         all_messages = []
         for message in messages:
             tool_responses = message.get("tool_responses", [])
@@ -1500,6 +1745,14 @@ class ConversableAgent(LLMAgent):
 
         if extracted_response is None:
             warnings.warn(f"Extracted_response from {response} is None.", UserWarning)
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return None
         # ensure function and tool calls will be accepted when sent back to the LLM
         if not isinstance(extracted_response, str) and hasattr(extracted_response, "model_dump"):
@@ -1517,6 +1770,10 @@ class ConversableAgent(LLMAgent):
                     tool_call.pop("id")
                 if tool_call.get("type") is None:
                     tool_call.pop("type")
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return extracted_response
 
     async def a_generate_oai_reply(
@@ -1548,17 +1805,44 @@ class ConversableAgent(LLMAgent):
         config: Optional[Union[Dict, Literal[False]]] = None,
     ):
         """Generate a reply using code executor."""
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         if config is not None:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             raise ValueError("config is not supported for _generate_code_execution_reply_using_executor.")
         if self._code_execution_config is False:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return False, None
         if messages is None:
             messages = self._oai_messages[sender]
         last_n_messages = self._code_execution_config.get("last_n_messages", "auto")
 
         if not (isinstance(last_n_messages, (int, float)) and last_n_messages >= 0) and last_n_messages != "auto":
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             raise ValueError("last_n_messages must be either a non-negative integer, or the string 'auto'.")
 
         num_messages_to_scan = last_n_messages
@@ -1606,8 +1890,19 @@ class ConversableAgent(LLMAgent):
             # found code blocks, execute code.
             code_result = self._code_executor.execute_code_blocks(code_blocks)
             exitcode2str = "execution succeeded" if code_result.exit_code == 0 else "execution failed"
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, f"exitcode: {code_result.exit_code} ({exitcode2str})\nCode output: {code_result.output}"
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     def generate_code_execution_reply(
@@ -1617,14 +1912,33 @@ class ConversableAgent(LLMAgent):
         config: Optional[Union[Dict, Literal[False]]] = None,
     ):
         """Generate a reply using code execution."""
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         code_execution_config = config if config is not None else self._code_execution_config
         if code_execution_config is False:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return False, None
         if messages is None:
             messages = self._oai_messages[sender]
         last_n_messages = code_execution_config.pop("last_n_messages", "auto")
 
         if not (isinstance(last_n_messages, (int, float)) and last_n_messages >= 0) and last_n_messages != "auto":
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             raise ValueError("last_n_messages must be either a non-negative integer, or the string 'auto'.")
 
         messages_to_scan = last_n_messages
@@ -1660,6 +1974,9 @@ class ConversableAgent(LLMAgent):
         # no code blocks are found, push last_n_messages back and return.
         code_execution_config["last_n_messages"] = last_n_messages
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     def generate_function_call_reply(
@@ -1674,6 +1991,9 @@ class ConversableAgent(LLMAgent):
         "function_call" replaced by "tool_calls" as of [OpenAI API v1.1.0](https://github.com/openai/openai-python/releases/tag/v1.1.0)
         See https://platform.openai.com/docs/api-reference/chat/create#chat-create-functions
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if config is None:
             config = self
         if messages is None:
@@ -1697,7 +2017,20 @@ class ConversableAgent(LLMAgent):
                     loop.close()
             else:
                 _, func_return = self.execute_function(message["function_call"])
+
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, func_return
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     async def a_generate_function_call_reply(
@@ -1712,6 +2045,9 @@ class ConversableAgent(LLMAgent):
         "function_call" replaced by "tool_calls" as of [OpenAI API v1.1.0](https://github.com/openai/openai-python/releases/tag/v1.1.0)
         See https://platform.openai.com/docs/api-reference/chat/create#chat-create-functions
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if config is None:
             config = self
         if messages is None:
@@ -1725,8 +2061,20 @@ class ConversableAgent(LLMAgent):
                 _, func_return = await self.a_execute_function(func_call)
             else:
                 _, func_return = self.execute_function(func_call)
+
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, func_return
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     def _str_for_tool_response(self, tool_response):
@@ -1739,6 +2087,9 @@ class ConversableAgent(LLMAgent):
         config: Optional[Any] = None,
     ) -> Tuple[bool, Union[Dict, None]]:
         """Generate a reply using tool call."""
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if config is None:
             config = self
         if messages is None:
@@ -1782,11 +2133,23 @@ class ConversableAgent(LLMAgent):
                 }
             tool_returns.append(tool_call_response)
         if tool_returns:
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, {
                 "role": "tool",
                 "tool_responses": tool_returns,
                 "content": "\n\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
             }
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     async def _a_execute_tool_call(self, tool_call):
@@ -1806,6 +2169,9 @@ class ConversableAgent(LLMAgent):
         config: Optional[Any] = None,
     ) -> Tuple[bool, Union[Dict, None]]:
         """Generate a reply using async function call."""
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if config is None:
             config = self
         if messages is None:
@@ -1816,12 +2182,23 @@ class ConversableAgent(LLMAgent):
             async_tool_calls.append(self._a_execute_tool_call(tool_call))
         if async_tool_calls:
             tool_returns = await asyncio.gather(*async_tool_calls)
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, {
                 "role": "tool",
                 "tool_responses": tool_returns,
                 "content": "\n\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
             }
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     def check_termination_and_human_reply(
@@ -1847,6 +2224,9 @@ class ConversableAgent(LLMAgent):
             - Tuple[bool, Union[str, Dict, None]]: A tuple containing a boolean indicating if the conversation
             should be terminated, and a human reply which can be a string, a dictionary, or None.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         if config is None:
@@ -1899,6 +2279,14 @@ class ConversableAgent(LLMAgent):
         if reply == "exit":
             # reset the consecutive_auto_reply_counter
             self._consecutive_auto_reply_counter[sender] = 0
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, None
 
         # send the human reply
@@ -1928,6 +2316,14 @@ class ConversableAgent(LLMAgent):
             if tool_returns:
                 response["tool_responses"] = tool_returns
 
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, response
 
         # increment the consecutive_auto_reply_counter
@@ -1935,6 +2331,9 @@ class ConversableAgent(LLMAgent):
         if self.human_input_mode != "NEVER":
             iostream.print(colored("\n>>>>>>>> USING AUTO REPLY...", "red"), flush=True)
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     async def a_check_termination_and_human_reply(
@@ -1960,6 +2359,9 @@ class ConversableAgent(LLMAgent):
             - Tuple[bool, Union[str, Dict, None]]: A tuple containing a boolean indicating if the conversation
             should be terminated, and a human reply which can be a string, a dictionary, or None.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         if config is None:
@@ -2012,6 +2414,14 @@ class ConversableAgent(LLMAgent):
         if reply == "exit":
             # reset the consecutive_auto_reply_counter
             self._consecutive_auto_reply_counter[sender] = 0
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, None
 
         # send the human reply
@@ -2041,6 +2451,14 @@ class ConversableAgent(LLMAgent):
             if tool_returns:
                 response["tool_responses"] = tool_returns
 
+            print_trace(
+                inspect.currentframe().f_code.co_name,
+                self,
+                "[END]",
+                self.name,
+                self.__class__.__name__,
+                trace_timestamp,
+            )
             return True, response
 
         # increment the consecutive_auto_reply_counter
@@ -2048,6 +2466,9 @@ class ConversableAgent(LLMAgent):
         if self.human_input_mode != "NEVER":
             iostream.print(colored("\n>>>>>>>> USING AUTO REPLY...", "red"), flush=True)
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return False, None
 
     def generate_reply(
@@ -2083,10 +2504,25 @@ class ConversableAgent(LLMAgent):
         Returns:
             str or dict or None: reply. None if no reply is generated.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if all((messages is None, sender is None)):
             error_msg = f"Either {messages=} or {sender=} must be provided."
             logger.error(error_msg)
             raise AssertionError(error_msg)
+
+        telemetry = get_current_telemetry()
+        if telemetry:
+            reply_span_context = telemetry.start_span(
+                SpanKind.REPLY,
+                {
+                    "ag2.reply_function": inspect.currentframe().f_code.co_name,
+                    "ag2.agent.sender": sender.name,
+                    "ag2.agent.recipient": self.name,
+                    "ag2.messages.start": messages if messages else "",
+                },
+            )
 
         if messages is None:
             messages = self._oai_messages[sender]
@@ -2098,6 +2534,8 @@ class ConversableAgent(LLMAgent):
         # Call the hookable method that gives registered hooks a chance to process all messages.
         # Message modifications do not affect the incoming messages or self._oai_messages.
         messages = self.process_all_messages_before_reply(messages)
+
+        final_reply = self._default_auto_reply
 
         for reply_func_tuple in self._reply_func_list:
             reply_func = reply_func_tuple["reply_func"]
@@ -2117,8 +2555,28 @@ class ConversableAgent(LLMAgent):
                         reply=reply,
                     )
                 if final:
-                    return reply
-        return self._default_auto_reply
+                    print_trace(
+                        inspect.currentframe().f_code.co_name,
+                        self,
+                        "[END]",
+                        self.name,
+                        self.__class__.__name__,
+                        trace_timestamp,
+                    )
+                    final_reply = reply
+                    break
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
+
+        if telemetry:
+            # Update initiate chat span with history and result
+            telemetry.set_attribute(reply_span_context, "ag2.reply", final_reply)
+            telemetry.set_attribute(reply_span_context, "ag2.messages.end", messages if messages else "")
+            telemetry.end_span()  # Reply Span
+
+        return final_reply
 
     async def a_generate_reply(
         self,
@@ -2153,6 +2611,9 @@ class ConversableAgent(LLMAgent):
         Returns:
             str or dict or None: reply. None if no reply is generated.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         if all((messages is None, sender is None)):
             error_msg = f"Either {messages=} or {sender=} must be provided."
             logger.error(error_msg)
@@ -2182,7 +2643,19 @@ class ConversableAgent(LLMAgent):
                 else:
                     final, reply = reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
                 if final:
+                    print_trace(
+                        inspect.currentframe().f_code.co_name,
+                        self,
+                        "[END]",
+                        self.name,
+                        self.__class__.__name__,
+                        trace_timestamp,
+                    )
                     return reply
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return self._default_auto_reply
 
     def _match_trigger(self, trigger: Union[None, str, type, Agent, Callable, List], sender: Optional[Agent]) -> bool:
@@ -2230,10 +2703,16 @@ class ConversableAgent(LLMAgent):
         Returns:
             str: human input.
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         reply = iostream.input(prompt)
         self._human_input.append(reply)
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return reply
 
     async def a_get_human_input(self, prompt: str) -> str:
@@ -2265,10 +2744,14 @@ class ConversableAgent(LLMAgent):
             logs (str): the logs of the code execution.
             image (str or None): the docker image used for the code execution.
         """
+        print_trace(inspect.currentframe().f_code.co_name, self, None, self.name, self.__class__.__name__, None)
         return execute_code(code, **kwargs)
 
     def execute_code_blocks(self, code_blocks):
         """Execute the code blocks and return the result."""
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         logs_all = ""
@@ -2308,7 +2791,19 @@ class ConversableAgent(LLMAgent):
                 self._code_execution_config["use_docker"] = image
             logs_all += "\n" + logs
             if exitcode != 0:
+                print_trace(
+                    inspect.currentframe().f_code.co_name,
+                    self,
+                    "[END]",
+                    self.name,
+                    self.__class__.__name__,
+                    trace_timestamp,
+                )
                 return exitcode, logs_all
+
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return exitcode, logs_all
 
     @staticmethod
@@ -2357,6 +2852,9 @@ class ConversableAgent(LLMAgent):
         "function_call" deprecated as of [OpenAI API v1.1.0](https://github.com/openai/openai-python/releases/tag/v1.1.0)
         See https://platform.openai.com/docs/api-reference/chat/create#chat-create-function_call
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         func_name = func_call.get("name", "")
@@ -2392,6 +2890,9 @@ class ConversableAgent(LLMAgent):
                 flush=True,
             )
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return is_exec_success, {
             "name": func_name,
             "role": "function",
@@ -2414,6 +2915,9 @@ class ConversableAgent(LLMAgent):
         "function_call" deprecated as of [OpenAI API v1.1.0](https://github.com/openai/openai-python/releases/tag/v1.1.0)
         See https://platform.openai.com/docs/api-reference/chat/create#chat-create-function_call
         """
+        trace_timestamp = print_trace(
+            inspect.currentframe().f_code.co_name, self, "[START]", self.name, self.__class__.__name__, None
+        )
         iostream = IOStream.get_default()
 
         func_name = func_call.get("name", "")
@@ -2447,6 +2951,9 @@ class ConversableAgent(LLMAgent):
         else:
             content = f"Error: Function {func_name} not found."
 
+        print_trace(
+            inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
+        )
         return is_exec_success, {
             "name": func_name,
             "role": "function",

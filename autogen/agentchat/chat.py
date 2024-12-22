@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 import asyncio
 import datetime
+import inspect
 import logging
 import warnings
 from collections import abc, defaultdict
@@ -15,10 +16,11 @@ from typing import Any, Dict, List, Set, Tuple
 
 from ..formatting_utils import colored
 from ..io.base import IOStream
-from .utils import consolidate_chat_info
+from .utils import consolidate_chat_info, print_trace
 
 logger = logging.getLogger(__name__)
 Prerequisite = Tuple[int, int]
+from ..telemetry.telemetry_core import SpanKind, get_current_telemetry
 
 
 @dataclass
@@ -192,11 +194,21 @@ def initiate_chats(chat_queue: List[Dict[str, Any]]) -> List[ChatResult]:
     Returns:
         (list): a list of ChatResult objects corresponding to the finished chats in the chat_queue.
     """
+    trace_timestamp = print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", None)
 
     consolidate_chat_info(chat_queue)
     _validate_recipients(chat_queue)
     current_chat_queue = chat_queue.copy()
     finished_chats = []
+
+    telemetry = get_current_telemetry()
+    if telemetry:
+        chat_span_context = telemetry.start_span(
+            "initiate_chats",
+            SpanKind.CHAT,
+            {"chat_function": inspect.currentframe().f_code.co_name, "chat_queue_length": len(chat_queue)},
+        )
+
     while current_chat_queue:
         chat_info = current_chat_queue.pop(0)
         _chat_carryover = chat_info.get("carryover", [])
@@ -214,8 +226,17 @@ def initiate_chats(chat_queue: List[Dict[str, Any]]) -> List[ChatResult]:
             __post_carryover_processing(chat_info)
 
         sender = chat_info["sender"]
+
+        # MS
+        chat_info["telemetry_parent_context"] = chat_span_context
+
         chat_res = sender.initiate_chat(**chat_info)
         finished_chats.append(chat_res)
+
+    print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", trace_timestamp)
+    if telemetry:
+        telemetry.end_span()
+
     return finished_chats
 
 
@@ -282,6 +303,7 @@ async def a_initiate_chats(chat_queue: List[Dict[str, Any]]) -> Dict[int, ChatRe
     returns:
         - (Dict): a dict of ChatId: ChatResult corresponding to the finished chats in the chat_queue.
     """
+    trace_timestamp = print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", None)
     consolidate_chat_info(chat_queue)
     _validate_recipients(chat_queue)
     chat_book = {chat_info["chat_id"]: chat_info for chat_info in chat_queue}
@@ -303,4 +325,6 @@ async def a_initiate_chats(chat_queue: List[Dict[str, Any]]) -> Dict[int, ChatRe
     for chat in finished_chat_futures:
         chat_result = finished_chat_futures[chat].result()
         finished_chats[chat] = chat_result
+
+    print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", trace_timestamp)
     return finished_chats
