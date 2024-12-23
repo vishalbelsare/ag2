@@ -20,6 +20,7 @@ from ..graph_utils import check_graph_validity, invert_disallowed_to_allowed
 from ..io.base import IOStream
 from ..oai.client import ModelClient
 from ..runtime_logging import log_new_agent, logging_enabled
+from ..telemetry.telemetry_core import EventKind, get_current_telemetry
 from .agent import Agent
 from .contrib.capabilities import transform_messages
 from .conversable_agent import ConversableAgent
@@ -275,6 +276,19 @@ class GroupChat:
         # Validate select_speaker_auto_verbose
         if self.select_speaker_auto_verbose is None or not isinstance(self.select_speaker_auto_verbose, bool):
             raise ValueError("select_speaker_auto_verbose cannot be None or non-bool")
+
+        # Telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.GROUPCHAT_CREATION,
+                {
+                    "messages": self.messages,
+                    "max_round": self.max_round,
+                    "speaker_selection_method": self.speaker_selection_method,
+                    "agents": [agent.name for agent in self.agents],
+                },
+            )
 
     @property
     def agent_names(self) -> list[str]:

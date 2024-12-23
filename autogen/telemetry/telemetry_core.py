@@ -40,10 +40,12 @@ class SpanKind(Enum):
     """Enumeration of span kinds"""
 
     WORKFLOW = "workflow"
+    CHATS = "chats"
     CHAT = "chat"
     NESTED_CHAT = "nested_chat"
     ROUND = "round"
     REPLY = "reply"
+    REPLY_FUNCTION = "reply_function"
     SUMMARY = "summary"
     REASONING = "reasoning"
     SWARM_ON_CONDITION = "swarm_on_condition"
@@ -56,6 +58,7 @@ class EventKind(Enum):
     AGENT_CREATION = "agent_creation"
     GROUPCHAT_CREATION = "groupchat_creation"
     LLM_CREATE = "llm_create"
+    TOOL_EXECUTION = "tool_execution"
     COST = "cost"  # All costs should create a COST event
 
 

@@ -461,10 +461,32 @@ class ConversableAgent(LLMAgent):
         """
         print_trace(inspect.currentframe().f_code.co_name, None, "STATIC", None, "ConversableAgent", None)
 
+        telemetry = get_current_telemetry()
+        if telemetry:
+            chat_span_context = telemetry.start_span(
+                SpanKind.NESTED_CHAT,
+                {
+                    "ag2.chat_function": inspect.currentframe().f_code.co_name,
+                    "ag2.chat_queue_length": len(chat_queue),
+                    "ag2.agent.recipient": recipient.name,
+                    "ag2.agent.sender": sender.name,
+                    "ag2.messages": messages,
+                },
+            )
+
         chat_to_run = ConversableAgent._get_chats_to_run(chat_queue, recipient, messages, sender, config)
         if not chat_to_run:
             return True, None
         res = initiate_chats(chat_to_run)
+
+        if telemetry:
+
+            # Update nested chat span with history and result
+            telemetry.set_attribute(chat_span_context, "ag2.chat_result.chat_history", res[-1].chat_history)
+            telemetry.set_attribute(chat_span_context, "ag2.chat_result.summary", res[-1].summary)
+
+            telemetry.end_span()
+
         return True, res[-1].summary
 
     @staticmethod
@@ -1439,7 +1461,7 @@ class ConversableAgent(LLMAgent):
                     "ag2.agent.sender": self.name,
                     "ag2.agent.recipient": recipient.name,
                     "ag2.summary.function": summary_method,
-                },  # , parent_context=kwargs.get("telemetry_parent_context")
+                },
             )
 
         summary = ""
@@ -2142,6 +2164,19 @@ class ConversableAgent(LLMAgent):
                     "role": "tool",
                     "content": content,
                 }
+
+            telemetry = get_current_telemetry()
+            if telemetry:
+                telemetry.record_event(
+                    EventKind.TOOL_EXECUTION,
+                    {
+                        "ag2.tool_call_id": tool_call_id,
+                        "ag2.function.content": content,
+                        "ag2.function.name": function_call.get("name", None),
+                        "ag2.function.arguments": function_call.get("arguments", {}),
+                    },
+                )
+
             tool_returns.append(tool_call_response)
         if tool_returns:
             print_trace(
@@ -2558,7 +2593,27 @@ class ConversableAgent(LLMAgent):
             if inspect.iscoroutinefunction(reply_func):
                 continue
             if self._match_trigger(reply_func_tuple["trigger"], sender):
+
+                if telemetry:
+                    reply_span_context = telemetry.start_span(
+                        SpanKind.REPLY_FUNCTION,
+                        {
+                            "ag2.reply_function": reply_func.__name__,
+                            "ag2.reply_module": reply_func.__module__,
+                            "ag2.agent.sender": sender.name,
+                            "ag2.agent.recipient": self.name,
+                            "ag2.messages": messages if messages else "",
+                        },
+                    )
+
                 final, reply = reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
+
+                if telemetry:
+                    # Update reply span with reply value and final status
+                    telemetry.set_attribute(reply_span_context, "ag2.reply", reply)
+                    telemetry.set_attribute(reply_span_context, "ag2.final", final)
+                    telemetry.end_span()
+
                 if logging_enabled():
                     log_event(
                         self,
@@ -2633,6 +2688,18 @@ class ConversableAgent(LLMAgent):
             logger.error(error_msg)
             raise AssertionError(error_msg)
 
+        telemetry = get_current_telemetry()
+        if telemetry:
+            reply_span_context = telemetry.start_span(
+                SpanKind.REPLY,
+                {
+                    "ag2.reply_function": inspect.currentframe().f_code.co_name,
+                    "ag2.agent.sender": sender.name,
+                    "ag2.agent.recipient": self.name,
+                    "ag2.messages.start": messages if messages else "",
+                },
+            )
+
         if messages is None:
             messages = self._oai_messages[sender]
 
@@ -2647,18 +2714,40 @@ class ConversableAgent(LLMAgent):
         # Message modifications do not affect the incoming messages or self._oai_messages.
         messages = self.process_last_received_message(messages)
 
+        final_reply = self._default_auto_reply
+
         for reply_func_tuple in self._reply_func_list:
             reply_func = reply_func_tuple["reply_func"]
             if "exclude" in kwargs and reply_func in kwargs["exclude"]:
                 continue
 
             if self._match_trigger(reply_func_tuple["trigger"], sender):
+
+                if telemetry:
+                    reply_span_context = telemetry.start_span(
+                        SpanKind.REPLY_FUNCTION,
+                        {
+                            "ag2.reply_function": reply_func.__name__,
+                            "ag2.reply_module": reply_func.__module__,
+                            "ag2.agent.sender": sender.name,
+                            "ag2.agent.recipient": self.name,
+                            "ag2.messages": messages if messages else "",
+                        },
+                    )
+
                 if inspect.iscoroutinefunction(reply_func):
                     final, reply = await reply_func(
                         self, messages=messages, sender=sender, config=reply_func_tuple["config"]
                     )
                 else:
                     final, reply = reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
+
+                if telemetry:
+                    # Update reply span with reply value and final status
+                    telemetry.set_attribute(reply_span_context, "ag2.reply", reply)
+                    telemetry.set_attribute(reply_span_context, "ag2.final", final)
+                    telemetry.end_span()
+
                 if final:
                     print_trace(
                         inspect.currentframe().f_code.co_name,
@@ -2668,12 +2757,21 @@ class ConversableAgent(LLMAgent):
                         self.__class__.__name__,
                         trace_timestamp,
                     )
-                    return reply
+
+                    final_reply = reply
+                    break
 
         print_trace(
             inspect.currentframe().f_code.co_name, self, "[END]", self.name, self.__class__.__name__, trace_timestamp
         )
-        return self._default_auto_reply
+
+        if telemetry:
+            # Update initiate chat span with history and result
+            telemetry.set_attribute(reply_span_context, "ag2.reply", final_reply)
+            telemetry.set_attribute(reply_span_context, "ag2.messages.end", messages if messages else "")
+            telemetry.end_span()  # Reply Span
+
+        return final_reply
 
     def _match_trigger(self, trigger: Union[None, str, type, Agent, Callable, list], sender: Optional[Agent]) -> bool:
         """Check if the sender matches the trigger.

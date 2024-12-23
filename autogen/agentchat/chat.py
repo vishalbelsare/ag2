@@ -204,9 +204,8 @@ def initiate_chats(chat_queue: list[dict[str, Any]]) -> list[ChatResult]:
     telemetry = get_current_telemetry()
     if telemetry:
         chat_span_context = telemetry.start_span(
-            "initiate_chats",
-            SpanKind.CHAT,
-            {"chat_function": inspect.currentframe().f_code.co_name, "chat_queue_length": len(chat_queue)},
+            SpanKind.CHATS,
+            {"ag2.chat_function": inspect.currentframe().f_code.co_name, "ag2.chat_queue_length": len(chat_queue)},
         )
 
     while current_chat_queue:
@@ -311,6 +310,14 @@ async def a_initiate_chats(chat_queue: list[dict[str, Any]]) -> dict[int, ChatRe
     prerequisites = __create_async_prerequisites(chat_queue)
     chat_order_by_id = __find_async_chat_order(num_chats, prerequisites)
     finished_chat_futures = dict()
+
+    telemetry = get_current_telemetry()
+    if telemetry:
+        _ = telemetry.start_span(
+            SpanKind.CHATS,
+            {"ag2.chat_function": inspect.currentframe().f_code.co_name, "ag2.chat_queue_length": len(chat_queue)},
+        )
+
     for chat_id in chat_order_by_id:
         chat_info = chat_book[chat_id]
         prerequisite_chat_ids = chat_info.get("prerequisites", [])
@@ -327,4 +334,7 @@ async def a_initiate_chats(chat_queue: list[dict[str, Any]]) -> dict[int, ChatRe
         finished_chats[chat] = chat_result
 
     print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", trace_timestamp)
+    if telemetry:
+        telemetry.end_span()
+
     return finished_chats
