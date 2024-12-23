@@ -32,13 +32,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 from conftest import MOCK_OPEN_AI_API_KEY, skip_openai  # noqa: E402
 
-filter_dict = {"model": ["gpt-35-turbo-16k", "gpt-3.5-turbo-16k"]}
+filter_dict = {"model": ["gpt-4o-mini"]}
 
-RESOLUTIONS = ["256x256", "512x512", "1024x1024"]
+RESOLUTIONS = ["1024x1024", "1792x1024", "1024x1792"]
 QUALITIES = ["standard", "hd"]
 PROMPTS = [
-    "Generate an image of a robot holding a 'I Love Autogen' sign",
-    "Generate an image of a dog holding a 'I Love Autogen' sign",
+    "Generate an image of a robot holding a 'I Love AG2' sign",
+    "Generate an image of a dog holding a 'I Love AG2' sign",
 ]
 
 
@@ -57,7 +57,7 @@ def create_test_agent(name: str = "test_agent", default_auto_reply: str = "") ->
     return ConversableAgent(name=name, llm_config=False, default_auto_reply=default_auto_reply)
 
 
-def dalle_image_generator(dalle_config: Dict[str, Any], resolution: str, quality: str):
+def dalle_image_generator(dalle_config: dict[str, Any], resolution: str, quality: str):
     return generate_images.DalleImageGenerator(dalle_config, resolution=resolution, quality=quality, num_images=1)
 
 
@@ -66,22 +66,22 @@ def api_key():
 
 
 @pytest.fixture
-def dalle_config() -> Dict[str, Any]:
-    config_list = openai_utils.config_list_from_models(model_list=["dall-e-2"], exclude="aoai")
+def dalle_config() -> dict[str, Any]:
+    config_list = openai_utils.config_list_from_models(model_list=["dall-e-3"], exclude="aoai")
     if not config_list:
-        config_list = [{"model": "dall-e-2", "api_key": api_key()}]
+        config_list = [{"model": "dall-e-3", "api_key": api_key()}]
     return {"config_list": config_list, "timeout": 120, "cache_seed": None}
 
 
 @pytest.fixture
-def gpt3_config() -> Dict[str, Any]:
+def gpt4_config() -> dict[str, Any]:
     config_list = [
         {
-            "model": "gpt-35-turbo-16k",
+            "model": "gpt-4o-mini",
             "api_key": api_key(),
         },
         {
-            "model": "gpt-3.5-turbo-16k",
+            "model": "gpt-4o",
             "api_key": api_key(),
         },
     ]
@@ -96,7 +96,7 @@ def image_gen_capability():
 
 @pytest.mark.skipif(skip_openai, reason="Requested to skip.")
 @pytest.mark.skipif(skip_requirement, reason="Dependencies are not installed.")
-def test_dalle_image_generator(dalle_config: Dict[str, Any]):
+def test_dalle_image_generator(dalle_config: dict[str, Any]):
     """Tests DalleImageGenerator capability to generate images by calling the OpenAI API."""
     dalle_generator = dalle_image_generator(dalle_config, RESOLUTIONS[0], QUALITIES[0])
     image = dalle_generator.generate_image(PROMPTS[0])
@@ -109,7 +109,7 @@ def test_dalle_image_generator(dalle_config: Dict[str, Any]):
 @pytest.mark.parametrize("gen_config_2", itertools.product(RESOLUTIONS, QUALITIES, PROMPTS))
 @pytest.mark.skipif(skip_requirement, reason="Dependencies are not installed.")
 def test_dalle_image_generator_cache_key(
-    dalle_config: Dict[str, Any], gen_config_1: Tuple[str, str, str], gen_config_2: Tuple[str, str, str]
+    dalle_config: dict[str, Any], gen_config_1: tuple[str, str, str], gen_config_2: tuple[str, str, str]
 ):
     """Tests if DalleImageGenerator creates unique cache keys.
 
@@ -228,5 +228,5 @@ def test_image_generation_capability_cache(monkeypatch):
 
 if __name__ == "__main__":
     test_dalle_image_generator(
-        dalle_config={"config_list": openai_utils.config_list_from_models(model_list=["dall-e-2"], exclude="aoai")}
+        dalle_config={"config_list": openai_utils.config_list_from_models(model_list=["dall-e-3"], exclude="aoai")}
     )

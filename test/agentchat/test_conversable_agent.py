@@ -13,13 +13,12 @@ import os
 import sys
 import time
 import unittest
-from typing import Any, Callable, Dict, Literal
+from typing import Annotated, Any, Callable, Dict, Literal
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel, Field
 from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST
-from typing_extensions import Annotated
 
 import autogen
 from autogen.agentchat import ConversableAgent, UserProxyAgent
@@ -32,9 +31,6 @@ from conftest import MOCK_OPEN_AI_API_KEY, reason, skip_openai  # noqa: E402
 here = os.path.abspath(os.path.dirname(__file__))
 
 gpt4_config_list = [
-    {"model": "gpt-4"},
-    {"model": "gpt-4-turbo"},
-    {"model": "gpt-4-32k"},
     {"model": "gpt-4o"},
     {"model": "gpt-4o-mini"},
 ]
@@ -592,8 +588,8 @@ def test__wrap_function_sync():
     CurrencySymbol = Literal["USD", "EUR"]
 
     class Currency(BaseModel):
-        currency: Annotated[CurrencySymbol, Field(..., description="Currency code")]
-        amount: Annotated[float, Field(100.0, description="Amount of money in the currency")]
+        currency: CurrencySymbol = Field(description="Currency code")
+        amount: Annotated[float, Field(default=100.0, description="Amount of money in the currency")]
 
     Currency(currency="USD", amount=100.0)
 
@@ -630,8 +626,8 @@ async def test__wrap_function_async():
     CurrencySymbol = Literal["USD", "EUR"]
 
     class Currency(BaseModel):
-        currency: Annotated[CurrencySymbol, Field(..., description="Currency code")]
-        amount: Annotated[float, Field(100.0, description="Amount of money in the currency")]
+        currency: CurrencySymbol = Field(description="Currency code")
+        amount: Annotated[float, Field(default=100.0, description="Amount of money in the currency")]
 
     Currency(currency="USD", amount=100.0)
 
@@ -663,7 +659,7 @@ async def test__wrap_function_async():
     assert inspect.iscoroutinefunction(currency_calculator)
 
 
-def get_origin(d: Dict[str, Callable[..., Any]]) -> Dict[str, Callable[..., Any]]:
+def get_origin(d: dict[str, Callable[..., Any]]) -> dict[str, Callable[..., Any]]:
     return {k: v._origin for k, v in d.items()}
 
 
@@ -856,7 +852,7 @@ def test_register_for_llm_without_model_name():
 def test_register_for_execution():
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv("OPENAI_API_KEY", MOCK_OPEN_AI_API_KEY)
-        agent = ConversableAgent(name="agent", llm_config={"config_list": [{"model": "gpt-4"}]})
+        agent = ConversableAgent(name="agent", llm_config={"config_list": [{"model": "gpt-4o"}]})
         user_proxy_1 = UserProxyAgent(name="user_proxy_1")
         user_proxy_2 = UserProxyAgent(name="user_proxy_2")
 
@@ -937,7 +933,7 @@ def test_function_registration_e2e_sync() -> None:
     config_list = autogen.config_list_from_json(
         OAI_CONFIG_LIST,
         filter_dict={
-            "tags": ["tool"],
+            "tags": ["gpt-4o-mini"],
         },
         file_location=KEY_LOC,
     )
@@ -1015,7 +1011,7 @@ async def test_function_registration_e2e_async() -> None:
     config_list = autogen.config_list_from_json(
         OAI_CONFIG_LIST,
         filter_dict={
-            "tags": ["gpt-4", "gpt-4-0314", "gpt4", "gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-v0314"],
+            "tags": ["gpt-4o"],
         },
         file_location=KEY_LOC,
     )
@@ -1086,7 +1082,7 @@ async def test_function_registration_e2e_async() -> None:
 
 @pytest.mark.skipif(skip_openai, reason=reason)
 def test_max_turn():
-    config_list = autogen.config_list_from_json(OAI_CONFIG_LIST, KEY_LOC, filter_dict={"tags": ["gpt-3.5-turbo"]})
+    config_list = autogen.config_list_from_json(OAI_CONFIG_LIST, KEY_LOC, filter_dict={"tags": ["gpt-4o-mini"]})
 
     # create an AssistantAgent instance named "assistant"
     assistant = autogen.AssistantAgent(
@@ -1174,7 +1170,7 @@ def test_summary():
             return str(random.randint(0, 100))
 
     config_list = autogen.config_list_from_json(
-        OAI_CONFIG_LIST, file_location=KEY_LOC, filter_dict={"tags": ["gpt-3.5-turbo"]}
+        OAI_CONFIG_LIST, file_location=KEY_LOC, filter_dict={"tags": ["gpt-4o-mini"]}
     )
 
     def my_message_play(sender, recipient, context):

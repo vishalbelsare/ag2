@@ -3,7 +3,7 @@
 ![Pypi Downloads](https://img.shields.io/pypi/dm/pyautogen?label=PyPI%20downloads)
 [![PyPI version](https://badge.fury.io/py/autogen.svg)](https://badge.fury.io/py/autogen)
 [![Build](https://github.com/ag2ai/ag2/actions/workflows/python-package.yml/badge.svg)](https://github.com/ag2ai/ag2/actions/workflows/python-package.yml)
-![Python Version](https://img.shields.io/badge/3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)
+![Python Version](https://img.shields.io/badge/3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)
 [![Discord](https://img.shields.io/discord/1153072414184452236?logo=discord&style=flat)](https://discord.gg/pAbnFJrkgZ)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40ag2ai)](https://x.com/ag2ai)
 
@@ -47,7 +47,7 @@ We adopt the Apache 2.0 license from v0.3. This enhances our commitment to open-
 
 :tada: Apr 17, 2024: Andrew Ng cited AutoGen in [The Batch newsletter](https://www.deeplearning.ai/the-batch/issue-245/) and [What's next for AI agentic workflows](https://youtu.be/sal78ACtGTc?si=JduUzN_1kDnMq0vF) at Sequoia Capital's AI Ascent (Mar 26).
 
-:tada: Mar 3, 2024: What's new in AutoGen? 📰[Blog](https://ag2ai.github.io/ag2/blog/2024/03/03/AutoGen-Update); 📺[Youtube](https://www.youtube.com/watch?v=j_mtwQiaLGU).
+:tada: Mar 3, 2024: What's new in AutoGen? 📰[Blog](https://docs.ag2.ai/blog/2024-03-03-AutoGen-Update); 📺[Youtube](https://www.youtube.com/watch?v=j_mtwQiaLGU).
 
 <!-- :tada: Mar 1, 2024: the first AutoGen multi-agent experiment on the challenging [GAIA](https://huggingface.co/spaces/gaia-benchmark/leaderboard) benchmark achieved the No. 1 accuracy in all the three levels. -->
 
@@ -57,7 +57,7 @@ We adopt the Apache 2.0 license from v0.3. This enhances our commitment to open-
 
 <!-- :fire: Nov 24: pyautogen [v0.2](https://github.com/ag2ai/ag2/releases/tag/v0.2.0) is released with many updates and new features compared to v0.1.1. It switches to using openai-python v1. Please read the [migration guide](https://ag2ai.github.io/ag2/docs/Installation#python). -->
 
-<!-- :fire: Nov 11: OpenAI's Assistants are available in AutoGen and interoperatable with other AutoGen agents! Checkout our [blogpost](https://ag2ai.github.io/ag2/blog/2023/11/13/OAI-assistants) for details and examples. -->
+<!-- :fire: Nov 11: OpenAI's Assistants are available in AutoGen and interoperatable with other AutoGen agents! Checkout our [blogpost](https://docs.ag2.ai/blog/2023-11-13-OAI-assistants) for details and examples. -->
 
 :tada: Nov 8, 2023: AutoGen is selected into [Open100: Top 100 Open Source achievements](https://www.benchcouncil.org/evaluation/opencs/annual.html) 35 days after spinoff from [FLAML](https://github.com/microsoft/FLAML).
 
@@ -125,7 +125,7 @@ Find detailed instructions for users [here](https://ag2ai.github.io/ag2/docs/ins
 
 ### Option 2. Install AG2 Locally
 
-AG2 requires **Python version >= 3.8, < 3.14**. It can be installed from pip:
+AG2 requires **Python version >= 3.9, < 3.14**. It can be installed from pip:
 
 ```bash
 pip install ag2
@@ -234,7 +234,7 @@ You can find detailed documentation about AG2 [here](https://ag2ai.github.io/ag2
 
 In addition, you can find:
 
-- [Research](https://ag2ai.github.io/ag2/docs/Research), [blogposts](https://ag2ai.github.io/ag2/blog) around AG2, and [Transparency FAQs](https://github.com/ag2ai/ag2/blob/main/TRANSPARENCY_FAQS.md)
+- [Research](https://ag2ai.github.io/ag2/docs/Research), [blogposts](https://docs.ag2.ai/blog) around AG2, and [Transparency FAQs](https://github.com/ag2ai/ag2/blob/main/TRANSPARENCY_FAQS.md)
 
 - [Discord](https://discord.gg/pAbnFJrkgZ)
 

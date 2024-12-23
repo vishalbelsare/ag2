@@ -31,10 +31,8 @@ else:
 # Specify the model to use by uncommenting one of the following lines.
 # filter_dict={"model": ["gpt-4-1106-preview"]}
 # filter_dict={"model": ["gpt-4-0613"]}
-# filter_dict={"model": ["gpt-3.5-turbo-1106"]}
-# filter_dict={"model": ["gpt-3.5-turbo-0613"]}
 # filter_dict={"model": ["gpt-4"]}
-filter_dict = {"tags": ["gpt-35-turbo-16k", "gpt-3.5-turbo-16k"]}
+filter_dict = {"tags": ["gpt-4o-mini"]}
 
 
 def create_teachable_agent(reset_db=False, verbosity=0):
@@ -204,7 +202,7 @@ def test_teachability_accuracy():
             return
 
     # All trials failed.
-    assert False, "test_teachability_accuracy() failed on all {} trials.".format(num_trials)
+    assert False, f"test_teachability_accuracy() failed on all {num_trials} trials."
 
 
 if __name__ == "__main__":

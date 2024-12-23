@@ -92,7 +92,7 @@ class TestConsoleIOWithWebsockets:
 
         success_dict = {"success": False}
 
-        def on_connect(iostream: IOWebsockets, success_dict: Dict[str, bool] = success_dict) -> None:
+        def on_connect(iostream: IOWebsockets, success_dict: dict[str, bool] = success_dict) -> None:
             print(f" - on_connect(): Connected to client using IOWebsockets {iostream}", flush=True)
 
             print(" - on_connect(): Receiving message from client.", flush=True)
@@ -103,14 +103,8 @@ class TestConsoleIOWithWebsockets:
                 OAI_CONFIG_LIST,
                 filter_dict={
                     "model": [
-                        "gpt-3.5-turbo",
-                        "gpt-3.5-turbo-16k",
-                        "gpt-4",
-                        "gpt-4-0314",
-                        "gpt4",
-                        "gpt-4-32k",
-                        "gpt-4-32k-0314",
-                        "gpt-4-32k-v0314",
+                        "gpt-4o-mini",
+                        "gpt-4o",
                     ],
                 },
                 file_location=KEY_LOC,

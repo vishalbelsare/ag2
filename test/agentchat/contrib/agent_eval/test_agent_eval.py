@@ -38,13 +38,12 @@ if not skip_openai:
         filter_dict={
             "api_type": ["openai"],
             "model": [
+                "gpt-4o-mini",
+                "gpt-4o",
                 "gpt-4-turbo",
                 "gpt-4-turbo-preview",
                 "gpt-4-0125-preview",
                 "gpt-4-1106-preview",
-                "gpt-3.5-turbo",
-                "gpt-3.5-turbo-0125",
-                "gpt-3.5-turbo-1106",
             ],
         },
     )
@@ -55,9 +54,9 @@ if not skip_openai:
         filter_dict={"api_type": ["azure"]},
     )
 
-    success_str = open("test/test_files/agenteval-in-out/samples/sample_math_response_successful.txt", "r").read()
+    success_str = open("test/test_files/agenteval-in-out/samples/sample_math_response_successful.txt").read()
     response_successful = remove_ground_truth(success_str)[0]
-    failed_str = open("test/test_files/agenteval-in-out/samples/sample_math_response_failed.txt", "r").read()
+    failed_str = open("test/test_files/agenteval-in-out/samples/sample_math_response_failed.txt").read()
     response_failed = remove_ground_truth(failed_str)[0]
     task = Task(
         **{
@@ -88,10 +87,10 @@ def test_generate_criteria():
 )
 def test_quantify_criteria():
     criteria_file = "test/test_files/agenteval-in-out/samples/sample_math_criteria.json"
-    criteria = open(criteria_file, "r").read()
+    criteria = open(criteria_file).read()
     criteria = Criterion.parse_json_str(criteria)
 
-    test_case = open("test/test_files/agenteval-in-out/samples/sample_test_case.json", "r").read()
+    test_case = open("test/test_files/agenteval-in-out/samples/sample_test_case.json").read()
     test_case, ground_truth = remove_ground_truth(test_case)
 
     quantified = quantify_criteria(
