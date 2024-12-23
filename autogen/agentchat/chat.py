@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Set, Tuple
 
 from ..formatting_utils import colored
 from ..io.base import IOStream
-from .utils import consolidate_chat_info, print_trace
+from .utils import consolidate_chat_info
 
 logger = logging.getLogger(__name__)
 Prerequisite = tuple[int, int]
@@ -194,8 +194,6 @@ def initiate_chats(chat_queue: list[dict[str, Any]]) -> list[ChatResult]:
     Returns:
         (list): a list of ChatResult objects corresponding to the finished chats in the chat_queue.
     """
-    trace_timestamp = print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", None)
-
     consolidate_chat_info(chat_queue)
     _validate_recipients(chat_queue)
     current_chat_queue = chat_queue.copy()
@@ -232,7 +230,6 @@ def initiate_chats(chat_queue: list[dict[str, Any]]) -> list[ChatResult]:
         chat_res = sender.initiate_chat(**chat_info)
         finished_chats.append(chat_res)
 
-    print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", trace_timestamp)
     if telemetry:
         telemetry.end_span()
 
@@ -302,7 +299,6 @@ async def a_initiate_chats(chat_queue: list[dict[str, Any]]) -> dict[int, ChatRe
     returns:
         - (Dict): a dict of ChatId: ChatResult corresponding to the finished chats in the chat_queue.
     """
-    trace_timestamp = print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", None)
     consolidate_chat_info(chat_queue)
     _validate_recipients(chat_queue)
     chat_book = {chat_info["chat_id"]: chat_info for chat_info in chat_queue}
@@ -333,7 +329,6 @@ async def a_initiate_chats(chat_queue: list[dict[str, Any]]) -> dict[int, ChatRe
         chat_result = finished_chat_futures[chat].result()
         finished_chats[chat] = chat_result
 
-    print_trace(inspect.currentframe().f_code.co_name, None, "STATIC [START]", None, "chat.py", trace_timestamp)
     if telemetry:
         telemetry.end_span()
 
