@@ -55,7 +55,8 @@ class EventKind(Enum):
     AGENT_TRANSITION = "agent_transition"
     AGENT_CREATION = "agent_creation"
     GROUPCHAT_CREATION = "groupchat_creation"
-    LLM_INFERENCE = "llm_inference"
+    LLM_CREATE = "llm_create"
+    COST = "cost"  # All costs should create a COST event
 
 
 @dataclass

@@ -22,6 +22,8 @@ from autogen.oai.openai_utils import OAI_PRICE1K, get_key, is_valid_api_key
 from autogen.runtime_logging import log_chat_completion, log_new_client, log_new_wrapper, logging_enabled
 from autogen.token_count_utils import count_token
 
+from ..telemetry.telemetry_core import EventKind, SpanKind, get_current_telemetry
+
 TOOL_ENABLED = False
 try:
     import openai
@@ -441,8 +443,23 @@ class OpenAIClient:
         tmp_price1K = OAI_PRICE1K[model]
         # First value is input token rate, second value is output token rate
         if isinstance(tmp_price1K, tuple):
-            return (tmp_price1K[0] * n_input_tokens + tmp_price1K[1] * n_output_tokens) / 1000  # type: ignore [no-any-return]
-        return tmp_price1K * (n_input_tokens + n_output_tokens) / 1000  # type: ignore [operator]
+            cost = (tmp_price1K[0] * n_input_tokens + tmp_price1K[1] * n_output_tokens) / 1000  # type: ignore [no-any-return]
+        else:
+            cost = tmp_price1K * (n_input_tokens + n_output_tokens) / 1000  # type: ignore [operator]
+
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.cost": cost,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.input_tokens": n_input_tokens,
+                    "ag2.llm.output_tokens": n_output_tokens,
+                },
+            )
+
+        return cost
 
     @staticmethod
     def get_usage(response: Union[ChatCompletion, Completion]) -> Dict:
@@ -855,6 +872,27 @@ class OpenAIWrapper:
                                 start_time=request_ts,
                             )
 
+                        # Telemetry
+                        telemetry = get_current_telemetry()
+                        if telemetry:
+                            telemetry.record_event(
+                                EventKind.LLM_CREATE,
+                                {
+                                    "ag2.client.invocation_id": invocation_id,
+                                    "ag2.client.client_id": id(client),
+                                    "ag2.client.wrapper_id": id(self),
+                                    "ag2.client.api_type": extra_kwargs.get("api_type", ""),
+                                    "ag2.client.model": create_config.get("model", ""),
+                                    "ag2.agent.type": agent.__class__.__name__,
+                                    "ag2.agent.name": agent.name,
+                                    "ag2.llm.params": params,
+                                    "ag2.llm.response": response,
+                                    "ag2.llm.is_error": False,
+                                    "ag2.llm.is_cached": True,
+                                    "ag2.llm.cost": response.cost,
+                                },
+                            )
+
                         # check the filter
                         pass_filter = filter_func is None or filter_func(context=context, response=response)
                         if pass_filter or i == last:
@@ -887,6 +925,25 @@ class OpenAIWrapper:
                         cost=0,
                         start_time=request_ts,
                     )
+
+                    # Telemetry
+                    telemetry = get_current_telemetry()
+                    if telemetry:
+                        telemetry.record_event(
+                            EventKind.LLM_CREATE,
+                            {
+                                "ag2.client.invocation_id": invocation_id,
+                                "ag2.client.client_id": id(client),
+                                "ag2.client.wrapper_id": id(self),
+                                "ag2.client.api_type": extra_kwargs.get("api_type", ""),
+                                "ag2.client.model": create_config.get("model", ""),
+                                "ag2.agent.type": agent.__class__.__name__,
+                                "ag2.agent.name": agent.name,
+                                "ag2.llm.params": params,
+                                "ag2.llm.response": f"error_code:{error_code}, config {i} failed",
+                                "ag2.llm.is_error": True,
+                            },
+                        )
 
                 if error_code == "content_filter":
                     # raise the error for content_filter
@@ -946,6 +1003,27 @@ class OpenAIWrapper:
                         is_cached=0,
                         cost=response.cost,
                         start_time=request_ts,
+                    )
+
+                # Telemetry
+                telemetry = get_current_telemetry()
+                if telemetry:
+                    telemetry.record_event(
+                        EventKind.LLM_CREATE,
+                        {
+                            "ag2.client.invocation_id": invocation_id,
+                            "ag2.client.client_id": id(client),
+                            "ag2.client.wrapper_id": id(self),
+                            "ag2.client.api_type": extra_kwargs.get("api_type", ""),
+                            "ag2.client.model": create_config.get("model", ""),
+                            "ag2.agent.type": agent.__class__.__name__,
+                            "ag2.agent.name": agent.name,
+                            "ag2.llm.params": params,
+                            "ag2.llm.response": response,
+                            "ag2.llm.is_error": False,
+                            "ag2.llm.is_cached": False,
+                            "ag2.llm.cost": response.cost,
+                        },
                     )
 
                 response.message_retrieval_function = client.message_retrieval

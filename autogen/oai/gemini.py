@@ -76,6 +76,8 @@ from vertexai.generative_models import (
     Tool as vaiTool,
 )
 
+from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+
 logger = logging.getLogger(__name__)
 
 
@@ -700,20 +702,35 @@ def calculate_gemini_cost(use_vertexai: bool, input_tokens: int, output_tokens: 
         # Vertex AI pricing - based on Text input
         # https://cloud.google.com/vertex-ai/generative-ai/pricing#vertex-ai-pricing
 
+        total_cost = 0
+
         if "gemini-1.5-flash" in model_name:
             if up_to_128k:
-                return total_cost_k(0.00001875, 0.000075)
+                total_cost = total_cost_k(0.00001875, 0.000075)
             else:
-                return total_cost_k(0.0000375, 0.00015)
+                total_cost = total_cost_k(0.0000375, 0.00015)
 
         elif "gemini-1.5-pro" in model_name:
             if up_to_128k:
-                return total_cost_k(0.0003125, 0.00125)
+                total_cost = total_cost_k(0.0003125, 0.00125)
             else:
-                return total_cost_k(0.000625, 0.0025)
+                total_cost = total_cost_k(0.000625, 0.0025)
 
         elif "gemini-1.0-pro" in model_name:
-            return total_cost_k(0.000125, 0.00001875)
+            total_cost = total_cost_k(0.000125, 0.00001875)
+
+        # Record cost with telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.cost": total_cost,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.input_tokens": input_tokens,
+                    "ag2.llm.output_tokens": output_tokens,
+                },
+            )
 
         else:
             warnings.warn(
@@ -725,30 +742,52 @@ def calculate_gemini_cost(use_vertexai: bool, input_tokens: int, output_tokens: 
     else:
         # Non-Vertex AI pricing
 
+        total_cost = 0
+
         if "gemini-1.5-flash-8b" in model_name:
             # https://ai.google.dev/pricing#1_5flash-8B
             if up_to_128k:
-                return total_cost_mil(0.0375, 0.15)
+                total_cost = total_cost_mil(0.0375, 0.15)
             else:
-                return total_cost_mil(0.075, 0.3)
+                total_cost = total_cost_mil(0.075, 0.3)
+
+        if "gemini-1.5-flash-8b" in model_name:
+            # https://ai.google.dev/pricing#1_5flash-8B
+            if up_to_128k:
+                total_cost = total_cost_mil(0.0375, 0.15)
+            else:
+                total_cost = total_cost_mil(0.075, 0.3)
 
         elif "gemini-1.5-flash" in model_name:
             # https://ai.google.dev/pricing#1_5flash
             if up_to_128k:
-                return total_cost_mil(0.075, 0.3)
+                total_cost = total_cost_mil(0.075, 0.3)
             else:
-                return total_cost_mil(0.15, 0.6)
+                total_cost = total_cost_mil(0.15, 0.6)
 
         elif "gemini-1.5-pro" in model_name:
             # https://ai.google.dev/pricing#1_5pro
             if up_to_128k:
-                return total_cost_mil(1.25, 5.0)
+                total_cost = total_cost_mil(1.25, 5.0)
             else:
-                return total_cost_mil(2.50, 10.0)
+                total_cost = total_cost_mil(2.50, 10.0)
 
         elif "gemini-1.0-pro" in model_name:
             # https://ai.google.dev/pricing#1_5pro
-            return total_cost_mil(0.50, 1.5)
+            total_cost = total_cost_mil(0.50, 1.5)
+
+        # Record cost with telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.cost": total_cost,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.input_tokens": input_tokens,
+                    "ag2.llm.output_tokens": output_tokens,
+                },
+            )
 
         else:
             warnings.warn(

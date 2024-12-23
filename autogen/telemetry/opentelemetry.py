@@ -170,9 +170,17 @@ class OpenTelemetryProvider(TelemetryProvider):
         if attributes is None:
             attributes = {}
 
+        # Convert attributes to OpenTelemetry compatible formats
+        # formatted_attributes = {key: self.convert_attribute_value(value) for key, value in attributes.items()}
+
+        formatted_attributes = {}
+
+        for key, value in attributes.items():
+            formatted_attributes[key] = self.convert_attribute_value(value)
+
         span: Span = self._active_spans.get(span_context.span_id)
         if span:
-            span.add_event(name=event_kind.value, attributes=attributes)
+            span.add_event(name=event_kind.value, attributes=formatted_attributes)
 
         print(f"OpenTelemetry: Recorded event, {event_kind.value}, {span_context.span_id}")
 
@@ -190,11 +198,13 @@ class OpenTelemetryProvider(TelemetryProvider):
 
         If needed, non-string values should be represented as JSON-encoded strings.
         """
-        if _is_list_of_string_dicts(value) or isinstance(value, dict):
-            # Typical messages
-            return json.dumps(value)
         if isinstance(value, str):
+            return value
+        if isinstance(value, int):
             return value
         if isinstance(value, bool):
             return value
+        if _is_list_of_string_dicts(value) or isinstance(value, dict):
+            # Typical messages
+            return json.dumps(value)
         return str(value)

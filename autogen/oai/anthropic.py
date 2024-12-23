@@ -66,6 +66,8 @@ from typing_extensions import Annotated
 
 from autogen.oai.client_utils import validate_parameter
 
+from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+
 TOOL_ENABLED = anthropic_version >= "0.23.1"
 if TOOL_ENABLED:
     from anthropic.types.tool_use_block_param import (
@@ -74,10 +76,13 @@ if TOOL_ENABLED:
 
 
 ANTHROPIC_PRICING_1k = {
+    "claude-3-5-sonnet-latest": (0.003, 0.015),
     "claude-3-5-sonnet-20241022": (0.003, 0.015),
-    "claude-3-5-haiku-20241022": (0.0008, 0.004),
     "claude-3-5-sonnet-20240620": (0.003, 0.015),
+    "claude-3-5-haiku-latest": (0.0008, 0.004),
+    "claude-3-5-haiku-20241022": (0.0008, 0.004),
     "claude-3-sonnet-20240229": (0.003, 0.015),
+    "claude-3-opus-latest": (0.015, 0.075),
     "claude-3-opus-20240229": (0.015, 0.075),
     "claude-3-haiku-20240307": (0.00025, 0.00125),
     "claude-2.1": (0.008, 0.024),
@@ -428,6 +433,19 @@ def _calculate_cost(input_tokens: int, output_tokens: int, model: str) -> float:
         input_cost = (input_tokens / 1000) * input_cost_per_1k
         output_cost = (output_tokens / 1000) * output_cost_per_1k
         total = input_cost + output_cost
+
+        # Record cost with telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.cost": total,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.input_tokens": input_tokens,
+                    "ag2.llm.output_tokens": output_tokens,
+                },
+            )
     else:
         warnings.warn(f"Cost calculation not available for model {model}", UserWarning)
 

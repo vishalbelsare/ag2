@@ -39,10 +39,13 @@ from pydantic import BaseModel
 
 from autogen.oai.client_utils import should_hide_tools, validate_parameter
 
+from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+
 CEREBRAS_PRICING_1K = {
     # Convert pricing per million to per thousand tokens.
     "llama3.1-8b": (0.10 / 1000, 0.10 / 1000),
     "llama3.1-70b": (0.60 / 1000, 0.60 / 1000),
+    "llama-3.3-70b": (0.60 / 1000, 0.60 / 1000),
 }
 
 
@@ -266,6 +269,20 @@ def calculate_cerebras_cost(input_tokens: int, output_tokens: int, model: str) -
         input_cost_per_k, output_cost_per_k = CEREBRAS_PRICING_1K[model]
         input_cost = (input_tokens / 1000) * input_cost_per_k
         output_cost = (output_tokens / 1000) * output_cost_per_k
+
+        # Record cost with telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.cost": input_cost + output_cost,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.input_tokens": input_tokens,
+                    "ag2.llm.output_tokens": output_tokens,
+                },
+            )
+
         total = input_cost + output_cost
     else:
         warnings.warn(f"Cost calculation not available for model {model}", UserWarning)

@@ -44,6 +44,8 @@ from pydantic import BaseModel
 
 from autogen.oai.client_utils import logging_formatter, validate_parameter
 
+from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+
 logger = logging.getLogger(__name__)
 if not logger.handlers:
     # Add the console handler.
@@ -53,7 +55,11 @@ if not logger.handlers:
 
 
 COHERE_PRICING_1K = {
+    "command-r7b-12-2024": (0.000375, 0.0015),
+    "command-r-plus-08-2024": (0.0025, 0.01),
+    "command-r-plus-04-2024": (0.0025, 0.01),
     "command-r-plus": (0.003, 0.015),
+    "command-r-08-2024": (0.0015, 0.006),
     "command-r": (0.0005, 0.0015),
     "command-nightly": (0.00025, 0.00125),
     "command": (0.015, 0.075),
@@ -438,6 +444,19 @@ def calculate_cohere_cost(input_tokens: int, output_tokens: int, model: str) -> 
         input_cost = (input_tokens / 1000) * input_cost_per_k
         output_cost = (output_tokens / 1000) * output_cost_per_k
         total = input_cost + output_cost
+
+        # Record cost with telemetry
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.cost": total,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.input_tokens": input_tokens,
+                    "ag2.llm.output_tokens": output_tokens,
+                },
+            )
     else:
         warnings.warn(f"Cost calculation not available for {model} model", UserWarning)
 
