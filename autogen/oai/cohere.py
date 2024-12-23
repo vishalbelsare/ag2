@@ -453,6 +453,8 @@ def calculate_cohere_cost(input_tokens: int, output_tokens: int, model: str) -> 
                 {
                     "ag2.cost": total,
                     "ag2.cost_type": "LLM",
+                    "ag2.llm.provider": "Cohere",
+                    "ag2.llm.model": model,
                     "ag2.llm.input_tokens": input_tokens,
                     "ag2.llm.output_tokens": output_tokens,
                 },

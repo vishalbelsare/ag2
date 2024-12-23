@@ -635,6 +635,8 @@ def calculate_cost(input_tokens: int, output_tokens: int, model_id: str) -> floa
                 {
                     "ag2.cost": input_cost + output_cost,
                     "ag2.cost_type": "LLM",
+                    "ag2.llm.provider": "Amazon Bedrock",
+                    "ag2.llm.model": model_id,
                     "ag2.llm.input_tokens": input_tokens,
                     "ag2.llm.output_tokens": output_tokens,
                 },

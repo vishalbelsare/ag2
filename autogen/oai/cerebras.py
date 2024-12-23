@@ -278,6 +278,8 @@ def calculate_cerebras_cost(input_tokens: int, output_tokens: int, model: str) -
                 {
                     "ag2.cost": input_cost + output_cost,
                     "ag2.cost_type": "LLM",
+                    "ag2.llm.provider": "Cerebras",
+                    "ag2.llm.model": model,
                     "ag2.llm.input_tokens": input_tokens,
                     "ag2.llm.output_tokens": output_tokens,
                 },

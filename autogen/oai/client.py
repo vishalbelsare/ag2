@@ -454,6 +454,8 @@ class OpenAIClient:
                 {
                     "ag2.cost": cost,
                     "ag2.cost_type": "LLM",
+                    "ag2.llm.provider": "OpenAI",
+                    "ag2.llm.model": model,
                     "ag2.llm.input_tokens": n_input_tokens,
                     "ag2.llm.output_tokens": n_output_tokens,
                 },
@@ -878,11 +880,14 @@ class OpenAIWrapper:
                             telemetry.record_event(
                                 EventKind.LLM_CREATE,
                                 {
-                                    "ag2.client.invocation_id": invocation_id,
+                                    "ag2.invocation_id": invocation_id,
                                     "ag2.client.client_id": id(client),
                                     "ag2.client.wrapper_id": id(self),
                                     "ag2.client.api_type": extra_kwargs.get("api_type", ""),
                                     "ag2.client.model": create_config.get("model", ""),
+                                    "ag2.client.base_url": getattr(
+                                        getattr(client, "_oai_client", None), "base_url", None
+                                    ),
                                     "ag2.agent.type": agent.__class__.__name__,
                                     "ag2.agent.name": agent.name,
                                     "ag2.llm.params": params,
@@ -932,11 +937,12 @@ class OpenAIWrapper:
                         telemetry.record_event(
                             EventKind.LLM_CREATE,
                             {
-                                "ag2.client.invocation_id": invocation_id,
+                                "ag2.invocation_id": invocation_id,
                                 "ag2.client.client_id": id(client),
                                 "ag2.client.wrapper_id": id(self),
                                 "ag2.client.api_type": extra_kwargs.get("api_type", ""),
                                 "ag2.client.model": create_config.get("model", ""),
+                                "ag2.client.base_url": getattr(getattr(client, "_oai_client", None), "base_url", None),
                                 "ag2.agent.type": agent.__class__.__name__,
                                 "ag2.agent.name": agent.name,
                                 "ag2.llm.params": params,
@@ -1011,11 +1017,12 @@ class OpenAIWrapper:
                     telemetry.record_event(
                         EventKind.LLM_CREATE,
                         {
-                            "ag2.client.invocation_id": invocation_id,
+                            "ag2.invocation_id": invocation_id,
                             "ag2.client.client_id": id(client),
                             "ag2.client.wrapper_id": id(self),
                             "ag2.client.api_type": extra_kwargs.get("api_type", ""),
                             "ag2.client.model": create_config.get("model", ""),
+                            "ag2.client.base_url": getattr(getattr(client, "_oai_client", None), "base_url", None),
                             "ag2.agent.type": agent.__class__.__name__,
                             "ag2.agent.name": agent.name,
                             "ag2.llm.params": params,
@@ -1039,14 +1046,32 @@ class OpenAIWrapper:
 
     @staticmethod
     def _cost_with_customized_price(
-        response: ModelClient.ModelClientResponseProtocol, price_1k: tuple[float, float]
+        response: ModelClient.ModelClientResponseProtocol, price_1k: tuple[float, float], invocation_id: str
     ) -> None:
         """If a customized cost is passed, overwrite the cost in the response."""
         n_input_tokens = response.usage.prompt_tokens if response.usage is not None else 0  # type: ignore [union-attr]
         n_output_tokens = response.usage.completion_tokens if response.usage is not None else 0  # type: ignore [union-attr]
         if n_output_tokens is None:
             n_output_tokens = 0
-        return (n_input_tokens * price_1k[0] + n_output_tokens * price_1k[1]) / 1000
+
+        total = (n_input_tokens * price_1k[0] + n_output_tokens * price_1k[1]) / 1000
+
+        telemetry = get_current_telemetry()
+        if telemetry:
+            telemetry.record_event(
+                EventKind.COST,
+                {
+                    "ag2.invocation_id": invocation_id,
+                    "ag2.cost": total,
+                    "ag2.cost_type": "LLM",
+                    "ag2.llm.provider": "OpenAI",
+                    "ag2.llm.model": response.model,
+                    "ag2.llm.input_tokens": n_input_tokens,
+                    "ag2.llm.output_tokens": n_output_tokens,
+                },
+            )
+
+        return total
 
     @staticmethod
     def _update_dict_from_chunk(chunk: BaseModel, d: dict[str, Any], field: str) -> int:

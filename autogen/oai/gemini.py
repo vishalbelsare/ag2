@@ -699,11 +699,11 @@ def calculate_gemini_cost(use_vertexai: bool, input_tokens: int, output_tokens: 
     model_name = model_name.lower()
     up_to_128k = input_tokens <= 128000
 
+    total_cost = None
+
     if use_vertexai:
         # Vertex AI pricing - based on Text input
         # https://cloud.google.com/vertex-ai/generative-ai/pricing#vertex-ai-pricing
-
-        total_cost = 0
 
         if "gemini-1.5-flash" in model_name:
             if up_to_128k:
@@ -719,19 +719,6 @@ def calculate_gemini_cost(use_vertexai: bool, input_tokens: int, output_tokens: 
 
         elif "gemini-1.0-pro" in model_name:
             total_cost = total_cost_k(0.000125, 0.00001875)
-
-        # Record cost with telemetry
-        telemetry = get_current_telemetry()
-        if telemetry:
-            telemetry.record_event(
-                EventKind.COST,
-                {
-                    "ag2.cost": total_cost,
-                    "ag2.cost_type": "LLM",
-                    "ag2.llm.input_tokens": input_tokens,
-                    "ag2.llm.output_tokens": output_tokens,
-                },
-            )
 
         else:
             warnings.warn(
@@ -777,22 +764,26 @@ def calculate_gemini_cost(use_vertexai: bool, input_tokens: int, output_tokens: 
             # https://ai.google.dev/pricing#1_5pro
             total_cost = total_cost_mil(0.50, 1.5)
 
-        # Record cost with telemetry
-        telemetry = get_current_telemetry()
-        if telemetry:
-            telemetry.record_event(
-                EventKind.COST,
-                {
-                    "ag2.cost": total_cost,
-                    "ag2.cost_type": "LLM",
-                    "ag2.llm.input_tokens": input_tokens,
-                    "ag2.llm.output_tokens": output_tokens,
-                },
-            )
-
         else:
             warnings.warn(
                 f"Cost calculation is not implemented for model {model_name}. Cost will be calculated zero.",
                 UserWarning,
             )
             return 0
+
+    # Record cost with telemetry
+    telemetry = get_current_telemetry()
+    if telemetry:
+        telemetry.record_event(
+            EventKind.COST,
+            {
+                "ag2.cost": total_cost,
+                "ag2.llm.provider": "Google",
+                "ag2.llm.model": model_name,
+                "ag2.cost_type": "LLM",
+                "ag2.llm.input_tokens": input_tokens,
+                "ag2.llm.output_tokens": output_tokens,
+            },
+        )
+
+    return total_cost

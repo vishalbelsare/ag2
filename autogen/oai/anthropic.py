@@ -444,6 +444,8 @@ def _calculate_cost(input_tokens: int, output_tokens: int, model: str) -> float:
                 {
                     "ag2.cost": total,
                     "ag2.cost_type": "LLM",
+                    "ag2.llm.provider": "Anthropic",
+                    "ag2.llm.model": model,
                     "ag2.llm.input_tokens": input_tokens,
                     "ag2.llm.output_tokens": output_tokens,
                 },
