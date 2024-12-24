@@ -202,8 +202,11 @@ def initiate_chats(chat_queue: list[dict[str, Any]]) -> list[ChatResult]:
     telemetry = get_current_telemetry()
     if telemetry:
         chat_span_context = telemetry.start_span(
-            SpanKind.CHATS,
-            {"ag2.chat_function": inspect.currentframe().f_code.co_name, "ag2.chat_queue_length": len(chat_queue)},
+            kind=SpanKind.CHATS,
+            attributes={
+                "ag2.chat_function": inspect.currentframe().f_code.co_name,
+                "ag2.chat_queue_length": len(chat_queue),
+            },
         )
 
     while current_chat_queue:
@@ -310,8 +313,11 @@ async def a_initiate_chats(chat_queue: list[dict[str, Any]]) -> dict[int, ChatRe
     telemetry = get_current_telemetry()
     if telemetry:
         _ = telemetry.start_span(
-            SpanKind.CHATS,
-            {"ag2.chat_function": inspect.currentframe().f_code.co_name, "ag2.chat_queue_length": len(chat_queue)},
+            kind=SpanKind.CHATS,
+            attributes={
+                "ag2.chat_function": inspect.currentframe().f_code.co_name,
+                "ag2.chat_queue_length": len(chat_queue),
+            },
         )
 
     for chat_id in chat_order_by_id:

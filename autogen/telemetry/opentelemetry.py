@@ -13,12 +13,8 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Span
 from opentelemetry.trace import SpanKind as OTelSpanKind
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from .telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
-
-# MS TEMP
-# from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 
 class OpenTelemetryProvider(TelemetryProvider):
@@ -31,10 +27,7 @@ class OpenTelemetryProvider(TelemetryProvider):
         otlp_exporter = OTLPSpanExporter(endpoint=collector_endpoint, headers={})  # Add any necessary headers here
 
         # Add BatchSpanProcessor with the OTLP exporter
-
-        # MS TEMP BATCH TO SIMPLE
         span_processor = BatchSpanProcessor(otlp_exporter)
-        # span_processor = SimpleSpanProcessor(otlp_exporter)
 
         tracer_provider.add_span_processor(span_processor)
 
@@ -46,23 +39,6 @@ class OpenTelemetryProvider(TelemetryProvider):
 
         # Store active spans
         self._active_spans = {}
-
-    '''
-    def _map_span_kind(self, kind: SpanKind) -> OTelSpanKind:
-        """Map AG2 span kinds to OpenTelemetry span kinds."""
-        # For now, treating most spans as INTERNAL
-        # This could be customized based on your needs
-        kind_mapping = {
-            SpanKind.CHAT: OTelSpanKind.INTERNAL,
-            SpanKind.NESTED_CHAT: OTelSpanKind.INTERNAL,
-            SpanKind.ROUND: OTelSpanKind.INTERNAL,
-            SpanKind.REPLY: OTelSpanKind.INTERNAL,
-            SpanKind.SUMMARY: OTelSpanKind.INTERNAL,
-            SpanKind.WORKFLOW: OTelSpanKind.INTERNAL,
-            SpanKind.REASONING: OTelSpanKind.INTERNAL
-        }
-        return kind_mapping.get(kind, OTelSpanKind.INTERNAL)
-    '''
 
     def start_trace(self, name: str, attributes: Dict[str, Any] = None) -> SpanContext:
         """Start a new trace with no parent context."""
@@ -94,7 +70,11 @@ class OpenTelemetryProvider(TelemetryProvider):
         return context
 
     def start_span(
-        self, span_kind: SpanKind, parent_context: Optional[SpanContext] = None, attributes: Dict[str, Any] = None
+        self,
+        kind: SpanKind,
+        core_span_id: str,
+        parent_context: Optional[SpanContext] = None,
+        attributes: Dict[str, Any] = None,
     ) -> SpanContext:
         """Start a new span, optionally as a child of a parent span."""
         if attributes is None:
@@ -117,31 +97,33 @@ class OpenTelemetryProvider(TelemetryProvider):
         # Convert attributes to OpenTelemetry compatible formats
         formatted_attributes = {key: self.convert_attribute_value(value) for key, value in attributes.items()}
 
-        with context_manager:
-            span = self._tracer.start_span(
-                name=span_kind.value,
-                attributes={
-                    **formatted_attributes,
-                    "ag2.trace.id": trace_id,
-                    "ag2.span.id": span_id,
-                    "ag2.span.type": span_kind.value,
-                },
-                kind=OTelSpanKind.INTERNAL,
-            )
-
         # Create our span context
         context = SpanContext(
-            kind=span_kind.value,
+            kind=kind.value,
             trace_id=trace_id,
             span_id=span_id,
             parent_span_id=parent_context.span_id if parent_context else None,
             attributes=formatted_attributes,
+            core_span_id=core_span_id,
         )
+
+        with context_manager:
+            span = self._tracer.start_span(
+                name=kind.value,
+                attributes={
+                    **formatted_attributes,
+                    "ag2.trace.id": context.trace_id,
+                    "ag2.span.id": context.span_id,
+                    "ag2.span.type": context.kind,
+                    "ag2.span.core_span_id": context.core_span_id,
+                },
+                kind=OTelSpanKind.INTERNAL,
+            )
 
         # Store the active span
         self._active_spans[span_id] = span
 
-        print(f"OpenTelemetry: Started span, {span_kind.value}, {span_id}")
+        print(f"OpenTelemetry: Started span, {kind.value}, {span_id}")
 
         return context
 
@@ -170,9 +152,6 @@ class OpenTelemetryProvider(TelemetryProvider):
         if attributes is None:
             attributes = {}
 
-        # Convert attributes to OpenTelemetry compatible formats
-        # formatted_attributes = {key: self.convert_attribute_value(value) for key, value in attributes.items()}
-
         formatted_attributes = {}
 
         for key, value in attributes.items():
@@ -198,13 +177,14 @@ class OpenTelemetryProvider(TelemetryProvider):
 
         If needed, non-string values should be represented as JSON-encoded strings.
         """
-        if isinstance(value, str):
-            return value
-        if isinstance(value, int):
-            return value
-        if isinstance(value, bool):
+        if value is None:
+            return ""
+        if isinstance(value, (str, int, bool, float)):
             return value
         if _is_list_of_string_dicts(value) or isinstance(value, dict):
-            # Typical messages
-            return json.dumps(value)
+            try:
+                return json.dumps(value)
+            except (TypeError, ValueError):
+                pass  # Convert to string if fails
+
         return str(value)

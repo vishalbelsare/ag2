@@ -17,7 +17,11 @@ class CostTrackerProvider(TelemetryProvider):
         pass
 
     def start_span(
-        self, span_kind: SpanKind, parent_context: Optional[SpanContext] = None, attributes: Dict[str, Any] = None
+        self,
+        kind: SpanKind,
+        core_span_id: str,
+        parent_context: Optional[SpanContext] = None,
+        attributes: Dict[str, Any] = None,
     ) -> SpanContext:
         pass
 

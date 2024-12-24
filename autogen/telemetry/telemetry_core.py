@@ -9,13 +9,14 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 # Global context variable to store the current telemetry manager
 _current_telemetry: ContextVar[Optional["InstrumentationManager"]] = ContextVar("current_telemetry", default=None)
 
-# MS TEMP
+# MS DEBUGGING - FOR ENSURING CORRECT NUMBER OF SPANS
 _spans_started: ContextVar[int] = ContextVar("spans_started", default=0)
 _spans_ended: ContextVar[int] = ContextVar("spans_ended", default=0)
 
@@ -58,8 +59,10 @@ class EventKind(Enum):
     AGENT_CREATION = "agent_creation"
     GROUPCHAT_CREATION = "groupchat_creation"
     LLM_CREATE = "llm_create"
+    AGENT_SEND_MSG = "agent_send_msg"
     TOOL_EXECUTION = "tool_execution"
     COST = "cost"  # All costs should create a COST event
+    CONSOLE_PRINT = "console_print"
 
 
 @dataclass
@@ -69,31 +72,20 @@ class SpanContext:
     kind: SpanKind
     trace_id: str
     span_id: str
+    timestamp: datetime = None
     parent_span_id: Optional[str] = None
     attributes: Dict[str, Any] = None
+    core_span_id: Optional[str] = None
 
     def __post_init__(self):
+        self.timestamp = datetime.now()
+
         if self.attributes is None:
             self.attributes = {}
 
     def set_attribute(self, key: str, value: Any) -> None:
         """Set a single attribute on the span"""
         self.attributes[key] = value
-
-
-class SpanId:
-    """Wrapper for span IDs"""
-
-    def __init__(self, id_str: str):
-        self.id = id_str
-
-    def __str__(self):
-        return self.id
-
-    def __eq__(self, other):
-        if isinstance(other, SpanId):
-            return self.id == other.id
-        return False
 
 
 @dataclass
@@ -117,7 +109,11 @@ class TelemetryProvider(ABC):
 
     @abstractmethod
     def start_span(
-        self, name: str, kind: SpanKind, parent_context: Optional[SpanContext] = None, attributes: Dict[str, Any] = None
+        self,
+        kind: SpanKind,
+        core_span_id: str,
+        parent_context: Optional[SpanContext] = None,
+        attributes: Dict[str, Any] = None,
     ) -> SpanContext:
         pass
 
@@ -171,7 +167,7 @@ class InstrumentationManager:
         return primary_context
 
     def start_span(
-        self, span_kind: SpanKind, attributes: Dict[str, Any] = None, parent_context: Optional[SpanContext] = None
+        self, kind: SpanKind, parent_context: Optional[SpanContext] = None, attributes: Dict[str, Any] = None
     ) -> SpanContext:
         """
         Start a new span with an optional explicit parent context.
@@ -183,9 +179,13 @@ class InstrumentationManager:
         # Use provided parent_context or get from stack
         effective_parent = parent_context if parent_context is not None else self.get_current_span()
 
+        core_span_id = format(uuid.uuid4().int & ((1 << 64) - 1), "016x")
+
         contexts = []
         for provider in self._providers:
-            context = provider.start_span(span_kind, effective_parent, attributes)
+            context = provider.start_span(
+                kind=kind, core_span_id=core_span_id, parent_context=effective_parent, attributes=attributes
+            )
             contexts.append(context)
 
         primary_context = contexts[0] if contexts else None
@@ -244,7 +244,7 @@ def telemetry_context(manager: InstrumentationManager, trace_name: str = None, t
         _current_telemetry.reset(token)
 
 
-# FUNCTIONS
+# STATIC METHODS
 
 
 @staticmethod
