@@ -40,7 +40,7 @@ class OpenTelemetryProvider(TelemetryProvider):
         # Store active spans
         self._active_spans = {}
 
-    def start_trace(self, name: str, attributes: Dict[str, Any] = None) -> SpanContext:
+    def start_trace(self, name: str, core_span_id: str, attributes: Dict[str, Any] = None) -> SpanContext:
         """Start a new trace with no parent context."""
         if attributes is None:
             attributes = {}
@@ -55,15 +55,23 @@ class OpenTelemetryProvider(TelemetryProvider):
         # Start the span with OpenTelemetry
         span = self._tracer.start_span(
             name=name,
-            attributes={**formatted_attributes, "ag2.trace.id": trace_id, "ag2.span.type": "trace"},
+            attributes={
+                **formatted_attributes,
+                "ag2.trace.id": trace_id,
+                "ag2.span.id": span_id,
+                "ag2.span.type": "trace",
+                "ag2.span.core_span_id": core_span_id,
+            },
             kind=OTelSpanKind.INTERNAL,
         )
 
         # Create our setup span
-        context = SpanContext(kind=SpanKind.WORKFLOW, trace_id=trace_id, span_id=span_id, attributes=attributes)
+        context = SpanContext(
+            kind=SpanKind.WORKFLOW, trace_id=trace_id, span_id=span_id, attributes=attributes, core_span_id=core_span_id
+        )
 
         # Store the active span
-        self._active_spans[span_id] = span
+        self._active_spans[core_span_id] = span
 
         print(f"OpenTelemetry: Started trace {trace_id}")
 
@@ -121,9 +129,9 @@ class OpenTelemetryProvider(TelemetryProvider):
             )
 
         # Store the active span
-        self._active_spans[span_id] = span
+        self._active_spans[core_span_id] = span
 
-        print(f"OpenTelemetry: Started span, {kind.value}, {span_id}")
+        print(f"OpenTelemetry: Started span, {kind.value}, core_span_id: {core_span_id}")
 
         return context
 
@@ -140,12 +148,14 @@ class OpenTelemetryProvider(TelemetryProvider):
     def end_span(self, context: SpanContext) -> None:
         """End a span identified by the given context."""
 
-        print(f"OpenTelemetry: Ended span, {context.kind}, {context.span_id}")
+        print(f"OpenTelemetry: Ended span, {context.kind}, core_span_id: {context.core_span_id}")
 
-        span: Span = self._active_spans.get(context.span_id)
+        span: Span = self._active_spans.get(context.core_span_id)
         if span:
             span.end()
-            del self._active_spans[context.span_id]
+            del self._active_spans[context.core_span_id]
+        else:
+            print(f"OpenTelemetry: Span not found, core_span_id: {context.core_span_id}")
 
     def record_event(self, span_context: SpanContext, event_kind: EventKind, attributes: Dict[str, Any] = None) -> None:
         """Record an event in the given span."""

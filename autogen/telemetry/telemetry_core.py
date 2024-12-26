@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 # Global context variable to store the current telemetry manager
 _current_telemetry: ContextVar[Optional["InstrumentationManager"]] = ContextVar("current_telemetry", default=None)
 
-# MS DEBUGGING - FOR ENSURING CORRECT NUMBER OF SPANS
+# MS DEBUGGING - FOR ENSURING CORRECT NUMBER OF SPANS - CAN BE REMOVED WHEN PR FINALISED
 _spans_started: ContextVar[int] = ContextVar("spans_started", default=0)
 _spans_ended: ContextVar[int] = ContextVar("spans_ended", default=0)
 
@@ -104,7 +104,7 @@ class TelemetryProvider(ABC):
     """Base class for telemetry providers"""
 
     @abstractmethod
-    def start_trace(self, name: str, attributes: Dict[str, Any] = None) -> SpanContext:
+    def start_trace(self, name: str, core_span_id: str, attributes: Dict[str, Any] = None) -> SpanContext:
         pass
 
     @abstractmethod
@@ -140,9 +140,15 @@ class InstrumentationManager:
     """Manager for telemetry providers"""
 
     def __init__(self):
+        # Attached providers
         self._providers: List[TelemetryProvider] = []
-        self._context_stack: List[SpanContext] = []
+
+        # Thread-local storage for the context stack ensures each chat sequence
+        # (sync or async) maintains its own independent context.
         self._thread_local = threading.local()
+
+        # Master set of spans
+        self._active_spans: Dict[str, SpanContext] = {}
 
     def register_provider(self, provider: TelemetryProvider) -> None:
         self._providers.append(provider)
@@ -153,18 +159,39 @@ class InstrumentationManager:
         return self._thread_local.context_stack[-1] if self._thread_local.context_stack else None
 
     def start_trace(self, name: str, attributes: Dict[str, Any] = None) -> SpanContext:
-        contexts = []
-        for provider in self._providers:
-            context = provider.start_trace(name, attributes)
-            contexts.append(context)
+        """Start a new trace and create a master workflow span"""
+        if attributes is None:
+            attributes = {}
 
-        # Use the first provider's context as the primary one
-        primary_context = contexts[0] if contexts else None
-        if primary_context:
-            if not hasattr(self._thread_local, "context_stack"):
-                self._thread_local.context_stack = []
-            self._thread_local.context_stack.append(primary_context)
-        return primary_context
+        # Create a single trace context
+        trace_id = format(uuid.uuid4().int & ((1 << 128) - 1), "032x")
+        core_span_id = format(uuid.uuid4().int & ((1 << 64) - 1), "016x")
+
+        # Create the central span context
+        context = SpanContext(
+            kind=SpanKind.WORKFLOW,
+            trace_id=trace_id,
+            span_id=core_span_id,
+            core_span_id=core_span_id,
+            attributes=attributes,
+        )
+
+        # Store the span centrally
+        self._active_spans[core_span_id] = context
+
+        # Start trace with each provider
+        for provider in self._providers:
+            try:
+                provider.start_trace(name=name, core_span_id=core_span_id, attributes=attributes)
+            except Exception as e:
+                print(f"Error in provider {provider.__class__.__name__}: {e}")
+
+        # Store master context in thread local stack
+        if not hasattr(self._thread_local, "context_stack"):
+            self._thread_local.context_stack = []
+        self._thread_local.context_stack.append(context)
+
+        return context
 
     def start_span(
         self, kind: SpanKind, parent_context: Optional[SpanContext] = None, attributes: Dict[str, Any] = None
@@ -174,34 +201,82 @@ class InstrumentationManager:
         If parent_context is not provided, uses the current span from the stack.
         """
 
+        # DEBUGGING - FOR ENSURING CORRECT NUMBER OF SPANS - CAN BE REMOVED WHEN PR FINALISED
         _spans_started.set(_spans_started.get() + 1)
 
         # Use provided parent_context or get from stack
         effective_parent = parent_context if parent_context is not None else self.get_current_span()
 
+        # Generate unified IDs
+        # span_id = format(uuid.uuid4().int & ((1 << 64) - 1), "016x")
         core_span_id = format(uuid.uuid4().int & ((1 << 64) - 1), "016x")
 
-        contexts = []
-        for provider in self._providers:
-            context = provider.start_span(
-                kind=kind, core_span_id=core_span_id, parent_context=effective_parent, attributes=attributes
-            )
-            contexts.append(context)
+        # Create central span context
+        context = SpanContext(
+            kind=kind,
+            trace_id=effective_parent.trace_id if effective_parent else None,
+            span_id=core_span_id,
+            parent_span_id=effective_parent.span_id if effective_parent else None,
+            attributes=attributes,
+            core_span_id=core_span_id,
+        )
 
-        primary_context = contexts[0] if contexts else None
-        if primary_context:
-            if not hasattr(self._thread_local, "context_stack"):
-                self._thread_local.context_stack = []
-            self._thread_local.context_stack.append(primary_context)
-        return primary_context
+        # Store span centrally
+        self._active_spans[core_span_id] = context
+
+        # Start span in each provider
+        for provider in self._providers:
+            try:
+                provider.start_span(
+                    kind=kind, core_span_id=core_span_id, parent_context=effective_parent, attributes=attributes
+                )
+            except Exception as e:
+                print(f"Error in provider {provider.__class__.__name__}: {e}")
+
+        # Add to thread local stack
+        if not hasattr(self._thread_local, "context_stack"):
+            self._thread_local.context_stack = []
+        self._thread_local.context_stack.append(context)
+
+        return context
 
     def set_attribute(self, span_context: SpanContext, key: str, value: Any) -> None:
         """Set an attribute on the provided span"""
         if span_context:
+            # Update master span
+            span = self._active_spans.get(span_context.span_id)
+            if span:
+                span.set_attribute(key, value)
+
+            # Propagate to each provider
             for provider in self._providers:
-                provider.set_span_attribute(span_context, key, value)
+                try:
+                    provider.set_span_attribute(span_context, key, value)
+                except Exception as e:
+                    print(f"Error in provider {provider.__class__.__name__}: {e}")
 
     def end_span(self) -> None:
+        if not hasattr(self._thread_local, "context_stack"):
+            return
+
+        # DEBUGGING - FOR ENSURING CORRECT NUMBER OF SPANS - CAN BE REMOVED WHEN PR FINALISED
+        _spans_ended.set(_spans_ended.get() + 1)
+
+        if self._thread_local.context_stack:
+            context = self._thread_local.context_stack.pop()
+
+            # Remove from central management
+            if context.core_span_id in self._active_spans:
+                del self._active_spans[context.core_span_id]
+
+            # End in each provider
+            for provider in self._providers:
+                try:
+                    provider.end_span(context)
+                except Exception as e:
+                    print(f"Error in provider {provider.__class__.__name__}: {e}")
+
+        """
         if not hasattr(self._thread_local, "context_stack"):
             return
 
@@ -211,12 +286,16 @@ class InstrumentationManager:
             context = self._thread_local.context_stack.pop()
             for provider in self._providers:
                 provider.end_span(context)
+        """
 
     def record_event(self, event_kind: EventKind, attributes: Dict[str, Any] = None) -> None:
         current_span = self.get_current_span()
         if current_span:
             for provider in self._providers:
-                provider.record_event(current_span, event_kind, attributes)
+                try:
+                    provider.record_event(current_span, event_kind, attributes)
+                except Exception as e:
+                    print(f"Error in provider {provider.__class__.__name__}: {e}")
 
 
 @contextmanager

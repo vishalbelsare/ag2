@@ -13,7 +13,7 @@ class CostTrackerProvider(TelemetryProvider):
         self.cost_history = []  # History of cost events, contains dictionary of attributes
         self.total_cost = 0.0
 
-    def start_trace(self, name: str, attributes: Dict[str, Any] = None) -> SpanContext:
+    def start_trace(self, name: str, core_span_id: str, attributes: Dict[str, Any] = None) -> SpanContext:
         pass
 
     def start_span(

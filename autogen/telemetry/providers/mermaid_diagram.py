@@ -30,7 +30,7 @@ class MermaidDiagramProvider(TelemetryProvider):
         # Tool ids + name pairs, needed for reconciling tool responses and calls
         self.tool_id_names = {}
 
-    def start_trace(self, name: str, attributes: Dict[str, Any] = None) -> SpanContext:
+    def start_trace(self, name: str, core_span_id: str, attributes: Dict[str, Any] = None) -> SpanContext:
         """Handle trace start - no specific action needed for Mermaid"""
         pass
 
