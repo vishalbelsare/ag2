@@ -1,13 +1,12 @@
 # Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 
-from .telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider
+from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider
 
 
 class Interaction(BaseModel):
@@ -112,7 +111,6 @@ class MermaidDiagramProvider(TelemetryProvider):
 
         # Sort interactions by time
         sorted_interactions = sorted(self.interactions, key=lambda x: x.time)
-        # sorted_interactions = sorted(self.interactions, key=lambda x: x["time"])
 
         # Add interactions
         for interaction in sorted_interactions:
@@ -125,7 +123,7 @@ class MermaidDiagramProvider(TelemetryProvider):
     def _get_display_text(self, message: Union[dict, str]) -> str:
         """Processes an LLM message string, formatting for display on the Mermaid transition."""
         if isinstance(message, str):
-            return message[:50]
+            return message[:50] + ("..." if len(message) > 50 else "")
 
         if isinstance(message, dict):
 
@@ -153,8 +151,8 @@ class MermaidDiagramProvider(TelemetryProvider):
             if "content" in message:
                 return message["content"][:50] if message["content"] is not None else ""
 
-        # If no relevant fields, return an empty string
-        return str(message)[:50]
+        # If no relevant fields, return converted value to string
+        return str(message)[:50] + ("..." if str(message) > 50 else "")
 
     def _replace_invalid_chars(self, input: str, invalid_chars: List[str]) -> str:
         """Replace invalid characters in the input string"""

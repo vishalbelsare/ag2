@@ -14,7 +14,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Span
 from opentelemetry.trace import SpanKind as OTelSpanKind
 
-from .telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
+from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
 
 
 class OpenTelemetryProvider(TelemetryProvider):

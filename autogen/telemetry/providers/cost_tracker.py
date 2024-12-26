@@ -5,7 +5,7 @@
 import json
 from typing import Any, Dict, Optional
 
-from .telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
+from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
 
 
 class CostTrackerProvider(TelemetryProvider):
