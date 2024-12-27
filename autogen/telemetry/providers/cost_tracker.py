@@ -36,7 +36,7 @@ with telemetry_context(instrumentation_manager, "My Program Name", {"my_program_
 import json
 from typing import Any, Dict, Optional
 
-from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
+from ..base_telemetry import EventKind, SpanContext, SpanKind, TelemetryProvider, _is_list_of_string_dicts
 
 
 class CostTrackerProvider(TelemetryProvider):

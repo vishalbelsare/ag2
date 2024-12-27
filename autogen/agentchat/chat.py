@@ -20,7 +20,8 @@ from .utils import consolidate_chat_info
 
 logger = logging.getLogger(__name__)
 Prerequisite = tuple[int, int]
-from ..telemetry.telemetry_core import SpanKind, get_current_telemetry
+from ..telemetry.base_telemetry import SpanKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 
 
 @dataclass

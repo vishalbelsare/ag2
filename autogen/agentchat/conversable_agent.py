@@ -39,7 +39,8 @@ from ..function_utils import get_function_schema, load_basemodels_if_needed, ser
 from ..io.base import IOStream
 from ..oai.client import ModelClient, OpenAIWrapper
 from ..runtime_logging import log_event, log_function_use, log_new_agent, logging_enabled
-from ..telemetry.telemetry_core import EventKind, SpanKind, get_current_telemetry
+from ..telemetry.base_telemetry import EventKind, SpanKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 from .agent import Agent, LLMAgent
 from .chat import ChatResult, a_initiate_chats, initiate_chats
 from .utils import consolidate_chat_info, gather_usage_summary
@@ -1206,7 +1207,7 @@ class ConversableAgent(LLMAgent):
             for i in range(max_turns):
 
                 if telemetry:
-                    round_span_context = telemetry.start_span(
+                    _ = telemetry.start_span(
                         kind=SpanKind.ROUND,
                         attributes={
                             "ag2.chat_function": inspect.currentframe().f_code.co_name,

@@ -37,7 +37,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 
-from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider
+from ..base_telemetry import EventKind, SpanContext, SpanKind, TelemetryProvider
 
 
 class Interaction(BaseModel):

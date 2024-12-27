@@ -22,7 +22,8 @@ from autogen.oai.openai_utils import OAI_PRICE1K, get_key, is_valid_api_key
 from autogen.runtime_logging import log_chat_completion, log_new_client, log_new_wrapper, logging_enabled
 from autogen.token_count_utils import count_token
 
-from ..telemetry.telemetry_core import EventKind, SpanKind, get_current_telemetry
+from ..telemetry.base_telemetry import EventKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 
 TOOL_ENABLED = False
 try:

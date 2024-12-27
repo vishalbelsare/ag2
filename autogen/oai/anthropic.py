@@ -68,7 +68,8 @@ from pydantic import BaseModel
 
 from autogen.oai.client_utils import validate_parameter
 
-from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+from ..telemetry.base_telemetry import EventKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 
 TOOL_ENABLED = anthropic_version >= "0.23.1"
 if TOOL_ENABLED:

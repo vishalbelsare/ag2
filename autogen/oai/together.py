@@ -46,7 +46,8 @@ from together import Together, error
 
 from autogen.oai.client_utils import should_hide_tools, validate_parameter
 
-from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+from ..telemetry.base_telemetry import EventKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 
 
 class TogetherClient:

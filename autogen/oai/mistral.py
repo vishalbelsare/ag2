@@ -51,7 +51,8 @@ from pydantic import BaseModel
 
 from autogen.oai.client_utils import should_hide_tools, validate_parameter
 
-from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+from ..telemetry.base_telemetry import EventKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 
 MISTRAL_PRICING_1K = {
     "mistral-large-latest": (0.002, 0.006),

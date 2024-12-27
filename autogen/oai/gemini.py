@@ -77,7 +77,8 @@ from vertexai.generative_models import (
     Tool as vaiTool,
 )
 
-from ..telemetry.telemetry_core import EventKind, get_current_telemetry
+from ..telemetry.base_telemetry import EventKind
+from ..telemetry.intrumentation_manager import get_current_telemetry
 
 logger = logging.getLogger(__name__)
 
