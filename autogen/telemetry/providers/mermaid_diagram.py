@@ -1,6 +1,37 @@
 # Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
 #
 # SPDX-License-Identifier: Apache-2.0
+"""Mermaid Diagram Provider
+
+This module provides a telemetry provider that tracks interactions for generating Mermaid diagrams.
+
+Uses the following spans:
+<N/A>
+
+Uses the following events:
+EventKind.AGENT_SEND_MSG
+
+Builds up a list of interactions between agents and uses that to generate a Mermaid diagram.
+
+Data gathered can build a mermaid sequence diagram text can be retrieved via the generate_sequence_diagram method.
+
+Code example:
+```python
+from autogen.telemetry.telemetry_core import InstrumentationManager, telemetry_context
+from autogen.telemetry.providers.mermaid_diagram import MermaidDiagramProvider
+
+mermaid_provider = MermaidDiagramProvider()
+
+with telemetry_context(instrumentation_manager, "My Program Name", {"my_program_id": "456"}) as telemetry:
+    ... AG2 workflow code here ...
+
+    # Print out the sequence diagram text, which can be pasted into: https://mermaid.live/
+    print(mermaid_provider.generate_sequence_diagram())
+
+```
+"""
+
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
@@ -10,7 +41,7 @@ from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider
 
 
 class Interaction(BaseModel):
-    """Model for storing interaction information"""
+    """Interactions for sequence style mermaid diagrams"""
 
     time: datetime
     from_agent: str
@@ -31,7 +62,6 @@ class MermaidDiagramProvider(TelemetryProvider):
         self.tool_id_names = {}
 
     def start_trace(self, name: str, core_span_id: str, attributes: Dict[str, Any] = None) -> SpanContext:
-        """Handle trace start - no specific action needed for Mermaid"""
         pass
 
     def start_span(
@@ -44,15 +74,16 @@ class MermaidDiagramProvider(TelemetryProvider):
         pass
 
     def set_span_attribute(self, context: SpanContext, key: str, value: Any) -> None:
-        """Update span attributes - useful for tracking changes in interactions"""
         pass
 
     def end_span(self, context: SpanContext) -> None:
-        """Process completed spans to build interaction timeline"""
         pass
 
     def record_event(self, span_context: SpanContext, event_kind: EventKind, attributes: Dict[str, Any] = None) -> None:
-        """Record events that might be relevant to the sequence diagram"""
+        """Record agent send events to build up interactions for the diagram
+
+        See telemetry_core.py for details on this event.
+        """
         if event_kind == EventKind.AGENT_SEND_MSG:
             # Don't include silent messages
             if not attributes.get("ag2.silent", True):
@@ -82,14 +113,18 @@ class MermaidDiagramProvider(TelemetryProvider):
 
                     self.interactions.append(interaction)
 
-    def convert_attribute_value(self, value: Any) -> Any:
-        """Convert attribute values to strings for Mermaid compatibility"""
-        if isinstance(value, (str, int, float, bool)):
-            return str(value)
-        return str(value)
+    def generate_sequence_diagram(self) -> str:
+        """Generate Mermaid sequence diagram markup from recorded interactions
 
-    def generate_mermaid(self) -> str:
-        """Generate Mermaid sequence diagram markup from recorded interactions"""
+        Mermaid documentation:
+        https://mermaid.js.org/syntax/sequenceDiagram.html
+
+        Args:
+            None
+
+        Returns:
+            str: Mermaid sequence diagram markup
+        """
         diagram = ["sequenceDiagram"]
 
         # Add starting agent first
@@ -121,7 +156,14 @@ class MermaidDiagramProvider(TelemetryProvider):
         return "\n".join(diagram)
 
     def _get_display_text(self, message: Union[dict, str]) -> str:
-        """Processes an LLM message string, formatting for display on the Mermaid transition."""
+        """Processes a message string, formatting for display on the Mermaid transition with limited text.
+
+        Args:
+            message (Union[dict, str]): The message to process
+
+        Returns:
+            str: The processed/display-friendly message
+        """
         if isinstance(message, str):
             return message[:50] + ("..." if len(message) > 50 else "")
 
@@ -154,8 +196,29 @@ class MermaidDiagramProvider(TelemetryProvider):
         # If no relevant fields, return converted value to string
         return str(message)[:50] + ("..." if str(message) > 50 else "")
 
+    def convert_attribute_value(self, value: Any) -> str:
+        """Convert attribute values to strings for Mermaid compatibility
+
+        Args:
+            value (Any): The value to convert
+
+        Returns:
+            str: The converted value
+        """
+        if isinstance(value, (str, int, float, bool)):
+            return str(value)
+        return str(value)
+
     def _replace_invalid_chars(self, input: str, invalid_chars: List[str]) -> str:
-        """Replace invalid characters in the input string"""
+        """Replace invalid characters in the input string as Mermaid may interpret them as special characters
+
+        Args:
+            input (str): The input string to process
+            invalid_chars (List[str]): The list of invalid characters to replace
+
+        Returns:
+            str: The processed string with replaced invalid characters
+        """
         for char in invalid_chars:
             input = input.replace(char, " ")
         return input

@@ -1,13 +1,53 @@
 # Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
 #
 # SPDX-License-Identifier: Apache-2.0
+"""OpenTelemetry Provider
+
+This module provides a telemetry provider that tracks interactions using OpenTelemetry.
+
+Uses the following spans:
+<ALL>
+
+Uses the following events:
+<ALL>
+
+Main provider for telemetry for AG2, provides telemetry data on all activity in an AG2 workflow.
+
+Data can be sent to an OpenTelemetry collector endpoint using either HTTP or gRPC.
+
+Code example:
+```python
+from autogen.telemetry.telemetry_core import InstrumentationManager, telemetry_context
+from autogen.telemetry.providers.opentelemetry import OpenTelemetryProvider
+
+otel_provider = OpenTelemetryProvider(
+    protocol="http",
+    collector_endpoint="http://192.168.0.115:4318/v1/traces",
+    service_name="ag2"
+)
+
+with telemetry_context(instrumentation_manager, "My Program Name", {"my_program_id": "456"}) as telemetry:
+    ... AG2 workflow code here ...
+    ... Telemetry sent to OpenTelemetry collector ...
+
+```
+
+Developer note:
+
+For OpenTelemetry, spans need to be started AND ended so that a valid trace is produced. In code, all
+'start_spans' should have a corresponding 'end_span'. If you don't see your trace, it is likely to be
+because of this. So, when handling exceptions or multiple returns within a function, ensure that the
+'end_span' is called in all cases.
+
+"""
 import contextlib
 import json
 import uuid
 from typing import Any, Dict, Optional
 
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as OTLPSpanExporterGRPC
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as OTLPSpanExporterHTTP
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -18,13 +58,26 @@ from ..telemetry_core import EventKind, SpanContext, SpanKind, TelemetryProvider
 
 
 class OpenTelemetryProvider(TelemetryProvider):
-    def __init__(self, protocol: str, collector_endpoint: str, service_name: str):
+    def __init__(self, collector_endpoint: str, service_name: str, protocol: str = "http"):
+        """Initialize the OpenTelemetry provider.
+
+        Args:
+            protocol: The protocol to use for the collector endpoint, "grpc" or "http".
+            collector_endpoint: The endpoint to send telemetry data to.
+            service_name: The name of the service sending telemetry data.
+        """
+        assert protocol in ["http", "grpc"], f"Invalid protocol: {protocol}, must be 'http' or 'grpc'"
+
         # Create and set the global TracerProvider
         resource = Resource.create({"service.name": service_name})
         tracer_provider = TracerProvider(resource=resource)
 
         # Set up the OTLP exporter
-        otlp_exporter = OTLPSpanExporter(endpoint=collector_endpoint, headers={})  # Add any necessary headers here
+        otlp_exporter = (
+            OTLPSpanExporterHTTP(endpoint=collector_endpoint, headers={})
+            if protocol == "http"
+            else OTLPSpanExporterGRPC(endpoint=collector_endpoint)
+        )
 
         # Add BatchSpanProcessor with the OTLP exporter
         span_processor = BatchSpanProcessor(otlp_exporter)
@@ -47,7 +100,6 @@ class OpenTelemetryProvider(TelemetryProvider):
 
         # Create a new trace context
         trace_id = format(uuid.uuid4().int & ((1 << 128) - 1), "032x")
-        span_id = format(uuid.uuid4().int & ((1 << 64) - 1), "016x")
 
         # Convert attributes to OpenTelemetry compatible formats
         formatted_attributes = {key: self.convert_attribute_value(value) for key, value in attributes.items()}
@@ -58,22 +110,22 @@ class OpenTelemetryProvider(TelemetryProvider):
             attributes={
                 **formatted_attributes,
                 "ag2.trace.id": trace_id,
-                "ag2.span.id": span_id,
                 "ag2.span.type": "trace",
                 "ag2.span.core_span_id": core_span_id,
             },
             kind=OTelSpanKind.INTERNAL,
         )
 
-        # Create our setup span
+        # Create our setup span (captures object, like agents, creations))
         context = SpanContext(
-            kind=SpanKind.WORKFLOW, trace_id=trace_id, span_id=span_id, attributes=attributes, core_span_id=core_span_id
+            kind=SpanKind.WORKFLOW, trace_id=trace_id, attributes=attributes, core_span_id=core_span_id
         )
 
         # Store the active span
         self._active_spans[core_span_id] = span
 
-        print(f"OpenTelemetry: Started trace {trace_id}")
+        # DEBUG - REMOVE UPON REVIEW
+        # print(f"OpenTelemetry: Started trace {trace_id}")
 
         return context
 
@@ -88,16 +140,13 @@ class OpenTelemetryProvider(TelemetryProvider):
         if attributes is None:
             attributes = {}
 
-        # Generate span ID
-        span_id = format(uuid.uuid4().int & ((1 << 64) - 1), "016x")
-
         # If we have a parent context, use its trace ID
         trace_id = parent_context.trace_id if parent_context else format(uuid.uuid4().int & ((1 << 128) - 1), "032x")
 
         # Get parent span if it exists
         parent_span = None
         if parent_context:
-            parent_span = self._active_spans.get(parent_context.span_id)
+            parent_span = self._active_spans.get(parent_context.core_span_id)
 
         # Start the span
         context_manager = trace.use_span(parent_span) if parent_span else contextlib.nullcontext()
@@ -109,8 +158,7 @@ class OpenTelemetryProvider(TelemetryProvider):
         context = SpanContext(
             kind=kind.value,
             trace_id=trace_id,
-            span_id=span_id,
-            parent_span_id=parent_context.span_id if parent_context else None,
+            parent_span_id=parent_context.core_span_id if parent_context else None,
             attributes=formatted_attributes,
             core_span_id=core_span_id,
         )
@@ -121,7 +169,6 @@ class OpenTelemetryProvider(TelemetryProvider):
                 attributes={
                     **formatted_attributes,
                     "ag2.trace.id": context.trace_id,
-                    "ag2.span.id": context.span_id,
                     "ag2.span.type": context.kind,
                     "ag2.span.core_span_id": context.core_span_id,
                 },
@@ -131,13 +178,14 @@ class OpenTelemetryProvider(TelemetryProvider):
         # Store the active span
         self._active_spans[core_span_id] = span
 
-        print(f"OpenTelemetry: Started span, {kind.value}, core_span_id: {core_span_id}")
+        # DEBUG - REMOVE UPON REVIEW
+        # print(f"OpenTelemetry: Started span, {kind.value}, core_span_id: {core_span_id}")
 
         return context
 
     def set_span_attribute(self, context: SpanContext, key: str, value: Any) -> None:
         """Set an attribute on an active span"""
-        span: Span = self._active_spans.get(context.span_id)
+        span: Span = self._active_spans.get(context.core_span_id)
         if span:
             converted_value = self.convert_attribute_value(value)
 
@@ -148,14 +196,15 @@ class OpenTelemetryProvider(TelemetryProvider):
     def end_span(self, context: SpanContext) -> None:
         """End a span identified by the given context."""
 
-        print(f"OpenTelemetry: Ended span, {context.kind}, core_span_id: {context.core_span_id}")
+        # DEBUG - REMOVE UPON REVIEW
+        # print(f"OpenTelemetry: Ended span, {context.kind}, core_span_id: {context.core_span_id}")
 
         span: Span = self._active_spans.get(context.core_span_id)
         if span:
             span.end()
             del self._active_spans[context.core_span_id]
         else:
-            print(f"OpenTelemetry: Span not found, core_span_id: {context.core_span_id}")
+            print(f"WARNING: OpenTelemetry: Span not found, core_span_id: {context.core_span_id}")
 
     def record_event(self, span_context: SpanContext, event_kind: EventKind, attributes: Dict[str, Any] = None) -> None:
         """Record an event in the given span."""
@@ -167,11 +216,12 @@ class OpenTelemetryProvider(TelemetryProvider):
         for key, value in attributes.items():
             formatted_attributes[key] = self.convert_attribute_value(value)
 
-        span: Span = self._active_spans.get(span_context.span_id)
+        span: Span = self._active_spans.get(span_context.core_span_id)
         if span:
             span.add_event(name=event_kind.value, attributes=formatted_attributes)
 
-        print(f"OpenTelemetry: Recorded event, {event_kind.value}, {span_context.span_id}")
+        # DEBUG - REMOVE UPON REVIEW
+        # print(f"OpenTelemetry: Recorded event, {event_kind.value}, {span_context.core_span_id}")
 
     def convert_attribute_value(self, value: Any) -> Any:
         """Convert an attribute value to an OpenTelemetry Attribute value
