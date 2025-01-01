@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 import re
+from datetime import datetime
 
 from autogen import ReasoningAgent, ThinkNode, UserProxyAgent
 
@@ -29,9 +30,8 @@ def run_benchmark(eval_list):
     )
 
     results = []
-    summaries = []
 
-    for i, eval_set in enumerate(eval_list):
+    for i, eval_set in enumerate(eval_list[:1]):
         eval_question = eval_set["prompt"]
         question_id = eval_set["question_id"]
         ground_truth = eval_set["answer"]
@@ -41,12 +41,18 @@ def run_benchmark(eval_list):
 
         ans = user_proxy.initiate_chat(reasoning_agent, message=question, summary_method=last_meaningful_msg)
         summary = ans.summary
-        summaries.append(summary + "\n\n\n")
         match = re.search(r"Final Answer: ([A-F])", summary)
 
         if match:
             extracted_answer = match.group(1)
-            results.append({"question_id": question_id, "answer": ground_truth, "generated_answer": extracted_answer})
+            results.append(
+                {
+                    "question_id": question_id,
+                    "answer": ground_truth,
+                    "generated_answer": extracted_answer,
+                    "summary": summary,
+                }
+            )
         else:
             print("No Final Answer found in the response.")
             results.append(
@@ -54,18 +60,16 @@ def run_benchmark(eval_list):
                     "question_id": question_id,
                     "answer": ground_truth,
                     "generated_answer": "No Final Answer found in the response.",
+                    "summary": summary,
                 }
             )
 
         data = reasoning_agent._root.to_dict()
-        with open(f"reasoning_tree{i}.json", "w") as f:
+        with open(f"reasoning_tree_{i}.json", "w") as f:
             json.dump(data, f)
 
-    with open("results-lats.json", "w") as f:
+    with open(f"results-{reasoning_agent.method}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')}.json", "w") as f:
         json.dump(results, f, indent=4)
-
-    with open("summaries.txt", "w") as f:
-        f.writelines(summaries)
 
 
 def last_meaningful_msg(sender, recipient, summary_args):
