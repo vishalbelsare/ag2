@@ -34,7 +34,7 @@ def run_benchmark(eval_list):
     for i, eval_set in enumerate(eval_list):
         eval_question = eval_set["prompt"]
         question_id = eval_set["question_id"]
-        answer = eval_set["answer"]
+        ground_truth = eval_set["answer"]
         prompt = """Give the final answer using the following format: `Final Answer: X` where X is one of the letters A, B, C, D, E, or F."""
 
         question = eval_question + prompt
@@ -46,13 +46,13 @@ def run_benchmark(eval_list):
 
         if match:
             extracted_answer = match.group(1)
-            results.append({"question_id": question_id, "answer": answer, "generated_answer": extracted_answer})
+            results.append({"question_id": question_id, "answer": ground_truth, "generated_answer": extracted_answer})
         else:
             print("No Final Answer found in the response.")
             results.append(
                 {
                     "question_id": question_id,
-                    "answer": answer,
+                    "answer": ground_truth,
                     "generated_answer": "No Final Answer found in the response.",
                 }
             )
@@ -95,5 +95,5 @@ def last_meaningful_msg(sender, recipient, summary_args):
 
 
 if __name__ == "__main__":
-    data = load_data("data.json")
+    data = load_data("simplebench_public.json")
     run_benchmark(data["eval_data"])
