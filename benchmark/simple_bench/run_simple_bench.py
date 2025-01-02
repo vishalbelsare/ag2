@@ -48,7 +48,6 @@ def run_benchmark(eval_list):
 
         if match:
             extracted_answer = match.group(1)
-            extracted_answer = "test"
             results.append(
                 {
                     "question_id": question_id,
