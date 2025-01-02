@@ -9,6 +9,7 @@ import os
 import sys
 
 import pytest
+from conftest import reason, skip_openai
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
@@ -29,6 +30,10 @@ def load_dataset():
         return json.load(f)
 
 
+@pytest.mark.skipif(
+    skip_openai,
+    reason=reason,
+)
 def test_reasoning_agent_simplebench(load_dataset):
     eval_data = load_dataset.get("eval_data")
     assert eval_data is not None, "No eval_list found in dataset"
