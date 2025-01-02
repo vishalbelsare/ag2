@@ -341,8 +341,14 @@ jobs:
   #       with:
   #         file: ./coverage.xml
   #         flags: unittests
+
   SimpleBench-ReasoningAgent:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9"]
+    runs-on: ${{ matrix.os }}
+    environment: openai1
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -350,7 +356,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: ${{ matrix.python-version }}
       - name: Install packages and dependencies for all tests
         run: |
           python -m pip install --upgrade pip wheel
