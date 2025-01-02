@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import json
+import os
 import re
 from datetime import datetime
 
 from autogen import ReasoningAgent, ThinkNode, UserProxyAgent
-
-config_list = [{"model": "gpt-4o-mini", "api_key": "api-key"}]
 
 
 def load_data(file_name):
@@ -16,6 +15,10 @@ def load_data(file_name):
 
 
 def run_benchmark(eval_list):
+    api_key = os.getenv("OPENAI_API_KEY")
+    assert api_key is not None, "Please set the OPENAI_API_KEY environment variable."
+
+    config_list = [{"model": "gpt-4o-mini", "api_key": api_key}]
 
     reasoning_agent = ReasoningAgent(
         name="reasoning_agent",
@@ -31,7 +34,7 @@ def run_benchmark(eval_list):
 
     results = []
 
-    for i, eval_set in enumerate(eval_list[:1]):
+    for i, eval_set in enumerate(eval_list):
         eval_question = eval_set["prompt"]
         question_id = eval_set["question_id"]
         ground_truth = eval_set["answer"]
@@ -64,9 +67,10 @@ def run_benchmark(eval_list):
                 }
             )
 
-        data = reasoning_agent._root.to_dict()
-        with open(f"reasoning_tree_{i}.json", "w") as f:
-            json.dump(data, f)
+        # uncomment to save reasoning tree
+        # data = reasoning_agent._root.to_dict()
+        # with open(f"reasoning_tree_{i}.json", "w") as f:
+        #     json.dump(data, f)
 
     with open(f"results-{reasoning_agent.method}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')}.json", "w") as f:
         json.dump(results, f, indent=4)
