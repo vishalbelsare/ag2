@@ -279,7 +279,6 @@
     },
     {
       "items": [
-        "reference/tools/dependency_injection",
         "reference/tools/function_utils",
         "reference/tools/tool"
       ],
