@@ -640,7 +640,6 @@
             "notebooks/lats_search",
             "notebooks/tools_interoperability",
             "notebooks/agentchat_tabular_data_rag_workflow",
-            "notebooks/tools_dependency_injection",
             "notebooks/agentchat_realtime_webrtc",
             "notebooks/tools_dependency_injection"
           ]
