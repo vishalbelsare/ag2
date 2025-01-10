@@ -501,14 +501,14 @@ function format_message(data) {
             type: msg.type || '',
             content: formatMessageContent(msg.content)
         };
-        
+
         // Add any additional fields
         for (const [key, value] of Object.entries(msg)) {
             if (key !== 'type' && key !== 'content') {
                 formatted[key] = value;
             }
         }
-        
+
         return JSON.stringify(formatted, null, 2);
     } catch (e) {
         return String(data);
@@ -577,7 +577,7 @@ html = f"""
         </ul>
         <script>
             {js_formatters}
-            
+
             var ws = new WebSocket("ws://localhost:8082");
             ws.onmessage = function(event) {{
                 var messages = document.getElementById('messages')
@@ -587,7 +587,7 @@ html = f"""
                 message.appendChild(content)
                 messages.appendChild(message)
             }};
-            
+
             function sendMessage(event) {{
                 var input = document.getElementById("messageText")
                 ws.send(input.value)
@@ -609,7 +609,7 @@ with TemporaryDirectory() as temp_dir:
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=temp_dir, **kwargs)
 
-        def do_GET(self):
+        def do_GET(self):  # noqa: N802
             if self.path == "/":
                 self.path = "/chat.html"
             return SimpleHTTPRequestHandler.do_GET(self)
