@@ -193,6 +193,7 @@
                     "docs/reference/agentchat/contrib/capabilities/generate_images",
                     "docs/reference/agentchat/contrib/capabilities/teachability",
                     "docs/reference/agentchat/contrib/capabilities/text_compressors",
+                    "docs/reference/agentchat/contrib/capabilities/tools_capability",
                     "docs/reference/agentchat/contrib/capabilities/transform_messages",
                     "docs/reference/agentchat/contrib/capabilities/transforms",
                     "docs/reference/agentchat/contrib/capabilities/transforms_util",
