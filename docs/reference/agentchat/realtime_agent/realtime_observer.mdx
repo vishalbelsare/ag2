@@ -71,7 +71,7 @@ Get the event that is set when the observer is ready.
 
 ```python
 @abstractmethod
-async def on_event(event: dict[str, Any]) -> None
+async def on_event(event: RealtimeEvent) -> None
 ```
 
 Handle an event from the OpenAI Realtime API.

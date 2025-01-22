@@ -312,13 +312,38 @@
             {
               "group": "agentchat.realtime_agent",
               "pages": [
+                {
+                  "group": "agentchat.realtime_agent.audio_adapters",
+                  "pages": [
+                    "docs/reference/agentchat/realtime_agent/audio_adapters/twilio_audio_adapter",
+                    "docs/reference/agentchat/realtime_agent/audio_adapters/websocket_audio_adapter"
+                  ]
+                },
+                {
+                  "group": "agentchat.realtime_agent.clients",
+                  "pages": [
+                    {
+                      "group": "agentchat.realtime_agent.clients.gemini",
+                      "pages": [
+                        "docs/reference/agentchat/realtime_agent/clients/gemini/client"
+                      ]
+                    },
+                    {
+                      "group": "agentchat.realtime_agent.clients.oai",
+                      "pages": [
+                        "docs/reference/agentchat/realtime_agent/clients/oai/base_client",
+                        "docs/reference/agentchat/realtime_agent/clients/oai/rtc_client",
+                        "docs/reference/agentchat/realtime_agent/clients/oai/utils"
+                      ]
+                    },
+                    "docs/reference/agentchat/realtime_agent/clients/realtime_client"
+                  ]
+                },
                 "docs/reference/agentchat/realtime_agent/function_observer",
-                "docs/reference/agentchat/realtime_agent/oai_realtime_client",
                 "docs/reference/agentchat/realtime_agent/realtime_agent",
-                "docs/reference/agentchat/realtime_agent/realtime_client",
                 "docs/reference/agentchat/realtime_agent/realtime_observer",
-                "docs/reference/agentchat/realtime_agent/twilio_audio_adapter",
-                "docs/reference/agentchat/realtime_agent/websocket_audio_adapter"
+                "docs/reference/agentchat/realtime_agent/realtime_swarm",
+                "docs/reference/agentchat/realtime_agent/websockets"
               ]
             },
             "docs/reference/agentchat/agent",
@@ -654,7 +679,9 @@
             "notebooks/agentchat_realtime_webrtc",
             "notebooks/tools_dependency_injection",
             "notebooks/tools_chat_context_dependency_injection",
-            "notebooks/agentchat_graph_rag_neo4j_native"
+            "notebooks/agentchat_graph_rag_neo4j_native",
+            "notebooks/agentchat_realtime_gemini_websocket",
+            "notebooks/agentchat_realtime_swarm_webrtc"
           ]
         },
         "notebooks/Gallery"

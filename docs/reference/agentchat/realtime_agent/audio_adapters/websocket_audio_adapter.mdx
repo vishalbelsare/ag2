@@ -1,6 +1,6 @@
 ---
 sidebarTitle: websocket_audio_adapter
-title: agentchat.realtime_agent.websocket_audio_adapter
+title: agentchat.realtime_agent.audio_adapters.websocket_audio_adapter
 ---
 
 ## WebSocketAudioAdapter
@@ -27,7 +27,7 @@ Observer for handling function calls from the OpenAI Realtime API.
 ### on\_event
 
 ```python
-async def on_event(event: dict[str, Any]) -> None
+async def on_event(event: RealtimeEvent) -> None
 ```
 
 Receive events from the OpenAI Realtime API, send audio back to websocket.

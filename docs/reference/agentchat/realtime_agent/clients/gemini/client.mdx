@@ -1,0 +1,138 @@
+---
+sidebarTitle: client
+title: agentchat.realtime_agent.clients.gemini.client
+---
+
+## GeminiRealtimeClient
+
+```python
+@register_realtime_client()
+class GeminiRealtimeClient()
+```
+
+(Experimental) Client for Gemini Realtime API.
+
+### \_\_init\_\_
+
+```python
+def __init__(*,
+             llm_config: dict[str, Any],
+             logger: Optional[Logger] = None) -> None
+```
+
+(Experimental) Client for Gemini Realtime API.
+
+**Arguments**:
+
+- `llm_config` _dict[str, Any]_ - The config for the client.
+
+### logger
+
+```python
+@property
+def logger() -> Logger
+```
+
+Get the logger for the Gemini Realtime API.
+
+### connection
+
+```python
+@property
+def connection() -> "ClientConnection"
+```
+
+Get the Gemini WebSocket connection.
+
+### send\_function\_result
+
+```python
+async def send_function_result(call_id: str, result: str) -> None
+```
+
+Send the result of a function call to the Gemini Realtime API.
+
+**Arguments**:
+
+- `call_id` _str_ - The ID of the function call.
+- `result` _str_ - The result of the function call.
+
+### send\_text
+
+```python
+async def send_text(*,
+                    role: Role,
+                    text: str,
+                    turn_complete: bool = True) -> None
+```
+
+Send a text message to the Gemini Realtime API.
+
+**Arguments**:
+
+- `role` _str_ - The role of the message.
+- `text` _str_ - The text of the message.
+
+### send\_audio
+
+```python
+async def send_audio(audio: str) -> None
+```
+
+Send audio to the Gemini Realtime API.
+
+**Arguments**:
+
+- `audio` _str_ - The audio to send.
+
+### session\_update
+
+```python
+async def session_update(session_options: dict[str, Any]) -> None
+```
+
+Record session updates to be applied when the connection is established.
+
+**Arguments**:
+
+- `session_options` _dict[str, Any]_ - The session options to update.
+
+### connect
+
+```python
+@asynccontextmanager
+async def connect() -> AsyncGenerator[None, None]
+```
+
+Connect to the Gemini Realtime API.
+
+### read\_events
+
+```python
+async def read_events() -> AsyncGenerator[RealtimeEvent, None]
+```
+
+Read Events from the Gemini Realtime API.
+
+### get\_factory
+
+```python
+@classmethod
+def get_factory(
+        cls, llm_config: dict[str, Any], logger: Logger,
+        **kwargs: Any) -> Optional[Callable[[], "RealtimeClientProtocol"]]
+```
+
+Create a Realtime API client.
+
+**Arguments**:
+
+- `model` _str_ - The model to create the client for.
+- `logger` _Logger_ - The logger for the client.
+- `kwargs` _Any_ - Additional arguments.
+  
+
+**Returns**:
+
+- `RealtimeClientProtocol` - The Realtime API client is returned if the model matches the pattern
+

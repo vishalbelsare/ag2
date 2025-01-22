@@ -1,6 +1,6 @@
 ---
 sidebarTitle: twilio_audio_adapter
-title: agentchat.realtime_agent.twilio_audio_adapter
+title: agentchat.realtime_agent.audio_adapters.twilio_audio_adapter
 ---
 
 ## TwilioAudioAdapter
@@ -27,7 +27,7 @@ Adapter for streaming audio from Twilio to OpenAI Realtime API and vice versa.
 ### on\_event
 
 ```python
-async def on_event(event: dict[str, Any]) -> None
+async def on_event(event: RealtimeEvent) -> None
 ```
 
 Receive events from the OpenAI Realtime API, send audio back to Twilio.
