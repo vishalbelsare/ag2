@@ -1,162 +1,220 @@
 ---
 sidebarTitle: rtc_client
-title: agentchat.realtime_agent.clients.oai.rtc_client
+title: autogen.agentchat.realtime_agent.clients.oai.rtc_client
 ---
 
-## OpenAIRealtimeWebRTCClient
+    <h2 id="autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient" class="doc doc-heading">
+        <code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>
+        <span class="doc doc-object-name doc-class-name">OpenAIRealtimeWebRTCClient</span>
+        <a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient" class="headerlink" title="Permanent link"></a>
+    </h2>
 
 ```python
-@register_realtime_client()
-class OpenAIRealtimeWebRTCClient()
+OpenAIRealtimeWebRTCClient(
+    *,
+    llm_config: dict[str, typing.Any],
+    websocket: WebSocket,
+    logger: logging.Logger | None = None
+)
 ```
 
-(Experimental) Client for OpenAI Realtime API that uses WebRTC protocol.
+    (Experimental) Client for OpenAI Realtime API that uses WebRTC protocol.
+    
+    (Experimental) Client for OpenAI Realtime API.
 
-### \_\_init\_\_
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `llm_config` | The config for the client.<br/><br/>**Type:** `dict[str, typing.Any]` |
+| `websocket` | **Type:** `WebSocket` |
+| `logger` | **Type:** `logging.Logger \| None`<br/><br/>**Default:** None |
+
+### Static Methods
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### get_factory
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.get_factory" class="headerlink" title="Permanent link"></a>
 
 ```python
-def __init__(*,
-             llm_config: dict[str, Any],
-             websocket: "WebSocket",
-             logger: Optional[Logger] = None) -> None
+get_factory(
+    llm_config: dict[str, typing.Any],
+    logger: logging.Logger,
+    **kwargs: Any
+) -> Callable[[], autogen.agentchat.realtime_agent.clients.realtime_client.RealtimeClientProtocol] | None
 ```
 
-(Experimental) Client for OpenAI Realtime API.
+    Create a Realtime API client.
 
-**Arguments**:
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `llm_config` | **Type:** `dict[str, typing.Any]` |
+| `logger` | **Type:** `logging.Logger` |
+| `**kwargs` | **Type:** `Any` |
 
-- `llm_config` _dict[str, Any]_ - The config for the client.
+<b>Returns:</b>
+| Type | Description |
+|--|--|
+| `Callable[[], autogen.agentchat.realtime_agent.clients.realtime_client.RealtimeClientProtocol] \| None` | RealtimeClientProtocol: The Realtime API client is returned if the model matches the pattern |
 
-### logger
+<br />
+
+### Instance Attributes
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>
+#### logger
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.logger" class="headerlink" title="Permanent link"></a>
+
+    Get the logger for the OpenAI Realtime API.
+
+### Instance Methods
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### connect
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.connect" class="headerlink" title="Permanent link"></a>
 
 ```python
-@property
-def logger() -> Logger
+connect(self) -> AsyncGenerator[None, None]
 ```
 
-Get the logger for the OpenAI Realtime API.
+    Connect to the OpenAI Realtime API.
+    
+    In the case of WebRTC, we pass connection information over the
+    websocket, so that javascript on the other end of websocket open
+    actual connection to OpenAI
 
-### send\_function\_result
+<br />
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### read_events
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.read_events" class="headerlink" title="Permanent link"></a>
 
 ```python
-async def send_function_result(call_id: str, result: str) -> None
+read_events(self) -> AsyncGenerator[autogen.agentchat.realtime_agent.realtime_events.RealtimeEvent, None]
 ```
 
-Send the result of a function call to the OpenAI Realtime API.
+    Read messages from the OpenAI Realtime API.
+    Again, in case of WebRTC, we do not read OpenAI messages directly since we
+    do not hold connection to OpenAI. Instead we read messages from the websocket, and javascript
+    client on the other side of the websocket that is connected to OpenAI is relaying events to us.
 
-**Arguments**:
+<br />
 
-- `call_id` _str_ - The ID of the function call.
-- `result` _str_ - The result of the function call.
-
-### send\_text
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### send_audio
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.send_audio" class="headerlink" title="Permanent link"></a>
 
 ```python
-async def send_text(*, role: Role, text: str) -> None
+send_audio(self, audio: str) -> None
 ```
 
-Send a text message to the OpenAI Realtime API.
+    Send audio to the OpenAI Realtime API.
 
-**Arguments**:
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `audio` | The audio to send.<br/><br/>**Type:** `str` |
 
-- `role` _str_ - The role of the message.
-- `text` _str_ - The text of the message.
+<br />
 
-### send\_audio
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### send_function_result
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.send_function_result" class="headerlink" title="Permanent link"></a>
 
 ```python
-async def send_audio(audio: str) -> None
+send_function_result(
+    self,
+    call_id: str,
+    result: str
+) -> None
 ```
 
-Send audio to the OpenAI Realtime API.
+    Send the result of a function call to the OpenAI Realtime API.
 
-**Arguments**:
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `call_id` | The ID of the function call.<br/><br/>**Type:** `str` |
+| `result` | The result of the function call.<br/><br/>**Type:** `str` |
 
-- `audio` _str_ - The audio to send.
+<br />
 
-### truncate\_audio
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### send_text
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.send_text" class="headerlink" title="Permanent link"></a>
 
 ```python
-async def truncate_audio(audio_end_ms: int, content_index: int,
-                         item_id: str) -> None
+send_text(
+    self,
+    *,
+    role: Literal['user', 'assistant', 'system'],
+    text: str
+) -> None
 ```
 
-Truncate audio in the OpenAI Realtime API.
+    Send a text message to the OpenAI Realtime API.
 
-**Arguments**:
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `role` | The role of the message.<br/><br/>**Type:** `Literal['user', 'assistant', 'system']` |
+| `text` | The text of the message.<br/><br/>**Type:** `str` |
 
-- `audio_end_ms` _int_ - The end of the audio to truncate.
-- `content_index` _int_ - The index of the content to truncate.
-- `item_id` _str_ - The ID of the item to truncate.
+<br />
 
-### session\_update
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### session_init_data
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.session_init_data" class="headerlink" title="Permanent link"></a>
 
 ```python
-async def session_update(session_options: dict[str, Any]) -> None
+session_init_data(self) -> List[dict[str, Any]]
 ```
 
-Send a session update to the OpenAI Realtime API.
+    Control initial session with OpenAI.
 
-In the case of WebRTC we can not send it directly, but we can send it
-to the javascript over the websocket, and rely on it to send session
-update to OpenAI
+<br />
 
-**Arguments**:
-
-- `session_options` _dict[str, Any]_ - The session options to update.
-
-### session\_init\_data
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### session_update
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.session_update" class="headerlink" title="Permanent link"></a>
 
 ```python
-def session_init_data() -> List[dict[str, Any]]
+session_update(self, session_options: dict[str, typing.Any]) -> None
 ```
 
-Control initial session with OpenAI.
+    Send a session update to the OpenAI Realtime API.
+    
+    In the case of WebRTC we can not send it directly, but we can send it
+    to the javascript over the websocket, and rely on it to send session
+    update to OpenAI
 
-### connect
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `session_options` | The session options to update.<br/><br/>**Type:** `dict[str, typing.Any]` |
+
+<br />
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### truncate_audio
+<a href="#autogen.agentchat.realtime_agent.clients.oai.rtc_client.OpenAIRealtimeWebRTCClient.truncate_audio" class="headerlink" title="Permanent link"></a>
 
 ```python
-@asynccontextmanager
-async def connect() -> AsyncGenerator[None, None]
+truncate_audio(
+    self,
+    audio_end_ms: int,
+    content_index: int,
+    item_id: str
+) -> None
 ```
 
-Connect to the OpenAI Realtime API.
+    Truncate audio in the OpenAI Realtime API.
 
-In the case of WebRTC, we pass connection information over the
-websocket, so that javascript on the other end of websocket open
-actual connection to OpenAI
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `audio_end_ms` | The end of the audio to truncate.<br/><br/>**Type:** `int` |
+| `content_index` | The index of the content to truncate.<br/><br/>**Type:** `int` |
+| `item_id` | The ID of the item to truncate.<br/><br/>**Type:** `str` |
 
-### read\_events
-
-```python
-async def read_events() -> AsyncGenerator[RealtimeEvent, None]
-```
-
-Read messages from the OpenAI Realtime API.
-Again, in case of WebRTC, we do not read OpenAI messages directly since we
-do not hold connection to OpenAI. Instead we read messages from the websocket, and javascript
-client on the other side of the websocket that is connected to OpenAI is relaying events to us.
-
-### get\_factory
-
-```python
-@classmethod
-def get_factory(
-        cls, llm_config: dict[str, Any], logger: Logger,
-        **kwargs: Any) -> Optional[Callable[[], "RealtimeClientProtocol"]]
-```
-
-Create a Realtime API client.
-
-**Arguments**:
-
-- `model` _str_ - The model to create the client for.
-- `voice` _str_ - The voice to use.
-- `system_message` _str_ - The system message to use.
-- `kwargs` _Any_ - Additional arguments.
-  
-
-**Returns**:
-
-- `RealtimeClientProtocol` - The Realtime API client is returned if the model matches the pattern
-
+<br />

@@ -1,87 +1,32 @@
 ---
 sidebarTitle: realtime_swarm
-title: agentchat.realtime_agent.realtime_swarm
+title: autogen.agentchat.realtime_agent.realtime_swarm
 ---
 
-## SwarmableRealtimeAgent
+## Functions
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>
+#### register_swarm
+<a href="#autogen.agentchat.realtime_agent.realtime_swarm..register_swarm" class="headerlink" title="Permanent link"></a>
 
 ```python
-class SwarmableRealtimeAgent(ConversableAgent)
+register_swarm(
+    *,
+    realtime_agent: RealtimeAgent,
+    initial_agent: autogen.agentchat.contrib.swarm_agent.SwarmAgent,
+    agents: list[autogen.agentchat.contrib.swarm_agent.SwarmAgent],
+    system_message: str | None = None
+) -> 
 ```
 
-### reset\_answer
+    Create a SwarmableRealtimeAgent.
 
-```python
-def reset_answer() -> None
-```
+<b>Parameters:</b>
+| Name | Description |
+|--|--|
+| `realtime_agent` | The RealtimeAgent to create the SwarmableRealtimeAgent from.<br/><br/>**Type:** `RealtimeAgent` |
+| `initial_agent` | The initial agent.<br/><br/>**Type:** `autogen.agentchat.contrib.swarm_agent.SwarmAgent` |
+| `agents` | The agents in the swarm.<br/><br/>**Type:** `list[autogen.agentchat.contrib.swarm_agent.SwarmAgent]` |
+| `system_message` | The system message to set for the agent.<br/><br/>If None, the default system message is used.<br/><br/>**Type:** `str \| None`<br/><br/>**Default:** None |
 
-Reset the answer event.
-
-### set\_answer
-
-```python
-def set_answer(answer: str) -> str
-```
-
-Set the answer to the question.
-
-### get\_answer
-
-```python
-async def get_answer() -> str
-```
-
-Get the answer to the question.
-
-### ask\_question
-
-```python
-async def ask_question(question: str, question_timeout: int) -> None
-```
-
-Send a question for the user to the agent and wait for the answer.
-If the answer is not received within the timeout, the question is repeated.
-
-**Arguments**:
-
-- `question` - The question to ask the user.
-- `question_timeout` - The time in seconds to wait for the answer.
-
-### check\_termination\_and\_human\_reply
-
-```python
-def check_termination_and_human_reply(
-        messages: Optional[list[dict[str, Any]]] = None,
-        sender: Optional[Agent] = None,
-        config: Optional[Any] = None) -> tuple[bool, Optional[str]]
-```
-
-Check if the conversation should be terminated and if the agent should reply.
-
-Called when its agents turn in the chat conversation.
-
-**Arguments**:
-
-- `messages` _list[dict[str, Any]]_ - The messages in the conversation.
-- `sender` _Agent_ - The agent that sent the message.
-- `config` _Optional[Any]_ - The configuration for the agent.
-
-### register\_swarm
-
-```python
-def register_swarm(*,
-                   realtime_agent: "RealtimeAgent",
-                   initial_agent: SwarmAgent,
-                   agents: list[SwarmAgent],
-                   system_message: Optional[str] = None) -> None
-```
-
-Create a SwarmableRealtimeAgent.
-
-**Arguments**:
-
-- `realtime_agent` _RealtimeAgent_ - The RealtimeAgent to create the SwarmableRealtimeAgent from.
-- `initial_agent` _SwarmAgent_ - The initial agent.
-- `agents` _list[SwarmAgent]_ - The agents in the swarm.
-- `system_message` _Optional[str]_ - The system message to set for the agent. If None, the default system message is used.
-
+<br />

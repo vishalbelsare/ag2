@@ -341,6 +341,7 @@
                 },
                 "docs/reference/agentchat/realtime_agent/function_observer",
                 "docs/reference/agentchat/realtime_agent/realtime_agent",
+                "docs/reference/agentchat/realtime_agent/realtime_events",
                 "docs/reference/agentchat/realtime_agent/realtime_observer",
                 "docs/reference/agentchat/realtime_agent/realtime_swarm",
                 "docs/reference/agentchat/realtime_agent/websockets"
@@ -474,6 +475,8 @@
         "docs/reference/browser_utils",
         "docs/reference/code_utils",
         "docs/reference/exception_utils",
+        "docs/reference/formatting_utils",
+        "docs/reference/function_utils",
         "docs/reference/graph_utils",
         "docs/reference/import_utils",
         "docs/reference/math_utils",

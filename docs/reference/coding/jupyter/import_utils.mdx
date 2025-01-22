@@ -1,40 +1,30 @@
 ---
 sidebarTitle: import_utils
-title: coding.jupyter.import_utils
+title: autogen.coding.jupyter.import_utils
 ---
 
-### is\_jupyter\_kernel\_gateway\_installed
+## Functions
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>
+#### require_jupyter_kernel_gateway_installed
+<a href="#autogen.coding.jupyter.import_utils..require_jupyter_kernel_gateway_installed" class="headerlink" title="Permanent link"></a>
 
 ```python
-@lru_cache()
-def is_jupyter_kernel_gateway_installed() -> bool
+require_jupyter_kernel_gateway_installed() -> Callable[[~T], ~T]
 ```
 
-Check if jupyter-kernel-gateway is installed.
+    Decorator to handle optional module dependencies
 
-### require\_jupyter\_kernel\_gateway\_installed
+<br />
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>
+#### skip_on_missing_jupyter_kernel_gateway
+<a href="#autogen.coding.jupyter.import_utils..skip_on_missing_jupyter_kernel_gateway" class="headerlink" title="Permanent link"></a>
 
 ```python
-def require_jupyter_kernel_gateway_installed() -> Callable[[T], T]
+skip_on_missing_jupyter_kernel_gateway() -> Callable[[~T], ~T]
 ```
 
-Decorator to handle optional module dependencies
+    Decorator to skip a test if an optional module is missing
 
-**Arguments**:
-
-- `modules` - Module name or list of module names required
-- `dep_target` - Target name for pip installation (e.g. 'test' in pip install ag2[test])
-
-### skip\_on\_missing\_jupyter\_kernel\_gateway
-
-```python
-def skip_on_missing_jupyter_kernel_gateway() -> Callable[[T], T]
-```
-
-Decorator to skip a test if an optional module is missing
-
-**Arguments**:
-
-- `module` - Module name
-- `dep_target` - Target name for pip installation (e.g. 'test' in pip install ag2[test])
-
+<br />
