@@ -27,7 +27,8 @@ Decorate a function with package and import requirements
 ### to\_stub
 
 ```python
-def to_stub(func: Callable[..., Any] | FunctionWithRequirementsStr) -> str
+def to_stub(
+        func: Union[Callable[..., Any], FunctionWithRequirementsStr]) -> str
 ```
 
 Generate a stub for a function as a string
