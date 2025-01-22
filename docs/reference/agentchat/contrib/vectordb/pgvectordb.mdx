@@ -6,7 +6,7 @@ title: agentchat.contrib.vectordb.pgvectordb
 ## Collection
 
 ```python
-@require_optional_import("psycopg", "retrievechat-pgvector")
+@require_optional_import(["psycopg", "sentence_transformers"], "retrievechat-pgvector")
 class Collection()
 ```
 
@@ -346,7 +346,7 @@ Create a new collection.
 ## PGVectorDB
 
 ```python
-@require_optional_import(["pgvector", "psycopg"], "retrievechat-pgvector")
+@require_optional_import(["pgvector", "psycopg", "sentence_transformers"], "retrievechat-pgvector")
 class PGVectorDB(VectorDB)
 ```
 

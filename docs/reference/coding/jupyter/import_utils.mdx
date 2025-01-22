@@ -1,0 +1,40 @@
+---
+sidebarTitle: import_utils
+title: coding.jupyter.import_utils
+---
+
+### is\_jupyter\_kernel\_gateway\_installed
+
+```python
+@lru_cache()
+def is_jupyter_kernel_gateway_installed() -> bool
+```
+
+Check if jupyter-kernel-gateway is installed.
+
+### require\_jupyter\_kernel\_gateway\_installed
+
+```python
+def require_jupyter_kernel_gateway_installed() -> Callable[[T], T]
+```
+
+Decorator to handle optional module dependencies
+
+**Arguments**:
+
+- `modules` - Module name or list of module names required
+- `dep_target` - Target name for pip installation (e.g. 'test' in pip install ag2[test])
+
+### skip\_on\_missing\_jupyter\_kernel\_gateway
+
+```python
+def skip_on_missing_jupyter_kernel_gateway() -> Callable[[T], T]
+```
+
+Decorator to skip a test if an optional module is missing
+
+**Arguments**:
+
+- `module` - Module name
+- `dep_target` - Target name for pip installation (e.g. 'test' in pip install ag2[test])
+

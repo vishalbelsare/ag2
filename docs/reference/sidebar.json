@@ -187,7 +187,7 @@
             "reference/coding/jupyter/base",
             "reference/coding/jupyter/docker_jupyter_server",
             "reference/coding/jupyter/embedded_ipython_code_executor",
-            "reference/coding/jupyter/helpers",
+            "reference/coding/jupyter/import_utils",
             "reference/coding/jupyter/jupyter_client",
             "reference/coding/jupyter/jupyter_code_executor",
             "reference/coding/jupyter/local_jupyter_server"

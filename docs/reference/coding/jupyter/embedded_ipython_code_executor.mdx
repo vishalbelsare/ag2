@@ -7,6 +7,8 @@ title: coding.jupyter.embedded_ipython_code_executor
 
 ```python
 @require_optional_import("jupyter_client", "jupyter-executor")
+
+@require_jupyter_kernel_gateway_installed()
 class EmbeddedIPythonCodeExecutor(BaseModel)
 ```
 

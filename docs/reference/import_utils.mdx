@@ -26,7 +26,7 @@ with optional_import_block():
 ### get\_missing\_imports
 
 ```python
-def get_missing_imports(modules: Union[str, Iterable[str]])
+def get_missing_imports(modules: Union[str, Iterable[str]]) -> list[str]
 ```
 
 Get missing modules from a list of module names
@@ -43,7 +43,7 @@ Get missing modules from a list of module names
 ## PatchObject
 
 ```python
-class PatchObject(ABC)
+class PatchObject(ABC, Generic[T])
 ```
 
 ### copy\_metadata
