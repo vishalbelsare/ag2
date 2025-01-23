@@ -7,16 +7,12 @@
 #!/usr/bin/env python3 -m pytest
 
 import asyncio
-import os
-import sys
 
 import pytest
-from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST
 
 import autogen
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import reason, skip_openai  # noqa: E402
+from ..conftest import Credentials, credentials_all_llms
 
 
 def get_market_news(ind, ind_upper):
@@ -60,10 +56,8 @@ def get_market_news(ind, ind_upper):
     return feeds_summary
 
 
-@pytest.mark.skipif(skip_openai, reason=reason)
-@pytest.mark.asyncio
-async def test_async_groupchat():
-    config_list = autogen.config_list_from_json(OAI_CONFIG_LIST, KEY_LOC, filter_dict={"tags": ["gpt-4o-mini"]})
+async def _test_async_groupchat(credentials: Credentials):
+    config_list = credentials.config_list
 
     # create an AssistantAgent instance named "assistant"
     assistant = autogen.AssistantAgent(
@@ -94,10 +88,16 @@ async def test_async_groupchat():
     assert len(user_proxy.chat_messages) > 0
 
 
-@pytest.mark.skipif(skip_openai, reason=reason)
+@pytest.mark.parametrize("credentials_from_test_param", credentials_all_llms, indirect=True)
 @pytest.mark.asyncio
-async def test_stream():
-    config_list = autogen.config_list_from_json(OAI_CONFIG_LIST, KEY_LOC, filter_dict={"tags": ["gpt-4o-mini"]})
+async def test_async_groupchat(
+    credentials_from_test_param: Credentials,
+) -> None:
+    await _test_async_groupchat(credentials_from_test_param)
+
+
+async def _test_stream(credentials: Credentials):
+    config_list = credentials.config_list
     data = asyncio.Future()
 
     async def add_stock_price_data():
@@ -162,6 +162,9 @@ async def test_stream():
             # print("Chat summary and cost:", res.summary, res.cost)
 
 
-if __name__ == "__main__":
-    # asyncio.run(test_stream())
-    asyncio.run(test_async_groupchat())
+@pytest.mark.parametrize("credentials_from_test_param", credentials_all_llms, indirect=True)
+@pytest.mark.asyncio
+async def test_stream(
+    credentials_from_test_param: Credentials,
+) -> None:
+    await _test_stream(credentials_from_test_param)

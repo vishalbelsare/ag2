@@ -10,15 +10,16 @@ import json
 import logging
 import os
 import tempfile
-from typing import Dict, List
+from datetime import datetime, timezone
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
-from conftest import MOCK_OPEN_AI_API_KEY
 
-import autogen  # noqa: E402
-from autogen.oai.openai_utils import DEFAULT_AZURE_API_VERSION, filter_config, is_valid_api_key
+import autogen
+from autogen.oai.openai_utils import DEFAULT_AZURE_API_VERSION, OAI_PRICE1K, filter_config, is_valid_api_key
+
+from ..conftest import MOCK_OPEN_AI_API_KEY
 
 # Example environment variables
 ENV_VARS = {
@@ -96,7 +97,7 @@ FILTER_CONFIG_TEST = [
 ]
 
 
-def _compare_lists_of_dicts(list1: List[Dict], list2: List[Dict]) -> bool:
+def _compare_lists_of_dicts(list1: list[dict], list2: list[dict]) -> bool:
     dump1 = sorted(json.dumps(d, sort_keys=True) for d in list1)
     dump2 = sorted(json.dumps(d, sort_keys=True) for d in list2)
     return dump1 == dump2
@@ -337,12 +338,12 @@ def test_config_list_from_dotenv(mock_os_environ, caplog):
         # Call the function with the mixed validity map
         config_list = autogen.config_list_from_dotenv(model_api_key_map=invalid_model_api_key_map)
         assert config_list, "Expected configurations to be loaded"
-        assert any(
-            config["model"] == "gpt-3.5-turbo" for config in config_list
-        ), "gpt-3.5-turbo configuration not found"
-        assert all(
-            config["model"] != "gpt-4" for config in config_list
-        ), "gpt-4 configuration found, but was not expected"
+        assert any(config["model"] == "gpt-3.5-turbo" for config in config_list), (
+            "gpt-3.5-turbo configuration not found"
+        )
+        assert all(config["model"] != "gpt-4" for config in config_list), (
+            "gpt-4 configuration found, but was not expected"
+        )
         assert "API key not found or empty for model gpt-4" in caplog.text
 
 
@@ -360,9 +361,9 @@ def test_get_config_list():
     assert config_list, "The config_list should not be empty."
 
     # Check that the config_list has the correct length
-    assert len(config_list) == len(
-        api_keys
-    ), "The config_list should have the same number of items as the api_keys list."
+    assert len(config_list) == len(api_keys), (
+        "The config_list should have the same number of items as the api_keys list."
+    )
 
     # Check that each config in the config_list has the correct structure and data
     for i, config in enumerate(config_list):
@@ -383,9 +384,9 @@ def test_get_config_list():
 
     # Test with None base_urls
     config_list_without_base = autogen.get_config_list(api_keys, None, api_type, api_version)
-    assert all(
-        "base_url" not in config for config in config_list_without_base
-    ), "The configs should not have base_url when None is provided."
+    assert all("base_url" not in config for config in config_list_without_base), (
+        "The configs should not have base_url when None is provided."
+    )
 
     # Test with empty string in api_keys
     api_keys_with_empty = ["key1", "", "key3"]
@@ -444,6 +445,24 @@ def test_is_valid_api_key():
     assert is_valid_api_key("sk-aut0-gen--asajsdjsd22372X23kjdfdfdf2329ffUUDSDS12121212212")
     assert is_valid_api_key("sk--aut0-gen-asajsdjsd22372X23kjdfdfdf2329ffUUDSDS12121212212")
     assert is_valid_api_key(MOCK_OPEN_AI_API_KEY)
+
+
+def test_reminder_to_update_deepseek_pricing_after_promotion():
+    # Reference: https://api-docs.deepseek.com/quick_start/pricing
+    # Define the promotion end date - February 8th, 2025 at 16:00 UTC
+    promo_end_date = datetime(2025, 2, 8, 16, 0, tzinfo=timezone.utc)
+    current_time = datetime.now(timezone.utc)
+
+    # Get the pricing tuple for deepseek-chat
+    input_price, output_price = OAI_PRICE1K["deepseek-chat"]
+
+    # After promo end date: Assert promotional pricing has been updated
+    if current_time > promo_end_date:
+        assert (input_price, output_price) != (0.00014, 0.00028), (
+            f"DeepSeek promotional period ended on {promo_end_date.strftime('%B %d, %Y at %H:%M %Z')}. "
+            "Please update OAI_PRICE1K['deepseek-chat'] to standard pricing."
+            "Check https://api-docs.deepseek.com/quick_start/pricing for more details."
+        )
 
 
 if __name__ == "__main__":

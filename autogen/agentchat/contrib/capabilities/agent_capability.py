@@ -4,7 +4,7 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-from autogen.agentchat.assistant_agent import ConversableAgent
+from ...assistant_agent import ConversableAgent
 
 
 class AgentCapability:
@@ -14,8 +14,7 @@ class AgentCapability:
         pass
 
     def add_to_agent(self, agent: ConversableAgent):
-        """
-        Adds a particular capability to the given agent. Must be implemented by the capability subclass.
+        """Adds a particular capability to the given agent. Must be implemented by the capability subclass.
         An implementation will typically call agent.register_hook() one or more times. See teachability.py as an example.
         """
         raise NotImplementedError

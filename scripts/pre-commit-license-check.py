@@ -77,7 +77,7 @@ def get_files_to_check() -> List[Path]:
     """Determine which files to check based on environment."""
     try:
         if "--all-files" in sys.argv:
-            return list(Path(".").rglob("*.py"))
+            return list(Path().rglob("*.py"))
 
         if os.getenv("GITHUB_ACTIONS") == "true":
             return get_github_pr_files()
@@ -106,9 +106,7 @@ def main() -> None:
             if missing_elements:
                 failed = True
                 print(f"\nIncomplete or missing license header in: {py_file}")
-                print(
-                    "\nSee https://ag2ai.github.io/ag2/docs/contributor-guide/contributing/#license-headers for guidance."
-                )
+                print("\nSee https://docs.ag2.ai/docs/contributor-guide/contributing/#license-headers for guidance.")
 
         sys.exit(1 if failed else 0)
     except Exception as e:

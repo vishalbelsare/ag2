@@ -10,19 +10,19 @@ import os
 
 import pytest
 
-try:
-    from autogen.oai.cohere import CohereClient, calculate_cohere_cost
+from autogen.import_utils import optional_import_block
+from autogen.oai.cohere import CohereClient, calculate_cohere_cost
 
-    skip = False
-except ImportError:
-    CohereClient = object
-    skip = True
+with optional_import_block() as result:
+    from cohere import Client as Cohere  # noqa: F401
+
+skip = not result.is_successful
 
 
 reason = "Cohere dependency not installed!"
 
 
-@pytest.fixture()
+@pytest.fixture
 def cohere_client():
     return CohereClient(api_key="dummy_api_key")
 
@@ -46,9 +46,9 @@ def test_intialization(cohere_client):
 
 @pytest.mark.skipif(skip, reason=reason)
 def test_calculate_cohere_cost():
-    assert (
-        calculate_cohere_cost(0, 0, model="command-r") == 0.0
-    ), "Cost should be 0 for 0 input_tokens and 0 output_tokens"
+    assert calculate_cohere_cost(0, 0, model="command-r") == 0.0, (
+        "Cost should be 0 for 0 input_tokens and 0 output_tokens"
+    )
     assert calculate_cohere_cost(100, 200, model="command-r-plus") == 0.0033
 
 

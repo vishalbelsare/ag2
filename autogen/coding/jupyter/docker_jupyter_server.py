@@ -14,22 +14,21 @@ import sys
 import uuid
 from pathlib import Path
 from types import TracebackType
-from typing import Dict, Optional, Type, Union
 
 import docker
-
-from ..docker_commandline_code_executor import _wait_for_ready
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
-
+from ..docker_commandline_code_executor import _wait_for_ready
 from .base import JupyterConnectable, JupyterConnectionInfo
+from .import_utils import require_jupyter_kernel_gateway_installed
 from .jupyter_client import JupyterClient
 
 
+@require_jupyter_kernel_gateway_installed()
 class DockerJupyterServer(JupyterConnectable):
     DEFAULT_DOCKERFILE = """FROM quay.io/jupyter/docker-stacks-foundation
 
@@ -59,12 +58,12 @@ WORKDIR "${HOME}"
     def __init__(
         self,
         *,
-        custom_image_name: Optional[str] = None,
-        container_name: Optional[str] = None,
+        custom_image_name: str | None = None,
+        container_name: str | None = None,
         auto_remove: bool = True,
         stop_container: bool = True,
-        docker_env: Dict[str, str] = {},
-        token: Union[str, GenerateToken] = GenerateToken(),
+        docker_env: dict[str, str] = {},
+        token: str | GenerateToken = GenerateToken(),
     ):
         """Start a Jupyter kernel gateway server in a Docker container.
 
@@ -159,6 +158,6 @@ WORKDIR "${HOME}"
         return self
 
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
         self.stop()

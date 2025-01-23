@@ -6,24 +6,18 @@
 # SPDX-License-Identifier: MIT
 #!/usr/bin/env python3 -m pytest
 
-import os
-import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 from unittest.mock import MagicMock
 
 import pytest
 
-from autogen import OpenAIWrapper, config_list_from_json
+from autogen import OpenAIWrapper
+from autogen.import_utils import optional_import_block
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import skip_openai  # noqa: E402
+from ..conftest import Credentials, reason
 
-try:
-    from openai import OpenAI
-except ImportError:
-    skip = True
-else:
-    skip = False or skip_openai
+with optional_import_block() as result:
+    from openai import OpenAI  # noqa: F401
 
     # raises exception if openai>=1 is installed and something is wrong with imports
     # otherwise the test will be skipped
@@ -34,31 +28,22 @@ else:
         ChoiceDeltaToolCallFunction,
     )
 
-KEY_LOC = "notebook"
-OAI_CONFIG_LIST = "OAI_CONFIG_LIST"
+skip = not result.is_successful
 
 
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
-def test_aoai_chat_completion_stream() -> None:
-    config_list = config_list_from_json(
-        env_or_file=OAI_CONFIG_LIST,
-        file_location=KEY_LOC,
-        filter_dict={"api_type": ["azure"], "tags": ["gpt-3.5-turbo"]},
-    )
-    client = OpenAIWrapper(config_list=config_list)
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
+def test_aoai_chat_completion_stream(credentials_gpt_4o_mini: Credentials) -> None:
+    client = OpenAIWrapper(config_list=credentials_gpt_4o_mini.config_list)
     response = client.create(messages=[{"role": "user", "content": "2+2="}], stream=True)
     print(response)
     print(client.extract_text_or_completion_object(response))
 
 
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
-def test_chat_completion_stream() -> None:
-    config_list = config_list_from_json(
-        env_or_file=OAI_CONFIG_LIST,
-        file_location=KEY_LOC,
-        filter_dict={"tags": ["gpt-3.5-turbo"]},
-    )
-    client = OpenAIWrapper(config_list=config_list)
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
+def test_chat_completion_stream(credentials_gpt_4o_mini: Credentials) -> None:
+    client = OpenAIWrapper(config_list=credentials_gpt_4o_mini.config_list)
     response = client.create(messages=[{"role": "user", "content": "1+1="}], stream=True)
     print(response)
     print(client.extract_text_or_completion_object(response))
@@ -68,13 +53,13 @@ def test_chat_completion_stream() -> None:
 def test__update_dict_from_chunk() -> None:
     # dictionaries and lists are not supported
     mock = MagicMock()
-    empty_collections: List[Union[List[Any], Dict[str, Any]]] = [{}, []]
+    empty_collections: list[Union[list[Any], dict[str, Any]]] = [{}, []]
     for c in empty_collections:
         mock.c = c
         with pytest.raises(NotImplementedError):
             OpenAIWrapper._update_dict_from_chunk(mock, {}, "c")
 
-    org_d: Dict[str, Any] = {}
+    org_d: dict[str, Any] = {}
     for i, v in enumerate([0, 1, False, True, 0.0, 1.0]):
         field = "abcedfghijklmnopqrstuvwxyz"[i]
         setattr(mock, field, v)
@@ -98,7 +83,8 @@ def test__update_dict_from_chunk() -> None:
     assert d["s"] == "beginning and end"
 
 
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
 def test__update_function_call_from_chunk() -> None:
     function_call_chunks = [
         ChoiceDeltaFunctionCall(arguments=None, name="get_current_weather"),
@@ -130,7 +116,8 @@ def test__update_function_call_from_chunk() -> None:
     ChatCompletionMessage(role="assistant", function_call=full_function_call, content=None)
 
 
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
 def test__update_tool_calls_from_chunk() -> None:
     tool_calls_chunks = [
         ChoiceDeltaToolCall(
@@ -186,7 +173,7 @@ def test__update_tool_calls_from_chunk() -> None:
         ),
     ]
 
-    full_tool_calls: List[Optional[Dict[str, Any]]] = [None, None]
+    full_tool_calls: list[Optional[dict[str, Any]]] = [None, None]
     completion_tokens = 0
     for tool_calls_chunk in tool_calls_chunks:
         index = tool_calls_chunk.index
@@ -203,13 +190,11 @@ def test__update_tool_calls_from_chunk() -> None:
 
 
 # todo: remove when OpenAI removes functions from the API
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
-def test_chat_functions_stream() -> None:
-    config_list = config_list_from_json(
-        env_or_file=OAI_CONFIG_LIST,
-        file_location=KEY_LOC,
-        filter_dict={"tags": ["gpt-3.5-turbo"]},
-    )
+
+
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
+def test_chat_functions_stream(credentials_gpt_4o_mini: Credentials) -> None:
     functions = [
         {
             "name": "get_current_weather",
@@ -226,7 +211,7 @@ def test_chat_functions_stream() -> None:
             },
         },
     ]
-    client = OpenAIWrapper(config_list=config_list)
+    client = OpenAIWrapper(config_list=credentials_gpt_4o_mini.config_list)
     response = client.create(
         messages=[{"role": "user", "content": "What's the weather like today in San Francisco?"}],
         functions=functions,
@@ -237,13 +222,11 @@ def test_chat_functions_stream() -> None:
 
 
 # test for tool support instead of the deprecated function calls
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
-def test_chat_tools_stream() -> None:
-    config_list = config_list_from_json(
-        env_or_file=OAI_CONFIG_LIST,
-        file_location=KEY_LOC,
-        filter_dict={"tags": ["multitool"]},
-    )
+
+
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
+def test_chat_tools_stream(credentials_gpt_4o_mini: Credentials) -> None:
     tools = [
         {
             "type": "function",
@@ -263,7 +246,7 @@ def test_chat_tools_stream() -> None:
             },
         },
     ]
-    client = OpenAIWrapper(config_list=config_list)
+    client = OpenAIWrapper(config_list=credentials_gpt_4o_mini.config_list)
     response = client.create(
         messages=[{"role": "user", "content": "What's the weather like today in San Francisco?"}],
         tools=tools,
@@ -283,12 +266,10 @@ def test_chat_tools_stream() -> None:
     assert len(tool_calls) > 0
 
 
-@pytest.mark.skipif(skip, reason="openai>=1 not installed")
-def test_completion_stream() -> None:
-    config_list = config_list_from_json(
-        env_or_file=OAI_CONFIG_LIST, file_location=KEY_LOC, filter_dict={"tags": ["gpt-3.5-turbo-instruct"]}
-    )
-    client = OpenAIWrapper(config_list=config_list)
+@pytest.mark.openai
+@pytest.mark.skipif(skip, reason=reason)
+def test_completion_stream(credentials_azure_gpt_35_turbo_instruct: Credentials) -> None:
+    client = OpenAIWrapper(config_list=credentials_azure_gpt_35_turbo_instruct.config_list)
     response = client.create(prompt="1+1=", stream=True)
     print(response)
     print(client.extract_text_or_completion_object(response))

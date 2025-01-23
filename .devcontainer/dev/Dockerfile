@@ -18,11 +18,11 @@ USER autogen
 # Set environment variable
 # ENV OPENAI_API_KEY="{OpenAI-API-Key}"
 
-# Clone the AutoGen repository
+# Clone the AG2 repository
 RUN git clone https://github.com/ag2ai/ag2.git /home/autogen/ag2
 WORKDIR /home/autogen/ag2
 
-# Install AutoGen in editable mode with extra components
+# Install AG2 in editable mode with extra components
 RUN sudo pip install --upgrade pip && \
     sudo pip install -e .[test,teachable,lmm,retrievechat,mathchat,blendsearch] && \
     pip install pytest-xdist pytest-cov
@@ -30,11 +30,13 @@ RUN sudo pip install --upgrade pip && \
 # Install pre-commit hooks
 RUN pre-commit install
 
-# Setup Docusaurus and Yarn for the documentation website
-RUN sudo npm install --global yarn
-RUN sudo pip install pydoc-markdown
-RUN cd website
-RUN yarn install --frozen-lockfile --ignore-engines
+# Install Python packages for documentation
+RUN sudo pip install pydoc-markdown pyyaml termcolor nbclient
+
+# Install npm packages for documentation
+WORKDIR /home/autogen/ag2/website
+RUN npm install
+WORKDIR /home/autogen/ag2
 
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
     wget -q https://github.com/quarto-dev/quarto-cli/releases/download/v1.5.23/quarto-1.5.23-linux-${arch}.tar.gz && \

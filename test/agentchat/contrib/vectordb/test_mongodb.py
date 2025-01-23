@@ -8,18 +8,19 @@ import logging
 import os
 import random
 from time import monotonic, sleep
-from typing import List
 
 import pytest
 
 from autogen.agentchat.contrib.vectordb.base import Document
+from autogen.agentchat.contrib.vectordb.mongodb import MongoDBAtlasVectorDB
+from autogen.import_utils import optional_import_block
 
-try:
-    import pymongo
-    import sentence_transformers
+with optional_import_block() as result:
+    import pymongo  # noqa: F401
+    import sentence_transformers  # noqa: F401
 
-    from autogen.agentchat.contrib.vectordb.mongodb import MongoDBAtlasVectorDB
-except ImportError:
+
+if not result.is_successful:
     # To display warning in pyproject.toml [tool.pytest.ini_options] set log_cli = true
     logger = logging.getLogger(__name__)
     logger.warning(f"skipping {__name__}. It requires one to pip install pymongo or the extra [retrievechat-mongodb]")
@@ -103,7 +104,7 @@ def db():
 
 
 @pytest.fixture
-def example_documents() -> List[Document]:
+def example_documents() -> list[Document]:
     """Note mix of integers and strings as ids"""
     return [
         Document(id=1, content="Dogs are tough.", metadata={"a": 1}),
@@ -143,8 +144,7 @@ def collection_name():
 
 
 def test_create_collection(db, collection_name):
-    """
-    def create_collection(collection_name: str,
+    """Def create_collection(collection_name: str,
                         overwrite: bool = False) -> Collection
     Create a collection in the vector database.
     - Case 1. if the collection does not exist, create the collection.

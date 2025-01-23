@@ -8,29 +8,29 @@
 
 import os
 import re
-import sys
 
 import pytest
 
-from autogen import UserProxyAgent, config_list_from_json
-from autogen.oai.openai_utils import filter_config
+from autogen import UserProxyAgent
+from autogen.agentchat.contrib.web_surfer import WebSurferAgent
+from autogen.import_utils import optional_import_block
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
-from conftest import MOCK_OPEN_AI_API_KEY, reason, skip_openai  # noqa: E402
+from ...conftest import MOCK_OPEN_AI_API_KEY, Credentials
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST  # noqa: E402
-
-BLOG_POST_URL = "https://ag2ai.github.io/ag2/blog/2023/04/21/LLM-tuning-math"
-BLOG_POST_TITLE = "Does Model and Inference Parameter Matter in LLM Applications? - A Case Study for MATH | AG2"
+BLOG_POST_URL = "https://docs.ag2.ai/blog/2023-04-21-LLM-tuning-math"
+BLOG_POST_TITLE = "Does Model and Inference Parameter Matter in LLM Applications? - A Case Study for MATH - AG2"
 BING_QUERY = "Microsoft"
 
-try:
-    from autogen.agentchat.contrib.web_surfer import WebSurferAgent
-except ImportError:
-    skip_all = True
-else:
-    skip_all = False
+with optional_import_block() as result:
+    import markdownify  # noqa: F401
+    import pathvalidate  # noqa: F401
+    import pdfminer  # noqa: F401
+    import requests  # noqa: F401
+    from bs4 import BeautifulSoup  # noqa: F401
+
+
+skip_all = not result.is_successful
+
 
 try:
     BING_API_KEY = os.environ["BING_API_KEY"]
@@ -38,9 +38,6 @@ except KeyError:
     skip_bing = True
 else:
     skip_bing = False
-
-if not skip_openai:
-    config_list = config_list_from_json(env_or_file=OAI_CONFIG_LIST, file_location=KEY_LOC)
 
 
 @pytest.mark.skipif(
@@ -102,24 +99,18 @@ def test_web_surfer() -> None:
             response = function_map["summarize_page"]()
 
 
+@pytest.mark.openai
 @pytest.mark.skipif(
-    skip_all or skip_openai,
-    reason="dependency is not installed OR" + reason,
+    skip_all,
+    reason="dependency is not installed",
 )
-def test_web_surfer_oai() -> None:
-    llm_config = {"config_list": config_list, "timeout": 180, "cache_seed": 42}
-
-    # adding Azure name variations to the model list
-    model = ["gpt-4o", "gpt-4o-mini"]
-    model += [m.replace(".", "") for m in model]
+def test_web_surfer_oai(credentials_gpt_4o_mini: Credentials, credentials_gpt_4o: Credentials) -> None:
+    llm_config = {"config_list": credentials_gpt_4o.config_list, "timeout": 180, "cache_seed": 42}
 
     summarizer_llm_config = {
-        "config_list": filter_config(config_list, dict(model=model)),  # type: ignore[no-untyped-call]
+        "config_list": credentials_gpt_4o_mini.config_list,
         "timeout": 180,
     }
-
-    assert len(llm_config["config_list"]) > 0  # type: ignore[arg-type]
-    assert len(summarizer_llm_config["config_list"]) > 0
 
     page_size = 4096
     web_surfer = WebSurferAgent(

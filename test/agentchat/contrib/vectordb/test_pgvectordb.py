@@ -9,20 +9,19 @@ import sys
 import urllib.parse
 
 import pytest
-from conftest import reason
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from autogen.agentchat.contrib.vectordb.pgvectordb import PGVectorDB
+from autogen.import_utils import optional_import_block
 
-try:
-    import pgvector
+from ....conftest import reason
+
+with optional_import_block() as result:
+    import pgvector  # noqa: F401
     import psycopg
-    import sentence_transformers
+    import sentence_transformers  # noqa: F401
 
-    from autogen.agentchat.contrib.vectordb.pgvectordb import PGVectorDB
-except ImportError:
-    skip = True
-else:
-    skip = False
+
+skip = not result.is_successful
 
 reason = "do not run on MacOS or windows OR dependency is not installed OR " + reason
 
@@ -133,7 +132,7 @@ def test_pgvector():
     res = db.get_docs_by_ids(["1", "2"], collection_name)
     assert [r["id"] for r in res] == ["2"]  # "1" has been deleted
     res = db.get_docs_by_ids(collection_name=collection_name)
-    assert set([r["id"] for r in res]) == set(["2", "3"])  # All Docs returned
+    assert {r["id"] for r in res} == {"2", "3"}  # All Docs returned
 
 
 if __name__ == "__main__":

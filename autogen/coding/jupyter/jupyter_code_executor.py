@@ -7,24 +7,20 @@
 import base64
 import json
 import os
-import re
 import sys
 import uuid
 from pathlib import Path
 from types import TracebackType
-from typing import Any, ClassVar, List, Optional, Type, Union
-
-from autogen.coding.utils import silence_pip
+from typing import Optional, Union
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
-
-from ...agentchat.agent import LLMAgent
 from ..base import CodeBlock, CodeExecutor, CodeExtractor, IPythonCodeResult
 from ..markdown_code_extractor import MarkdownCodeExtractor
+from ..utils import silence_pip
 from .base import JupyterConnectable, JupyterConnectionInfo
 from .jupyter_client import JupyterClient
 
@@ -35,7 +31,7 @@ class JupyterCodeExecutor(CodeExecutor):
         jupyter_server: Union[JupyterConnectable, JupyterConnectionInfo],
         kernel_name: str = "python3",
         timeout: int = 60,
-        output_dir: Union[Path, str] = Path("."),
+        output_dir: Union[Path, str] = Path(),
     ):
         """(Experimental) A code executor class that executes code statefully using
         a Jupyter server supplied to this class.
@@ -82,7 +78,7 @@ class JupyterCodeExecutor(CodeExecutor):
         """(Experimental) Export a code extractor that can be used by an agent."""
         return MarkdownCodeExtractor()
 
-    def execute_code_blocks(self, code_blocks: List[CodeBlock]) -> IPythonCodeResult:
+    def execute_code_blocks(self, code_blocks: list[CodeBlock]) -> IPythonCodeResult:
         """(Experimental) Execute a list of code blocks and return the result.
 
         This method executes a list of code blocks as cells in the Jupyter kernel.
@@ -156,6 +152,6 @@ class JupyterCodeExecutor(CodeExecutor):
         return self
 
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: Optional[type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None:
         self.stop()

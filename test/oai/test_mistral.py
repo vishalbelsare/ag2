@@ -8,25 +8,23 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-try:
+from autogen.import_utils import optional_import_block
+from autogen.oai.mistral import MistralAIClient, calculate_mistral_cost
+
+with optional_import_block() as result:
     from mistralai import (
-        AssistantMessage,
-        Function,
-        FunctionCall,
-        Mistral,
-        SystemMessage,
-        ToolCall,
-        ToolMessage,
-        UserMessage,
+        AssistantMessage,  # noqa: F401
+        Function,  # noqa: F401
+        FunctionCall,  # noqa: F401
+        Mistral,  # noqa: F401
+        SystemMessage,  # noqa: F401
+        ToolCall,  # noqa: F401
+        ToolMessage,  # noqa: F401
+        UserMessage,  # noqa: F401
     )
 
-    from autogen.oai.mistral import MistralAIClient, calculate_mistral_cost
 
-    skip = False
-except ImportError:
-    MistralAIClient = object
-    InternalServerError = object
-    skip = True
+skip = not result.is_successful
 
 
 # Fixtures for mock data
@@ -51,7 +49,6 @@ def mistral_client():
 # Test initialization and configuration
 @pytest.mark.skipif(skip, reason="Mistral.AI dependency is not installed")
 def test_initialization():
-
     # Missing any api_key
     with pytest.raises(AssertionError) as assertinfo:
         MistralAIClient()  # Should raise an AssertionError due to missing api_key
@@ -111,9 +108,9 @@ def test_create_response(mock_chat, mistral_client):
     response = mistral_client.create(params)
 
     # Assertions to check if response is structured as expected
-    assert (
-        response.choices[0].message.content == "Example Mistral response"
-    ), "Response content should match expected output"
+    assert response.choices[0].message.content == "Example Mistral response", (
+        "Response content should match expected output"
+    )
     assert response.id == "mock_mistral_response_id", "Response ID should match the mocked response ID"
     assert response.model == "mistral-small-latest", "Response model should match the mocked response model"
     assert response.usage.prompt_tokens == 10, "Response prompt tokens should match the mocked response usage"

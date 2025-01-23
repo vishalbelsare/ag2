@@ -7,16 +7,12 @@
 #!/usr/bin/env python3 -m pytest
 
 import asyncio
-import os
-import sys
 
 import pytest
-from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST
 
 import autogen
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import reason, skip_openai
+from ..conftest import Credentials
 
 func_def = {
     "name": "get_random_number",
@@ -28,10 +24,7 @@ func_def = {
 }
 
 
-@pytest.mark.skipif(
-    skip_openai,
-    reason=reason,
-)
+@pytest.mark.openai
 @pytest.mark.parametrize(
     "key, value, sync",
     [
@@ -41,7 +34,7 @@ func_def = {
     ],
 )
 @pytest.mark.asyncio
-async def test_function_call_groupchat(key, value, sync):
+async def test_function_call_groupchat(credentials_gpt_4o_mini: Credentials, key, value, sync):
     import random
 
     class Function:
@@ -52,15 +45,9 @@ async def test_function_call_groupchat(key, value, sync):
             return random.randint(0, 100)
 
     # llm_config without functions
-    config_list_35 = autogen.config_list_from_json(
-        OAI_CONFIG_LIST,
-        file_location=KEY_LOC,
-        filter_dict={"tags": ["gpt-3.5-turbo", "gpt-3.5-turbo-16k"]},
-    )
-    llm_config_no_function = {"config_list": config_list_35}
-    config_list_tool = autogen.filter_config(config_list_35, {"tags": ["tool"]})
+    llm_config_no_function = credentials_gpt_4o_mini.llm_config
     llm_config = {
-        "config_list": config_list_tool,
+        "config_list": credentials_gpt_4o_mini.config_list,
         key: value,
     }
 

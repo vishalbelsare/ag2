@@ -9,16 +9,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from autogen.agentchat.contrib.capabilities.vision_capability import VisionCapability
 from autogen.agentchat.conversable_agent import ConversableAgent
+from autogen.import_utils import optional_import_block
 
-try:
-    from PIL import Image
+with optional_import_block() as result:
+    from PIL import Image  # noqa: F401
 
-    from autogen.agentchat.contrib.capabilities.vision_capability import VisionCapability
-except ImportError:
-    skip_test = True
-else:
-    skip_test = False
+
+skip_test = not result.is_successful
 
 
 @pytest.fixture
@@ -40,7 +39,7 @@ def vision_capability(lmm_config):
 
 @pytest.fixture
 def conversable_agent():
-    return ConversableAgent(name="conversable agent", llm_config=False)
+    return ConversableAgent(name="conversable_agent", llm_config=False)
 
 
 @pytest.mark.skipif(

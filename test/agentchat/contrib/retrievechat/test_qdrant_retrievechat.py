@@ -11,50 +11,37 @@ import sys
 
 import pytest
 
-from autogen import AssistantAgent, config_list_from_json
+from autogen import AssistantAgent
+from autogen.agentchat.contrib.qdrant_retrieve_user_proxy_agent import (
+    QdrantRetrieveUserProxyAgent,
+    create_qdrant_from_dir,
+    query_qdrant,
+)
+from autogen.import_utils import optional_import_block
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../.."))
-from conftest import skip_openai  # noqa: E402
+from ....conftest import Credentials
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
-from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST  # noqa: E402
-
-try:
-    import fastembed
+with optional_import_block() as result:
+    import fastembed  # noqa: F401
     from qdrant_client import QdrantClient
 
-    from autogen.agentchat.contrib.qdrant_retrieve_user_proxy_agent import (
-        QdrantRetrieveUserProxyAgent,
-        create_qdrant_from_dir,
-        query_qdrant,
-    )
 
-    QDRANT_INSTALLED = True
-except ImportError:
-    QDRANT_INSTALLED = False
+QDRANT_INSTALLED = result.is_successful
 
-try:
-    import openai
-except ImportError:
-    skip = True
-else:
-    skip = False or skip_openai
+with optional_import_block() as result:
+    import openai  # noqa: F401
 
-test_dir = os.path.join(os.path.dirname(__file__), "../../..", "test_files")
+skip = not result.is_successful
 
 
+@pytest.mark.openai
 @pytest.mark.skipif(
     sys.platform in ["darwin", "win32"] or not QDRANT_INSTALLED or skip,
     reason="do not run on MacOS or windows OR dependency is not installed OR requested to skip",
 )
-def test_retrievechat():
+def test_retrievechat(credentials_gpt_4o_mini: Credentials):
     conversations = {}
     # ChatCompletion.start_logging(conversations)  # deprecated in v0.2
-
-    config_list = config_list_from_json(
-        OAI_CONFIG_LIST,
-        file_location=KEY_LOC,
-    )
 
     assistant = AssistantAgent(
         name="assistant",
@@ -62,7 +49,7 @@ def test_retrievechat():
         llm_config={
             "timeout": 600,
             "seed": 42,
-            "config_list": config_list,
+            "config_list": credentials_gpt_4o_mini.config_list,
         },
     )
 
@@ -85,6 +72,7 @@ def test_retrievechat():
     print(conversations)
 
 
+@pytest.mark.openai
 @pytest.mark.skipif(not QDRANT_INSTALLED, reason="qdrant_client is not installed")
 def test_qdrant_filter():
     client = QdrantClient(":memory:")
@@ -100,8 +88,10 @@ def test_qdrant_filter():
     assert len(results["ids"][0]) == 4
 
 
+@pytest.mark.openai
 @pytest.mark.skipif(not QDRANT_INSTALLED, reason="qdrant_client is not installed")
 def test_qdrant_search():
+    test_dir = os.path.join(os.path.dirname(__file__), "../../..", "test_files")
     client = QdrantClient(":memory:")
     create_qdrant_from_dir(test_dir, client=client)
 

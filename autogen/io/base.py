@@ -5,11 +5,14 @@
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, Iterator, Optional, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable
 
-__all__ = ("OutputStream", "InputStream", "IOStream")
+from ..messages.base_message import BaseMessage
+
+__all__ = ("IOStream", "InputStream", "OutputStream")
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,14 @@ class OutputStream(Protocol):
             flush (bool, optional): Whether to flush the output. Defaults to False.
         """
         ...  # pragma: no cover
+
+    def send(self, message: BaseMessage) -> None:
+        """Send data to the output stream.
+
+        Args:
+            message (BaseMessage): BaseMessage from autogen.messages.base_message
+        """
+        ...
 
 
 @runtime_checkable

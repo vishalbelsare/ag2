@@ -4,31 +4,29 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-from typing import Dict
 
 import pytest
 
 from autogen import OpenAIWrapper
-from autogen.oai import ModelClient
+from autogen.import_utils import optional_import_block
 
-try:
-    from openai import OpenAI
-except ImportError:
-    skip = True
-else:
-    skip = False
+with optional_import_block() as result:
+    from openai import OpenAI  # noqa: F401
+
+skip = not result.is_successful
+
+
+TEST_COST = 20000000
+TEST_CUSTOM_RESPONSE = "This is a custom response."
+TEST_DEVICE = "cpu"
+TEST_LOCAL_MODEL_NAME = "local_model_name"
+TEST_OTHER_PARAMS_VAL = "other_params"
+TEST_MAX_LENGTH = 1000
 
 
 def test_custom_model_client():
-    TEST_COST = 20000000
-    TEST_CUSTOM_RESPONSE = "This is a custom response."
-    TEST_DEVICE = "cpu"
-    TEST_LOCAL_MODEL_NAME = "local_model_name"
-    TEST_OTHER_PARAMS_VAL = "other_params"
-    TEST_MAX_LENGTH = 1000
-
     class CustomModel:
-        def __init__(self, config: Dict, test_hook):
+        def __init__(self, config: dict, test_hook):
             self.test_hook = test_hook
             self.device = config["device"]
             self.model = config["model"]
@@ -63,7 +61,7 @@ def test_custom_model_client():
             return TEST_COST
 
         @staticmethod
-        def get_usage(response) -> Dict:
+        def get_usage(response) -> dict:
             return {}
 
     config_list = [
@@ -96,7 +94,7 @@ def test_custom_model_client():
 
 def test_registering_with_wrong_class_name_raises_error():
     class CustomModel:
-        def __init__(self, config: Dict):
+        def __init__(self, config: dict):
             pass
 
         def create(self, params):
@@ -109,7 +107,7 @@ def test_registering_with_wrong_class_name_raises_error():
             return 0
 
         @staticmethod
-        def get_usage(response) -> Dict:
+        def get_usage(response) -> dict:
             return {}
 
     config_list = [
@@ -126,7 +124,7 @@ def test_registering_with_wrong_class_name_raises_error():
 
 def test_not_all_clients_registered_raises_error():
     class CustomModel:
-        def __init__(self, config: Dict):
+        def __init__(self, config: dict):
             pass
 
         def create(self, params):
@@ -139,7 +137,7 @@ def test_not_all_clients_registered_raises_error():
             return 0
 
         @staticmethod
-        def get_usage(response) -> Dict:
+        def get_usage(response) -> dict:
             return {}
 
     config_list = [
@@ -173,7 +171,7 @@ def test_not_all_clients_registered_raises_error():
 
 def test_registering_with_extra_config_args():
     class CustomModel:
-        def __init__(self, config: Dict, test_hook):
+        def __init__(self, config: dict, test_hook):
             self.test_hook = test_hook
             self.test_hook["called"] = True
 
@@ -192,7 +190,7 @@ def test_registering_with_extra_config_args():
             return 0
 
         @staticmethod
-        def get_usage(response) -> Dict:
+        def get_usage(response) -> dict:
             return {}
 
     config_list = [

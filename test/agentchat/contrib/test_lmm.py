@@ -10,18 +10,20 @@ import unittest
 from unittest.mock import MagicMock
 
 import pytest
-from conftest import MOCK_OPEN_AI_API_KEY
 
 import autogen
+from autogen.agentchat.contrib.img_utils import get_pil_image
+from autogen.agentchat.contrib.multimodal_conversable_agent import MultimodalConversableAgent
 from autogen.agentchat.conversable_agent import ConversableAgent
+from autogen.import_utils import optional_import_block
 
-try:
-    from autogen.agentchat.contrib.img_utils import get_pil_image
-    from autogen.agentchat.contrib.multimodal_conversable_agent import MultimodalConversableAgent
-except ImportError:
-    skip = True
-else:
-    skip = False
+from ...conftest import MOCK_OPEN_AI_API_KEY
+
+with optional_import_block() as result:
+    from PIL import Image  # noqa: F401
+
+
+skip = not result.is_successful
 
 
 base64_encoded_image = (
@@ -97,12 +99,10 @@ class TestMultimodalConversableAgent(unittest.TestCase):
 
 @pytest.mark.skipif(skip, reason="Dependency not installed")
 def test_group_chat_with_lmm():
-    """
-    Tests the group chat functionality with two MultimodalConversable Agents.
+    """Tests the group chat functionality with two MultimodalConversable Agents.
     Verifies that the chat is correctly limited by the max_round parameter.
     Each agent is set to describe an image in a unique style, but the chat should not exceed the specified max_rounds.
     """
-
     # Configuration parameters
     max_round = 5
     max_consecutive_auto_reply = 10

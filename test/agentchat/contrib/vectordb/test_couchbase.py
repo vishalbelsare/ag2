@@ -4,32 +4,24 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-import logging
 import os
 import random
+import sys
 from time import sleep
 
 import pytest
 from dotenv import load_dotenv
 
-try:
+from autogen.import_utils import optional_import_block
 
-    import couchbase
-    import sentence_transformers
+with optional_import_block() as result:
+    from couchbase.auth import PasswordAuthenticator
+    from couchbase.cluster import Cluster, ClusterOptions
 
     from autogen.agentchat.contrib.vectordb.couchbase import CouchbaseVectorDB
-except ImportError:
-    print("skipping test_couchbase.py. It requires one to pip install couchbase or the extra [retrievechat-couchbase]")
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        f"skipping {__name__}. It requires one to pip install couchbase or the extra [retrievechat-couchbase]"
-    )
-    pytest.skip("Required modules not installed", allow_module_level=True)
 
-from couchbase.auth import PasswordAuthenticator
-from couchbase.cluster import Cluster, ClusterOptions
-
-logger = logging.getLogger(__name__)
+COUCHBASE_INSTALLED = result.is_successful
+skip = not result.is_successful
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -63,10 +55,9 @@ def _empty_collections_and_delete_indexes(cluster: Cluster, bucket_name, scope_n
             for curr_collection in all_collections:
                 bucket.collections().drop_collection(scope_name, curr_collection.name)
     except Exception as e:
-        logger.warning(f"Failed to drop collections: {e}")
+        raise e
 
 
-@pytest.fixture
 def db():
     print("Creating couchbase connection", COUCHBASE_HOST, COUCHBASE_USERNAME, COUCHBASE_PASSWORD)
     cluster = Cluster(COUCHBASE_HOST, ClusterOptions(PasswordAuthenticator(COUCHBASE_USERNAME, COUCHBASE_PASSWORD)))
@@ -87,7 +78,6 @@ def db():
 _COLLECTION_NAMING_CACHE = []
 
 
-@pytest.fixture
 def collection_name():
     collection_id = random.randint(0, 100)
     while collection_id in _COLLECTION_NAMING_CACHE:
@@ -96,6 +86,10 @@ def collection_name():
     return f"{COUCHBASE_COLLECTION}_{collection_id}"
 
 
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"] or not COUCHBASE_INSTALLED or skip,
+    reason="do not run on MacOS or windows OR dependency is not installed OR requested to skip",
+)
 def test_couchbase(db, collection_name):
     # db = CouchbaseVectorDB(path=".db")
     with pytest.raises(Exception):
@@ -155,3 +149,7 @@ def test_couchbase(db, collection_name):
 
     assert texts[0] == ["doc2", "doc3"]
     assert received_ids[0] == ["2", "3"]
+
+
+if __name__ == "__main__":
+    test_couchbase(db(), collection_name())

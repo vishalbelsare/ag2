@@ -3,15 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-from PIL import Image
-
-from autogen.coding.func_with_reqs import with_requirements
+from ......coding.func_with_reqs import with_requirements
 
 
-@with_requirements(["transformers", "torch"], ["transformers", "torch", "PIL", "os"])
+@with_requirements(["transformers", "torch", "PIL"], ["transformers", "torch", "os"])
 def image_qa(image, question, ckpt="Salesforce/blip-vqa-base"):
-    """
-    Perform question answering on an image using a pre-trained VQA model.
+    """Perform question answering on an image using a pre-trained VQA model.
 
     Args:
         image (Union[str, Image.Image]): The image to perform question answering on. It can be either file path to the image or a PIL Image object.
@@ -21,6 +18,7 @@ def image_qa(image, question, ckpt="Salesforce/blip-vqa-base"):
         dict: The generated answer text.
     """
     import torch
+    from PIL import Image
     from transformers import BlipForQuestionAnswering, BlipProcessor
 
     def image_processing(img):
@@ -39,7 +37,7 @@ def image_qa(image, question, ckpt="Salesforce/blip-vqa-base"):
     def text_processing(file_path):
         # Check the file extension
         if file_path.endswith(".txt"):
-            with open(file_path, "r") as file:
+            with open(file_path) as file:
                 content = file.read()
         else:
             # if the file is not .txt, then it is a string, directly return the string

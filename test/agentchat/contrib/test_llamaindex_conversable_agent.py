@@ -6,51 +6,40 @@
 # SPDX-License-Identifier: MIT
 #!/usr/bin/env python3 -m pytest
 
-import os
-import sys
-import unittest
 from unittest.mock import MagicMock, patch
 
 import pytest
-from conftest import MOCK_OPEN_AI_API_KEY
 
 from autogen import GroupChat, GroupChatManager
 from autogen.agentchat.contrib.llamaindex_conversable_agent import LLamaIndexConversableAgent
 from autogen.agentchat.conversable_agent import ConversableAgent
+from autogen.import_utils import optional_import_block
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import reason, skip_openai
+from ...conftest import MOCK_OPEN_AI_API_KEY
 
-skip_reasons = [reason]
-try:
+with optional_import_block() as result:
     from llama_index.core.agent import ReActAgent
     from llama_index.core.chat_engine.types import AgentChatResponse
     from llama_index.llms.openai import OpenAI
 
-    skip_for_dependencies = False
-    skip_reason = ""
-except ImportError as e:
-    skip_for_dependencies = True
-    skip_reason = f"dependency not installed: {e.msg}"
-    pass
+skip_for_dependencies = not result.is_successful
+skip_reason = "" if result.is_successful else "dependency not installed"
 
 
-openaiKey = MOCK_OPEN_AI_API_KEY
+openai_key = MOCK_OPEN_AI_API_KEY
 
 
 @pytest.mark.skipif(skip_for_dependencies, reason=skip_reason)
 @patch("llama_index.core.agent.ReActAgent.chat")
 def test_group_chat_with_llama_index_conversable_agent(chat_mock: MagicMock) -> None:
-    """
-    Tests the group chat functionality with two MultimodalConversable Agents.
+    """Tests the group chat functionality with two MultimodalConversable Agents.
     Verifies that the chat is correctly limited by the max_round parameter.
     Each agent is set to describe an image in a unique style, but the chat should not exceed the specified max_rounds.
     """
     llm = OpenAI(
-        model="gpt-4",
+        model="gpt-4o",
         temperature=0.0,
-        api_key=openaiKey,
+        api_key=openai_key,
     )
 
     chat_mock.return_value = AgentChatResponse(
