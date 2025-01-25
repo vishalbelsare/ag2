@@ -466,10 +466,9 @@ def writer_init_messsage(recipient, messages, sender, config):
     sender_history = recipient.chat_messages[sender]
     user_chat_history = f"\nHere are the history of discussions:\n{sender_history}"
 
-    if sender.name == "user":
-        execution_result = msg_content  # TODO: get the execution result of the original source code
-    else:
-        execution_result = ""
+    # TODO: get the execution result of the original source code
+    execution_result = msg_content if sender.name == "user" else ""
+
     writer_sys_msg = (
         WRITER_SYSTEM_MSG.format(
             source_code=recipient.source_code,
