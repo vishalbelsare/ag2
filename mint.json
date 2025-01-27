@@ -474,6 +474,17 @@
         {
           "group": "tools",
           "pages": [
+            {
+              "group": "tools.experimental",
+              "pages": [
+                {
+                  "group": "tools.experimental.browser_use",
+                  "pages": [
+                    "docs/reference/tools/experimental/browser_use/browser_use"
+                  ]
+                }
+              ]
+            },
             "docs/reference/tools/dependency_injection",
             "docs/reference/tools/function_utils",
             "docs/reference/tools/tool"
@@ -669,6 +680,7 @@
             "notebooks/agentchat_langchain",
             "notebooks/agentchat_function_call_code_writing",
             "notebooks/agentchat_oai_code_interpreter",
+            "notebooks/tools_browser_use",
             "notebooks/agentchat_MathChat",
             "notebooks/agentchat_teachability",
             "notebooks/agentchat_realtime_gemini_websocket",
