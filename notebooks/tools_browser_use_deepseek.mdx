@@ -1,17 +1,18 @@
 ---
-custom_edit_url: https://github.com/ag2ai/ag2/edit/main/notebook/tools_browser_use.ipynb
-description: Adding Browsing Capabilities to AG2
-source_notebook: /notebook/tools_browser_use.ipynb
+custom_edit_url: https://github.com/ag2ai/ag2/edit/main/notebook/tools_browser_use_deepseek.ipynb
+description: 'DeepSeek: Adding Browsing Capabilities to AG2'
+source_notebook: /notebook/tools_browser_use_deepseek.ipynb
 tags:
 - tools
 - browser-use
 - webscraping
 - function calling
-title: Adding Browsing Capabilities to AG2
+- deepseek
+title: 'DeepSeek: Adding Browsing Capabilities to AG2'
 ---
 
-<a href="https://colab.research.google.com/github/ag2ai/ag2/blob/main/notebook/tools_browser_use.ipynb" class="colab-badge" target="_blank"><img noZoom src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab" /></a>
-<a href="https://github.com/ag2ai/ag2/blob/main/notebook/tools_browser_use.ipynb" class="github-badge" target="_blank"><img noZoom src="https://img.shields.io/badge/Open%20on%20GitHub-grey?logo=github" alt="Open on GitHub" /></a>
+<a href="https://colab.research.google.com/github/ag2ai/ag2/blob/main/notebook/tools_browser_use_deepseek.ipynb" class="colab-badge" target="_blank"><img noZoom src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab" /></a>
+<a href="https://github.com/ag2ai/ag2/blob/main/notebook/tools_browser_use_deepseek.ipynb" class="github-badge" target="_blank"><img noZoom src="https://img.shields.io/badge/Open%20on%20GitHub-grey?logo=github" alt="Open on GitHub" /></a>
 
 
 
@@ -68,7 +69,14 @@ Configure the agents for the interaction.
     settings.
 
 ```python
-config_list = [{"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}]
+config_list = [
+    {
+        "model": "deepseek-chat",
+        "api_key": os.environ["DEEPSEEK_API_KEY"],
+        "api_type": "deepseek",
+        "base_url": "https://api.deepseek.com/v1",
+    }
+]
 
 llm_config = {
     "config_list": config_list,
@@ -97,6 +105,8 @@ automated tasks where visibility is not necessary.
 browser_use_tool = BrowserUseTool(
     llm_config=llm_config,
     browser_config={"headless": False},
+    # deepseek-chat does not support vision yet
+    agent_kwargs={"use_vision": False, "generate_gif": True},
 )
 
 browser_use_tool.register_for_execution(user_proxy)
@@ -128,7 +138,7 @@ extracted content to the user.
 ```python
 result = user_proxy.initiate_chat(
     recipient=assistant,
-    message="Go to Reddit, search for 'ag2' in the search bar, click on the first post and return the first comment.",
+    message="Go to google.com and search for AG2.",
     max_turns=2,
 )
 ```

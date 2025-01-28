@@ -1618,6 +1618,7 @@
             "notebooks/agentchat_nested_chats_chess_altmodels",
             "notebooks/agentchat_realtime_websocket",
             "notebooks/agentchat_webscraping_with_apify",
+            "notebooks/tools_browser_use_deepseek",
             "notebooks/agentchat_stream",
             "notebooks/agentchat_image_generation_capability",
             "notebooks/agentchat_realtime_swarm_websocket",
