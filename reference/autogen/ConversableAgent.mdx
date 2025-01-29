@@ -1334,7 +1334,7 @@ run(
     self,
     message: str,
     *,
-    clear_history=False,
+    clear_history: bool = False,
     executor_kwargs: dict[str, typing.Any] | None = None,
     tools: autogen.tools.Tool | Iterable[autogen.tools.Tool] | None = None
 ) -> autogen.ChatResult
@@ -1346,7 +1346,7 @@ run(
 | Name | Description |
 |--|--|
 | `message` | the message to be processed.<br/><br/>**Type:** `str` |
-| `clear_history=False` |  |
+| `clear_history` | whether to clear the chat history.<br/><br/>**Type:** `bool`<br/><br/>**Default:** False |
 | `executor_kwargs` | the keyword arguments for the executor.<br/><br/>**Type:** `dict[str, typing.Any] \| None`<br/><br/>**Default:** None |
 | `tools` | the tools to be used by the agent.<br/><br/>**Type:** `autogen.tools.Tool \| Iterable[autogen.tools.Tool] \| None`<br/><br/>**Default:** None |
 
