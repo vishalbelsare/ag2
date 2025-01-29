@@ -1014,23 +1014,8 @@
             {
               "group": "agents",
               "pages": [
-                {
-                  "group": "experimental",
-                  "pages": [
-                    {
-                      "group": "websurfer",
-                      "pages": [
-                        {
-                          "group": "websurfer",
-                          "pages": [
-                            "reference/autogen/agents/experimental/websurfer/websurfer/overview",
-                            "reference/autogen/agents/experimental/websurfer/websurfer/WebSurferAgent"
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
+                "reference/autogen/agents/overview",
+                "reference/autogen/agents/WebSurferAgent"
               ]
             },
             {
