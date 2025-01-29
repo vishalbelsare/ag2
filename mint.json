@@ -1012,6 +1012,28 @@
               ]
             },
             {
+              "group": "agents",
+              "pages": [
+                {
+                  "group": "experimental",
+                  "pages": [
+                    {
+                      "group": "websurfer",
+                      "pages": [
+                        {
+                          "group": "websurfer",
+                          "pages": [
+                            "reference/autogen/agents/experimental/websurfer/websurfer/overview",
+                            "reference/autogen/agents/experimental/websurfer/websurfer/WebSurferAgent"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "group": "browser_utils",
               "pages": [
                 "reference/autogen/browser_utils/overview",
@@ -1642,6 +1664,7 @@
             "notebooks/agentchat_RetrieveChat_pgvector",
             "notebooks/tools_dependency_injection",
             "notebooks/agentchats_sequential_chats",
+            "notebooks/agents_websurfer",
             "notebooks/agentchat_RetrieveChat_mongodb",
             "notebooks/agentchat_azr_ai_search",
             "notebooks/agentchat_reasoning_agent",
