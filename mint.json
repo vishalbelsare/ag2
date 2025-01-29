@@ -1485,6 +1485,7 @@
                 "reference/autogen/tools/get_function_schema",
                 "reference/autogen/tools/load_basemodels_if_needed",
                 "reference/autogen/tools/serialize_to_str",
+                "reference/autogen/tools/tool",
                 {
                   "group": "dependency_injection",
                   "pages": [
