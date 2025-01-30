@@ -1655,6 +1655,7 @@
             "notebooks/agentchat_reasoning_agent",
             "notebooks/agentchat_tabular_data_rag_workflow",
             "notebooks/agentchat_teachable_oai_assistants",
+            "notebooks/agentchat_assistant_agent_standalone",
             "notebooks/autobuild_basic",
             "notebooks/agentchat_multi_task_chats",
             "notebooks/agentchat_function_call_currency_calculator",
