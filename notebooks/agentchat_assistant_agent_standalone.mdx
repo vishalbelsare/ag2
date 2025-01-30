@@ -21,19 +21,22 @@ AG2 supports running `AssistantAgent` as a standalone agent with the
 ability to execute simple tasks without the need for interacting with
 other agents.
 
-To enable our assistant agent access to surf the web, we will use the
-`BrowserUseTool` Tool for which we need to install the browser-use
-optional dependency and
+In this notebook, we’ll enable our assistant agent access to surf the
+web. We will use the `BrowserUseTool` Tool, for which we need to install
+the browser-use optional dependency and
 [playwright](https://playwright.dev/python/docs/intro).
 
-````mdx-code-block
-:::info Requirements
+
+<div class="info Requirements">
+<Info>
 Install `ag2`:
+
 ```bash
 pip install ag2[browser-use]
 playwright install
 ```
-````
+</Info>
+</div>
 
 ```python
 import autogen
