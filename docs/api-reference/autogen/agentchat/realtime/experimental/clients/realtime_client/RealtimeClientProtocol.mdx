@@ -1,31 +1,50 @@
 ---
-sidebarTitle: OpenAIRealtimeWebRTCClient
-title: autogen.agentchat.realtime.experimental.clients.oai.OpenAIRealtimeWebRTCClient
+sidebarTitle: RealtimeClientProtocol
+title: autogen.agentchat.realtime.experimental.clients.realtime_client.RealtimeClientProtocol
 ---
-<h2 id="autogen.agentchat.realtime.experimental.clients.oai.OpenAIRealtimeWebRTCClient" class="doc doc-heading">
+<h2 id="autogen.agentchat.realtime.experimental.clients.realtime_client.RealtimeClientProtocol" class="doc doc-heading">
     <code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>
-    <span class="doc doc-object-name doc-class-name">OpenAIRealtimeWebRTCClient</span>
+    <span class="doc doc-object-name doc-class-name">RealtimeClientProtocol</span>
 </h2>
 
 ```python
-OpenAIRealtimeWebRTCClient(
-    *,
-    llm_config: dict[str, typing.Any],
-    websocket: WebSocket,
-    logger: logging.Logger | None = None
-)
+RealtimeClientProtocol(*args, **kwargs)
 ```
 
-    (Experimental) Client for OpenAI Realtime API that uses WebRTC protocol.
+    Base class for protocol classes.
     
-    (Experimental) Client for OpenAI Realtime API.
+    Protocol classes are defined as::
+    
+        class Proto(Protocol):
+            def meth(self) -> int:
+                ...
+    
+    Such classes are primarily used with static type checkers that recognize
+    structural subtyping (static duck-typing), for example::
+    
+        class C:
+            def meth(self) -> int:
+                return 0
+    
+        def func(x: Proto) -> int:
+            return x.meth()
+    
+        func(C())  # Passes static type check
+    
+    See PEP 544 for details. Protocol classes decorated with
+    @typing.runtime_checkable act as simple-minded runtime protocols that check
+    only the presence of given attributes, ignoring their type signatures.
+    Protocol classes can be generic, they are defined as::
+    
+        class GenProto(Protocol[T]):
+            def meth(self) -> T:
+                ...
 
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `llm_config` | The config for the client.<br/><br/>**Type:** `dict[str, typing.Any]` |
-| `websocket` | **Type:** `WebSocket` |
-| `logger` | **Type:** `logging.Logger \| None`<br/><br/>**Default:** None |
+| `*args` |  |
+| `**kwargs` |  |
 
 ### Static Methods
 
@@ -45,7 +64,7 @@ get_factory(
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `llm_config` | **Type:** `dict[str, typing.Any]` |
+| `llm_config` | The config for the client.<br/><br/>**Type:** `dict[str, typing.Any]` |
 | `logger` | **Type:** `logging.Logger` |
 | `**kwargs` | **Type:** `Any` |
 
@@ -56,28 +75,16 @@ get_factory(
 
 <br />
 
-### Instance Attributes
-
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>
-#### logger
-<br />
-
-    Get the logger for the OpenAI Realtime API.
-
 ### Instance Methods
 
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
 #### connect
 
 ```python
-connect(self) -> AsyncGenerator[None, None]
+connect(self) -> AsyncContextManager[None]
 ```
 
-    Connect to the OpenAI Realtime API.
     
-    In the case of WebRTC, we pass connection information over the
-    websocket, so that javascript on the other end of websocket open
-    actual connection to OpenAI
 
 <br />
 
@@ -88,10 +95,7 @@ connect(self) -> AsyncGenerator[None, None]
 read_events(self) -> AsyncGenerator[autogen.agentchat.realtime.experimental.realtime_events.RealtimeEvent, None]
 ```
 
-    Read messages from the OpenAI Realtime API.
-    Again, in case of WebRTC, we do not read OpenAI messages directly since we
-    do not hold connection to OpenAI. Instead we read messages from the websocket, and javascript
-    client on the other side of the websocket that is connected to OpenAI is relaying events to us.
+    Read messages from a Realtime API.
 
 <br />
 
@@ -102,7 +106,7 @@ read_events(self) -> AsyncGenerator[autogen.agentchat.realtime.experimental.real
 send_audio(self, audio: str) -> None
 ```
 
-    Send audio to the OpenAI Realtime API.
+    Send audio to a Realtime API.
 
 <b>Parameters:</b>
 | Name | Description |
@@ -122,7 +126,7 @@ send_function_result(
 ) -> None
 ```
 
-    Send the result of a function call to the OpenAI Realtime API.
+    Send the result of a function call to a Realtime API.
 
 <b>Parameters:</b>
 | Name | Description |
@@ -144,7 +148,7 @@ send_text(
 ) -> None
 ```
 
-    Send a text message to the OpenAI Realtime API.
+    Send a text message to a Realtime API.
 
 <b>Parameters:</b>
 | Name | Description |
@@ -155,28 +159,13 @@ send_text(
 <br />
 
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
-#### session_init_data
-
-```python
-session_init_data(self) -> List[dict[str, Any]]
-```
-
-    Control initial session with OpenAI.
-
-<br />
-
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
 #### session_update
 
 ```python
 session_update(self, session_options: dict[str, typing.Any]) -> None
 ```
 
-    Send a session update to the OpenAI Realtime API.
-    
-    In the case of WebRTC we can not send it directly, but we can send it
-    to the javascript over the websocket, and rely on it to send session
-    update to OpenAI
+    Send a session update to a Realtime API.
 
 <b>Parameters:</b>
 | Name | Description |
@@ -197,7 +186,7 @@ truncate_audio(
 ) -> None
 ```
 
-    Truncate audio in the OpenAI Realtime API.
+    Truncate audio in a Realtime API.
 
 <b>Parameters:</b>
 | Name | Description |
