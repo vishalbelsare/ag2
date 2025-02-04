@@ -67,8 +67,8 @@ WebSurferAgent(
 generate_surfer_reply(
     self,
     messages: list[dict[str, str]] | None = None,
-    sender: autogen.agentchat.agent.Agent | None = None,
-    config: autogen.oai.client.OpenAIWrapper | None = None
+    sender: autogen.Agent | None = None,
+    config: autogen.OpenAIWrapper | None = None
 ) -> tuple[bool, str | dict[str, str] | None]
 ```
 
@@ -78,7 +78,7 @@ generate_surfer_reply(
 | Name | Description |
 |--|--|
 | `messages` | **Type:** `list[dict[str, str]] \| None`<br/><br/>**Default:** None |
-| `sender` | **Type:** `autogen.agentchat.agent.Agent \| None`<br/><br/>**Default:** None |
-| `config` | **Type:** `autogen.oai.client.OpenAIWrapper \| None`<br/><br/>**Default:** None |
+| `sender` | **Type:** `autogen.Agent \| None`<br/><br/>**Default:** None |
+| `config` | **Type:** `autogen.OpenAIWrapper \| None`<br/><br/>**Default:** None |
 
 <br />

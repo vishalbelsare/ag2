@@ -348,8 +348,6 @@
             {
               "group": "agentchat",
               "pages": [
-                "docs/api-reference/autogen/agentchat/overview",
-                "docs/api-reference/autogen/agentchat/a_initiate_chats",
                 {
                   "group": "chat",
                   "pages": [
@@ -1062,7 +1060,6 @@
                               "group": "realtime_client",
                               "pages": [
                                 "docs/api-reference/autogen/agentchat/realtime/experimental/clients/realtime_client/overview",
-                                "docs/api-reference/autogen/agentchat/realtime/experimental/clients/realtime_client/RealtimeClientProtocol",
                                 "docs/api-reference/autogen/agentchat/realtime/experimental/clients/realtime_client/register_realtime_client"
                               ]
                             }
@@ -1269,13 +1266,6 @@
               "pages": [
                 "docs/api-reference/autogen/exception_utils/overview",
                 "docs/api-reference/autogen/exception_utils/ModelToolNotSupportedError"
-              ]
-            },
-            {
-              "group": "formatting_utils",
-              "pages": [
-                "docs/api-reference/autogen/formatting_utils/overview",
-                "docs/api-reference/autogen/formatting_utils/colored"
               ]
             },
             {
