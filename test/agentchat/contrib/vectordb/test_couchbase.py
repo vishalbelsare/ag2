@@ -7,18 +7,19 @@
 import os
 import random
 import sys
+from datetime import timedelta
 from time import sleep
 
 import pytest
 from dotenv import load_dotenv
 
+from autogen.agentchat.contrib.vectordb.couchbase import CouchbaseVectorDB
 from autogen.import_utils import optional_import_block
 
 with optional_import_block() as result:
     from couchbase.auth import PasswordAuthenticator
-    from couchbase.cluster import Cluster, ClusterOptions
-
-    from autogen.agentchat.contrib.vectordb.couchbase import CouchbaseVectorDB
+    from couchbase.cluster import Cluster
+    from couchbase.options import ClusterOptions
 
 COUCHBASE_INSTALLED = result.is_successful
 skip = not result.is_successful
@@ -49,18 +50,27 @@ TIMEOUT = 120.0
 def _empty_collections_and_delete_indexes(cluster: Cluster, bucket_name, scope_name, collections=None):
     bucket = cluster.bucket(bucket_name)
     try:
-        scope_manager = bucket.collections().get_all_scopes(scope_name=scope_name)
+        scope_manager = bucket.collections().get_all_scopes()
         for scope_ in scope_manager:
-            all_collections = scope_.collections
-            for curr_collection in all_collections:
-                bucket.collections().drop_collection(scope_name, curr_collection.name)
+            if scope_._name == scope_name:
+                all_collections = scope_.collections
+
+                for curr_collection in all_collections:
+                    try:
+                        bucket.collections().drop_collection(scope_name, curr_collection.name)
+                    except Exception as e:
+                        print(f"Error dropping collection {curr_collection.name}: {e}")
+
     except Exception as e:
         raise e
 
 
+@pytest.fixture
 def db():
-    print("Creating couchbase connection", COUCHBASE_HOST, COUCHBASE_USERNAME, COUCHBASE_PASSWORD)
-    cluster = Cluster(COUCHBASE_HOST, ClusterOptions(PasswordAuthenticator(COUCHBASE_USERNAME, COUCHBASE_PASSWORD)))
+    cluster = Cluster.connect(
+        COUCHBASE_HOST, ClusterOptions(PasswordAuthenticator(COUCHBASE_USERNAME, COUCHBASE_PASSWORD))
+    )
+    cluster.wait_until_ready(timedelta(seconds=5))
     _empty_collections_and_delete_indexes(cluster, COUCHBASE_BUCKET, COUCHBASE_SCOPE)
     vectorstore = CouchbaseVectorDB(
         connection_string=COUCHBASE_HOST,
@@ -78,6 +88,7 @@ def db():
 _COLLECTION_NAMING_CACHE = []
 
 
+@pytest.fixture
 def collection_name():
     collection_id = random.randint(0, 100)
     while collection_id in _COLLECTION_NAMING_CACHE:

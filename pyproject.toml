@@ -115,7 +115,7 @@ retrievechat-qdrant = [
 
 retrievechat-couchbase = [
     "pyautogen[retrievechat]",
-    "couchbase>=4.3.0,<5.0",
+    "couchbase>=4.3.0",
 ]
 
 graph-rag-falkor-db = [
