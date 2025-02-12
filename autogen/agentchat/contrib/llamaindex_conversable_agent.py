@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -13,25 +13,13 @@ from .vectordb.utils import get_logger
 
 logger = get_logger(__name__)
 
-with optional_import_block() as result:
+with optional_import_block():
     from llama_index.core.agent.runner.base import AgentRunner
     from llama_index.core.base.llms.types import ChatMessage
     from llama_index.core.chat_engine.types import AgentChatResponse
-    from pydantic import BaseModel
-    from pydantic import __version__ as pydantic_version
+    from pydantic import BaseModel, ConfigDict
 
-if result.is_successful:
-    # let's Avoid: AttributeError: type object 'Config' has no attribute 'copy'
-    # check for v1 like in autogen/_pydantic.py
-    is_pydantic_v1 = pydantic_version.startswith("1.")
-    if not is_pydantic_v1:
-        from pydantic import ConfigDict
-
-        Config = ConfigDict(arbitrary_types_allowed=True)
-    else:
-
-        class Config:
-            arbitrary_types_allowed = True
+    Config = ConfigDict(arbitrary_types_allowed=True)
 
     # Add Pydantic configuration to allow arbitrary types
     # Added to mitigate PydanticSchemaGenerationError
@@ -54,7 +42,7 @@ class LLamaIndexConversableAgent(ConversableAgent):
         description (str): a short description of the agent. This description is used by other agents
             (e.g. the GroupChatManager) to decide when to call upon this agent.
         **kwargs (dict): Please refer to other kwargs in
-            [ConversableAgent](../conversable_agent#init).
+            [ConversableAgent](/docs/api-reference/autogen/ConversableAgent#conversableagent).
         """
         if llama_index_agent is None:
             raise ValueError("llama_index_agent must be provided")
@@ -84,7 +72,7 @@ class LLamaIndexConversableAgent(ConversableAgent):
         """Generate a reply using autogen.oai."""
         user_message, history = self._extract_message_and_history(messages=messages, sender=sender)
 
-        chat_response: "AgentChatResponse" = self._llama_index_agent.chat(message=user_message, chat_history=history)
+        chat_response: AgentChatResponse = self._llama_index_agent.chat(message=user_message, chat_history=history)
 
         extracted_response = chat_response.response
 
@@ -99,7 +87,7 @@ class LLamaIndexConversableAgent(ConversableAgent):
         """Generate a reply using autogen.oai."""
         user_message, history = self._extract_message_and_history(messages=messages, sender=sender)
 
-        chat_response: "AgentChatResponse" = await self._llama_index_agent.achat(
+        chat_response: AgentChatResponse = await self._llama_index_agent.achat(
             message=user_message, chat_history=history
         )
 
@@ -120,11 +108,10 @@ class LLamaIndexConversableAgent(ConversableAgent):
         message = messages[-1].get("content", "")
 
         history = messages[:-1]
-        history_messages: list["ChatMessage"] = []
+        history_messages: list[ChatMessage] = []
         for history_message in history:
             content = history_message.get("content", "")
             role = history_message.get("role", "user")
-            if role:
-                if role == "user" or role == "assistant":
-                    history_messages.append(ChatMessage(content=content, role=role, additional_kwargs={}))
+            if role and (role == "user" or role == "assistant"):
+                history_messages.append(ChatMessage(content=content, role=role, additional_kwargs={}))
         return message, history_messages

@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - 2025, Owners of https://github.com/ag2ai
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
 
+from ....doc_utils import export_module
 from ....import_utils import optional_import_block, require_optional_import
 
 with optional_import_block():
@@ -18,8 +19,7 @@ _logger = logging.getLogger(__name__)
 
 
 def is_url(url: str) -> bool:
-    """
-    Check if the string is a valid URL.
+    """Check if the string is a valid URL.
 
     It checks whether the URL has a valid scheme and network location.
     """
@@ -37,8 +37,7 @@ def is_url(url: str) -> bool:
 
 @require_optional_import(["selenium", "webdriver_manager"], "rag")
 def _download_rendered_html(url: str) -> str:
-    """
-    Downloads a rendered HTML page of a given URL using headless ChromeDriver.
+    """Downloads a rendered HTML page of a given URL using headless ChromeDriver.
 
     Args:
         url (str): URL of the page to download.
@@ -82,17 +81,16 @@ def download_url(url: Any, output_dir: Optional[Union[str, Path]] = None) -> Pat
     filename = url_path.name or "downloaded_content.html"
     if len(filename) < 5 or filename[-5:] != ".html":
         filename += ".html"
-    output_dir = Path(output_dir) if output_dir else Path(".")
+    output_dir = Path(output_dir) if output_dir else Path()
     filepath = output_dir / filename
-    with filepath.open("w", encoding="utf-8") as f:
+    with open(file=filepath, mode="w", encoding="utf-8") as f:
         f.write(rendered_html)
 
     return filepath
 
 
 def list_files(directory: Union[Path, str]) -> list[Path]:
-    """
-    Recursively list all files in a directory.
+    """Recursively list all files in a directory.
 
     This function will raise an exception if the directory does not exist.
     """
@@ -104,14 +102,16 @@ def list_files(directory: Union[Path, str]) -> list[Path]:
     return [f for f in path.rglob("*") if f.is_file()]
 
 
+@export_module("autogen.agentchat.contrib.rag")
 def handle_input(input_path: Union[Path, str], output_dir: Optional[Union[Path, str]] = None) -> list[Path]:
     """Process the input string and return the appropriate file paths"""
-    input_path = Path(input_path)
 
-    if is_url(str(input_path)):
+    if isinstance(input_path, str) and is_url(input_path):
         _logger.info("Detected URL. Downloading content...")
         return [download_url(url=input_path, output_dir=output_dir)]
-    elif input_path.is_dir():
+    else:
+        input_path = Path(input_path)
+    if input_path.is_dir():
         _logger.info("Detected directory. Listing files...")
         return list_files(directory=input_path)
     elif input_path.is_file():

@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - 2025, Owners of https://github.com/ag2ai
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -397,7 +397,7 @@ Ensure the JSON is properly formatted and matches the schema exactly."""
         # Add formatting to last user message
         params["system"] += "\n\n" + format_content
 
-    def _extract_json_response(self, response: "Message") -> Any:
+    def _extract_json_response(self, response: Message) -> Any:
         """Extract and validate JSON response from the output for structured outputs.
 
         Args:
@@ -429,9 +429,7 @@ Ensure the JSON is properly formatted and matches the schema exactly."""
             json_data = json.loads(json_str)
             return self._response_format.model_validate(json_data)
         except Exception as e:
-            raise ValueError(
-                f"Failed to parse response as valid JSON matching the schema for Structured Output: {str(e)}"
-            )
+            raise ValueError(f"Failed to parse response as valid JSON matching the schema for Structured Output: {e!s}")
 
 
 def _format_json_response(response: Any) -> str:
@@ -493,12 +491,10 @@ def oai_messages_to_anthropic_messages(params: dict[str, Any]) -> list[dict[str,
                     last_tool_use_index = len(processed_messages) - 1
                 else:
                     # Not using tools, so put in a plain text message
-                    processed_messages.append(
-                        {
-                            "role": "assistant",
-                            "content": f"Some internal function(s) that could be used: [{', '.join(tool_names)}]",
-                        }
-                    )
+                    processed_messages.append({
+                        "role": "assistant",
+                        "content": f"Some internal function(s) that could be used: [{', '.join(tool_names)}]",
+                    })
             elif "tool_call_id" in message:
                 if has_tools:
                     # Map the tool usage call to tool_result for Anthropic
@@ -523,9 +519,10 @@ def oai_messages_to_anthropic_messages(params: dict[str, Any]) -> list[dict[str,
                     tool_result_messages += 1
                 else:
                     # Not using tools, so put in a plain text message
-                    processed_messages.append(
-                        {"role": "user", "content": f"Running the function returned: {message['content']}"}
-                    )
+                    processed_messages.append({
+                        "role": "user",
+                        "content": f"Running the function returned: {message['content']}",
+                    })
             elif message["content"] == "":
                 # Ignoring empty messages
                 pass

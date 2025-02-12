@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -218,7 +218,7 @@ class RetrieveUserProxyAgent(UserProxyAgent):
                 - `distance_threshold` (Optional, float) - the threshold for the distance score, only
                     distance smaller than it will be returned. Will be ignored if < 0. Default is -1.
 
-            `**kwargs` (dict): other kwargs in [UserProxyAgent](../user_proxy_agent#init).
+            `**kwargs` (dict): other kwargs in [UserProxyAgent](/docs/api-reference/autogen/UserProxyAgent#userproxyagent).
 
         Example:
         Example of overriding retrieve_docs - If you have set up a customized vector db, and it's
@@ -285,7 +285,7 @@ class RetrieveUserProxyAgent(UserProxyAgent):
         self._custom_text_types = self._retrieve_config.get("custom_text_types", TEXT_FORMATS)
         self._recursive = self._retrieve_config.get("recursive", True)
         self._context_max_tokens = self._retrieve_config.get("context_max_tokens", self._max_tokens * 0.8)
-        self._collection = True if self._docs_path is None else False  # whether the collection is created
+        self._collection = self._docs_path is None  # whether the collection is created
         self._ipython = get_ipython()
         self._doc_idx = -1  # the index of the current used doc
         self._results = []  # the results of the current query

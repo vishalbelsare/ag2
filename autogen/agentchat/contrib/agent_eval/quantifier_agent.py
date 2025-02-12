@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -34,6 +34,6 @@ class QuantifierAgent(ConversableAgent):
             Please override this attribute if you want to reprogram the agent.
         description (str): The description of the agent.
         **kwargs (dict): Please refer to other kwargs in
-            [ConversableAgent](../../conversable_agent#init).
+            [ConversableAgent](/docs/api-reference/autogen/ConversableAgent#conversableagent).
         """
         super().__init__(name=name, system_message=system_message, description=description, **kwargs)
