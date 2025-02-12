@@ -125,9 +125,6 @@ jobs:
       - name: Install pgvector when on linux
         run: |
           uv pip install --system -e .[test,retrievechat-pgvector,retrievechat-mongodb]
-      - name: Install couchbase when on linux
-        run: |
-          uv pip install --system -e .[retrievechat-couchbase]
       - name: Set AUTOGEN_USE_DOCKER based on OS
         shell: bash
         run: |
@@ -141,7 +138,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
-          flags: retrievechat, retrievechat-qdrant, retrievechat-pgvector, retrievechat-mongodb, retrievechat-couchbase, ubuntu-latest, ${{ matrix.python-version }}
+          flags: retrievechat, retrievechat-qdrant, retrievechat-pgvector, retrievechat-mongodb, ubuntu-latest, ${{ matrix.python-version }}
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
