@@ -275,9 +275,9 @@ class CouchbaseVectorDB(VectorDB):
             docs_to_upsert = dict()
             for doc in batch:
                 doc_id = doc["id"]
-                embedding = self.embedding_function(
-                    [doc["content"]]
-                ).tolist()  # Gets new embedding even in case of document update
+                embedding = self.embedding_function([
+                    doc["content"]
+                ]).tolist()  # Gets new embedding even in case of document update
                 doc_content = {
                     TEXT_KEY: doc["content"],
                     "metadata": doc.get("metadata", {}),
