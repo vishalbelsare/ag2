@@ -385,7 +385,7 @@ class CouchbaseVectorDB(VectorDB):
 
         results: QueryResults = []
         for query_text in queries:
-            query_vector = np.array(self.embedding_function([query_text])).tolist()[0]
+            query_vector: list[float] = np.array(self.embedding_function([query_text])).tolist()[0]
             query_result = self._vector_search(
                 query_vector,
                 n_results,

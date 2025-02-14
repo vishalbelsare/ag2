@@ -10,6 +10,7 @@ from typing import (
     Callable,
     Optional,
     Protocol,
+    TypeAlias,
     TypedDict,
     Union,
     runtime_checkable,
@@ -42,7 +43,7 @@ class Document(TypedDict):
 A query is a list containing one string while queries is a list containing multiple strings.
 The response is a list of query results, each query result is a list of tuples containing the document and the distance.
 """
-QueryResults = list[list[tuple[Document, float]]]
+QueryResults: TypeAlias = list[list[tuple[Document, float]]]
 
 
 @export_module("agentchat.contrib.vectordb")
