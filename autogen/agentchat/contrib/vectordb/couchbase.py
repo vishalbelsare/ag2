@@ -10,17 +10,20 @@ from datetime import timedelta
 from typing import Any, Callable, Dict, List, Literal, Tuple, Union
 
 import numpy as np
-from couchbase import search
-from couchbase.auth import PasswordAuthenticator
-from couchbase.cluster import Cluster, ClusterOptions
-from couchbase.collection import Collection
-from couchbase.management.search import SearchIndex
-from couchbase.options import SearchOptions
-from couchbase.vector_search import VectorQuery, VectorSearch
-from sentence_transformers import SentenceTransformer
 
+from ....import_utils import optional_import_block, require_optional_import
 from .base import Document, ItemID, QueryResults, VectorDB
 from .utils import get_logger
+
+with optional_import_block():
+    from couchbase import search
+    from couchbase.auth import PasswordAuthenticator
+    from couchbase.cluster import Cluster, ClusterOptions
+    from couchbase.collection import Collection
+    from couchbase.management.search import SearchIndex
+    from couchbase.options import SearchOptions
+    from couchbase.vector_search import VectorQuery, VectorSearch
+    from sentence_transformers import SentenceTransformer
 
 logger = get_logger(__name__)
 
@@ -30,6 +33,7 @@ TEXT_KEY = "content"
 EMBEDDING_KEY = "embedding"
 
 
+@require_optional_import(["couchbase"], "retrievechat-couchbase")
 class CouchbaseVectorDB(VectorDB):
     """
     A vector database implementation that uses Couchbase as the backend.
