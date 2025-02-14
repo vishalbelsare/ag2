@@ -8,7 +8,9 @@ import logging
 from typing import Any, Optional
 
 from termcolor import colored
+from termcolor.termcolor import Color  # type: ignore[attr-defined]
 
+from ....doc_utils import export_module
 from .base import QueryResults
 
 
@@ -16,25 +18,26 @@ class ColoredLogger(logging.Logger):
     def __init__(self, name: str, level: int = logging.NOTSET) -> None:
         super().__init__(name, level)
 
-    def debug(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
+    def debug(self, msg: str, *args: Any, color: Optional[Color] = None, **kwargs: Any) -> None:  # type: ignore[override]
         super().debug(colored(msg, color), *args, **kwargs)
 
-    def info(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
+    def info(self, msg: str, *args: Any, color: Optional[Color] = None, **kwargs: Any) -> None:  # type: ignore[override]
         super().info(colored(msg, color), *args, **kwargs)
 
-    def warning(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
+    def warning(self, msg: str, *args: Any, color: Optional[Color] = None, **kwargs: Any) -> None:  # type: ignore[override]
         super().warning(colored(msg, color), *args, **kwargs)
 
-    def error(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
+    def error(self, msg: str, *args: Any, color: Optional[Color] = None, **kwargs: Any) -> None:  # type: ignore[override]
         super().error(colored(msg, color), *args, **kwargs)
 
-    def critical(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
+    def critical(self, msg: str, *args: Any, color: Optional[Color] = None, **kwargs: Any) -> None:  # type: ignore[override]
         super().critical(colored(msg, color), *args, **kwargs)
 
-    def fatal(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
+    def fatal(self, msg: str, *args: Any, color: Optional[Color] = None, **kwargs: Any) -> None:  # type: ignore[override]
         super().fatal(colored(msg, color), *args, **kwargs)
 
 
+@export_module("agentchat.contrib.vectordb")
 def get_logger(name: str, level: int = logging.INFO) -> ColoredLogger:
     logger = ColoredLogger(name, level)
     console_handler = logging.StreamHandler()
@@ -47,6 +50,7 @@ def get_logger(name: str, level: int = logging.INFO) -> ColoredLogger:
 logger = get_logger(__name__)
 
 
+@export_module("agentchat.contrib.vectordb")
 def filter_results_by_distance(results: QueryResults, distance_threshold: float = -1) -> QueryResults:
     """Filters results based on a distance threshold.
 
@@ -63,7 +67,10 @@ def filter_results_by_distance(results: QueryResults, distance_threshold: float 
     return results
 
 
-def chroma_results_to_query_results(data_dict: dict[str, list[list[Any]]], special_key="distances") -> QueryResults:
+@export_module("agentchat.contrib.vectordb")
+def chroma_results_to_query_results(
+    data_dict: dict[str, list[list[Any]]], special_key: str = "distances"
+) -> QueryResults:
     """Converts a dictionary with list-of-list values to a list of tuples.
 
     Args:
@@ -123,4 +130,5 @@ def chroma_results_to_query_results(data_dict: dict[str, list[list[Any]]], speci
             sub_result.append((sub_dict, distance))
         result.append(sub_result)
 
-    return result
+    # todo: fix typing
+    return result  # type: ignore[return-value]

@@ -392,6 +392,7 @@ files = [
     "autogen/import_utils.py",
     "autogen/agentchat/contrib/rag",
     "autogen/agentchat/contrib/vectordb/couchbase.py",
+    "autogen/agentchat/contrib/vectordb/utils.py",
     "website/*.py",
     "test/io",
     "test/tools",
@@ -403,6 +404,7 @@ files = [
     "test/test_import.py",
     "test/agentchat/contrib/rag",
     "test/agentchat/contrib/vectordb/test_couchbase.py",
+    "test/agentchat/contrib/vectordb/test_utils.py",
     "test/website",
 ]
 
