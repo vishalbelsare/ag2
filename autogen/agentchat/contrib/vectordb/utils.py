@@ -51,7 +51,7 @@ logger = get_logger(__name__)
 
 
 @export_module("agentchat.contrib.vectordb")
-def filter_results_by_distance(results: QueryResults, distance_threshold: float = -1) -> QueryResults:
+def filter_results_by_distance(results: QueryResults, distance_threshold: float = -1) -> QueryResults:  # type: ignore[no-any-unimported]
     """Filters results based on a distance threshold.
 
     Args:
@@ -68,7 +68,7 @@ def filter_results_by_distance(results: QueryResults, distance_threshold: float 
 
 
 @export_module("agentchat.contrib.vectordb")
-def chroma_results_to_query_results(
+def chroma_results_to_query_results(  # type: ignore[no-any-unimported]
     data_dict: dict[str, list[list[Any]]], special_key: str = "distances"
 ) -> QueryResults:
     """Converts a dictionary with list-of-list values to a list of tuples.

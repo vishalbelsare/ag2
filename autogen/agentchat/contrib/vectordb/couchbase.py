@@ -371,7 +371,7 @@ class CouchbaseVectorDB(VectorDB):
         # todo: return type is wrong, should be List[Document]
         return [{k: v for k, v in doc.items() if k in include or k == "id"} for doc in docs]  # type: ignore[misc]
 
-    def retrieve_docs(
+    def retrieve_docs(  # type: ignore[no-any-unimported]
         self,
         queries: list[str],
         collection_name: Optional[str] = None,
@@ -383,7 +383,7 @@ class CouchbaseVectorDB(VectorDB):
         Note: Distance threshold is not supported in Couchbase FTS.
         """
 
-        results: QueryResults = []
+        results: QueryResults = []  # type: ignore[no-any-unimported]
         for query_text in queries:
             # todo: fix typing
             query_vector: list[float] = np.array(self.embedding_function([query_text])).tolist()[0]  # type: ignore[assignment]
