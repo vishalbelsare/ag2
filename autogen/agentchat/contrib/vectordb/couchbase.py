@@ -66,6 +66,8 @@ class CouchbaseVectorDB(VectorDB):
             wait_until_document_ready (float | None): Blocking call to wait until the database documents are ready. None means no wait. Default is None.
         """
 
+        if embedding_function is None:
+            embedding_function = SentenceTransformer("all-MiniLM-L6-v2").encode
         self.embedding_function = embedding_function
         self.index_name = index_name
 
