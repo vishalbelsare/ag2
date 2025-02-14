@@ -2,4 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__: list[str] = []
+from .base import VectorDBFactory
+
+__all__ = ["VectorDBFactory"]

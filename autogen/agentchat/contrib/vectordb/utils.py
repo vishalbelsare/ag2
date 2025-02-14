@@ -5,7 +5,7 @@
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from termcolor import colored
 
@@ -13,25 +13,25 @@ from .base import QueryResults
 
 
 class ColoredLogger(logging.Logger):
-    def __init__(self, name, level=logging.NOTSET):
+    def __init__(self, name: str, level: int = logging.NOTSET) -> None:
         super().__init__(name, level)
 
-    def debug(self, msg, *args, color=None, **kwargs):
+    def debug(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
         super().debug(colored(msg, color), *args, **kwargs)
 
-    def info(self, msg, *args, color=None, **kwargs):
+    def info(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
         super().info(colored(msg, color), *args, **kwargs)
 
-    def warning(self, msg, *args, color="yellow", **kwargs):
+    def warning(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
         super().warning(colored(msg, color), *args, **kwargs)
 
-    def error(self, msg, *args, color="light_red", **kwargs):
+    def error(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
         super().error(colored(msg, color), *args, **kwargs)
 
-    def critical(self, msg, *args, color="red", **kwargs):
+    def critical(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
         super().critical(colored(msg, color), *args, **kwargs)
 
-    def fatal(self, msg, *args, color="red", **kwargs):
+    def fatal(self, msg: str, *args: Any, color: Optional[str] = None, **kwargs: Any) -> None:
         super().fatal(colored(msg, color), *args, **kwargs)
 
 

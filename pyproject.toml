@@ -378,6 +378,7 @@ convention = "google"
 
 
 [tool.mypy]
+
 files = [
     "autogen/logger",
     "autogen/exception_utils.py",
@@ -390,6 +391,7 @@ files = [
     "autogen/messages",
     "autogen/import_utils.py",
     "autogen/agentchat/contrib/rag",
+    "autogen/agentchat/contrib/vectordb/couchbase.py",
     "website/*.py",
     "test/io",
     "test/tools",
@@ -400,6 +402,7 @@ files = [
     "test/test_import_utils.py",
     "test/test_import.py",
     "test/agentchat/contrib/rag",
+    "test/agentchat/contrib/vectordb/test_couchbase.py",
     "test/website",
 ]
 

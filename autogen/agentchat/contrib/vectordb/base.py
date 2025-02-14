@@ -63,9 +63,7 @@ class VectorDB(Protocol):
 
     active_collection: Any = None
     type: str = ""
-    embedding_function: Optional[Callable[[list[str]], list[list[float]]]] = (
-        None  # embeddings = embedding_function(sentences)
-    )
+    embedding_function: Optional[Callable[[list[str]], list[list[float]]]] = None
 
     def create_collection(self, collection_name: str, overwrite: bool = False, get_or_create: bool = True) -> Any:
         """Create a collection in the vector database.
