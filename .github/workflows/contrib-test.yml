@@ -65,6 +65,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -138,6 +139,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -170,6 +172,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -208,6 +211,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -246,6 +250,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -284,6 +289,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -328,6 +334,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -371,6 +378,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -409,6 +417,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -442,6 +451,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -485,6 +495,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -528,6 +539,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -571,6 +583,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -614,6 +627,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -657,6 +671,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -696,6 +711,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -739,6 +755,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -782,6 +799,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -825,6 +843,7 @@ jobs:
       - name: Show coverage report
         run: bash scripts/show-coverage-report.sh
       - name: Upload coverage to Codecov
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
@@ -879,6 +898,7 @@ jobs:
         - name: Show coverage report
           run: bash scripts/show-coverage-report.sh
         - name: Upload coverage to Codecov
+          if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
           uses: codecov/codecov-action@v5
           with:
             files: ./coverage.xml
