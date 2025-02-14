@@ -33,7 +33,7 @@ TEXT_KEY = "content"
 EMBEDDING_KEY = "embedding"
 
 
-@require_optional_import(["couchbase"], "retrievechat-couchbase")
+@require_optional_import(["couchbase", "sentence_transformers"], "retrievechat-couchbase")
 class CouchbaseVectorDB(VectorDB):
     """
     A vector database implementation that uses Couchbase as the backend.
@@ -45,7 +45,7 @@ class CouchbaseVectorDB(VectorDB):
         username: str = "Administrator",
         password: str = "password",
         bucket_name: str = "vector_db",
-        embedding_function: Callable = SentenceTransformer("all-MiniLM-L6-v2").encode,  # type: ignore
+        embedding_function: Callable = SentenceTransformer("all-MiniLM-L6-v2").encode,
         scope_name: str = "_default",
         collection_name: str = "_default",
         index_name: str = None,
