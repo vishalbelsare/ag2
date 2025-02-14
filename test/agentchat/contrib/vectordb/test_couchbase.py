@@ -6,7 +6,6 @@
 # SPDX-License-Identifier: MIT
 import os
 import random
-import sys
 from datetime import timedelta
 from time import sleep
 
@@ -14,7 +13,7 @@ import pytest
 from dotenv import load_dotenv
 
 from autogen.agentchat.contrib.vectordb.couchbase import CouchbaseVectorDB
-from autogen.import_utils import optional_import_block
+from autogen.import_utils import optional_import_block, skip_on_missing_imports
 
 with optional_import_block() as result:
     from couchbase.auth import PasswordAuthenticator
@@ -97,10 +96,7 @@ def collection_name():
     return f"{COUCHBASE_COLLECTION}_{collection_id}"
 
 
-@pytest.mark.skipif(
-    sys.platform in ["darwin", "win32"] or not COUCHBASE_INSTALLED or skip,
-    reason="do not run on MacOS or windows OR dependency is not installed OR requested to skip",
-)
+@skip_on_missing_imports(["couchbase"], "retrievechat-couchbase")
 def test_couchbase(db, collection_name):
     # db = CouchbaseVectorDB(path=".db")
     with pytest.raises(Exception):
