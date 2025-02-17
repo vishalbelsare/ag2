@@ -70,6 +70,10 @@
       "url": "docs/use-cases"
     },
     {
+      "name": "User Stories",
+      "url": "docs/user-stories"
+    },
+    {
       "name": "Contribute",
       "url": "docs/contributor-guide"
     },
@@ -84,10 +88,6 @@
     {
       "name": "Blog",
       "url": "docs/blog"
-    },
-    {
-      "name": "Community Talks",
-      "url": "docs/talks"
     }
   ],
   "anchors": [],
@@ -123,8 +123,16 @@
             "docs/user-guide/advanced-concepts/rag",
             "docs/user-guide/advanced-concepts/custom-group-chat",
             "docs/user-guide/advanced-concepts/resuming-group-chat",
-            "docs/user-guide/advanced-concepts/swarm-deep-dive",
-            "docs/user-guide/advanced-concepts/enhanced-swarm",
+            {
+              "group": "Swarm",
+              "pages":
+              [
+                "docs/user-guide/advanced-concepts/swarm/deep-dive",
+                "docs/user-guide/advanced-concepts/swarm/nested-chat",
+                "docs/user-guide/advanced-concepts/swarm/concept-code",
+                "docs/user-guide/advanced-concepts/swarm/use-case"
+              ]
+            },
             "docs/user-guide/advanced-concepts/code-execution",
             "docs/user-guide/advanced-concepts/tools-with-secrets",
             "docs/user-guide/advanced-concepts/conversation-patterns-deep-dive",
@@ -169,13 +177,14 @@
           "pages": [
             "docs/use-cases/reference-agents/index",
             "docs/use-cases/reference-agents/captainagent",
+            "docs/use-cases/reference-agents/communication-agents",
             "docs/use-cases/reference-agents/reasoningagent",
             "docs/use-cases/reference-agents/websurferagent"
           ]
         },
         {
           "group": "Notebooks",
-          "pages": ["docs/use-cases/notebooks/notebooks"]
+          "pages": ["docs/use-cases/notebooks/Notebooks"]
         },
         "docs/use-cases/community-gallery/community-gallery"
       ]
