@@ -8,7 +8,7 @@ title: autogen.tools.experimental.DeepResearchTool
 </h2>
 
 ```python
-DeepResearchTool(llm_config: dict[str, typing.Any], max_web_steps: int = 30)
+DeepResearchTool(llm_config: dict[str, Any], max_web_steps: int = 30)
 ```
 
     A tool that delegates a web research task to the subteams of agents.<br/>Initialize the DeepResearchTool.<br/>
@@ -16,8 +16,8 @@ DeepResearchTool(llm_config: dict[str, typing.Any], max_web_steps: int = 30
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `llm_config` | **Type:** `dict[str, typing.Any]` |
-| `max_web_steps` | **Type:** `int`<br/><br/>**Default:** 30 |
+| `llm_config` | **Type:** dict[str, typing.Any] |
+| `max_web_steps` | **Type:** int<br/><br/>**Default:** 30 |
 
 ### Class Attributes
 
@@ -39,7 +39,7 @@ DeepResearchTool(llm_config: dict[str, typing.Any], max_web_steps: int = 30
 #### get_generate_subquestions
 
 ```python
-get_generate_subquestions(llm_config: dict[str, typing.Any], max_web_steps: int) -> Callable[..., str]
+get_generate_subquestions(llm_config: dict[str, Any], max_web_steps: int) -> Callable[..., str]
 ```
 
     
@@ -47,7 +47,7 @@ get_generate_subquestions(llm_config: dict[str, typing.Any], max_web_steps: i
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `llm_config` | **Type:** `dict[str, typing.Any]` |
-| `max_web_steps` | **Type:** `int` |
+| `llm_config` | **Type:** dict[str, typing.Any] |
+| `max_web_steps` | **Type:** int |
 
 <br />
