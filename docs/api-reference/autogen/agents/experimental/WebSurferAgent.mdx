@@ -9,8 +9,9 @@ title: autogen.agents.experimental.WebSurferAgent
 
 ```python
 WebSurferAgent(
+    *,
     llm_config: dict[str, Any],
-    *args,
+    web_tool_llm_config: dict[str, Any] | None = None,
     web_tool: Literal['browser_use', 'crawl4ai'] = 'browser_use',
     web_tool_kwargs: dict[str, Any] = None,
     **kwargs: Any
@@ -23,7 +24,7 @@ WebSurferAgent(
 | Name | Description |
 |--|--|
 | `llm_config` | **Type:** dict[str, typing.Any] |
-| `*args` |  |
+| `web_tool_llm_config` | **Type:** dict[str, typing.Any] \| None<br/><br/>**Default:** None |
 | `web_tool` | **Type:** Literal['browser_use', 'crawl4ai']<br/><br/>**Default:** 'browser_use' |
 | `web_tool_kwargs` | **Type:** dict[str, typing.Any]<br/><br/>**Default:** None |
 | `**kwargs` | **Type:** Any |
