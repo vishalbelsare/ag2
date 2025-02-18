@@ -45,7 +45,7 @@ log_chat_completion(
 ) -> None
 ```
 
-    Log a chat completion to database.<br/>In AutoGen, chat completions are somewhat complicated because they are handled by the `autogen.oai.OpenAIWrapper` class.<br/>One invocation to `create` can lead to multiple underlying OpenAI calls, depending on the llm_config list used, and
+    Log a chat completion to database.<br/>In AG2, chat completions are somewhat complicated because they are handled by the `autogen.oai.OpenAIWrapper` class.<br/>One invocation to `create` can lead to multiple underlying OpenAI calls, depending on the llm_config list used, and
     any errors or retries.<br/>
 
 <b>Parameters:</b>
