@@ -1411,7 +1411,9 @@
                 "docs/api-reference/autogen/interop/CrewAIInteroperability",
                 "docs/api-reference/autogen/interop/Interoperability",
                 "docs/api-reference/autogen/interop/Interoperable",
+                "docs/api-reference/autogen/interop/LangChainChatModelFactory",
                 "docs/api-reference/autogen/interop/LangChainInteroperability",
+                "docs/api-reference/autogen/interop/LiteLLmConfigFactory",
                 "docs/api-reference/autogen/interop/PydanticAIInteroperability",
                 "docs/api-reference/autogen/interop/register_interoperable_class",
                 {
@@ -1731,14 +1733,7 @@
                       "group": "browser_use",
                       "pages": [
                         "docs/api-reference/autogen/tools/experimental/browser_use/overview",
-                        "docs/api-reference/autogen/tools/experimental/browser_use/BrowserUseResult",
-                        {
-                          "group": "langchain_factory",
-                          "pages": [
-                            "docs/api-reference/autogen/tools/experimental/browser_use/langchain_factory/overview",
-                            "docs/api-reference/autogen/tools/experimental/browser_use/langchain_factory/LangchainFactory"
-                          ]
-                        }
+                        "docs/api-reference/autogen/tools/experimental/browser_use/BrowserUseResult"
                       ]
                     }
                   ]
