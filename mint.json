@@ -1085,6 +1085,7 @@
                       "group": "experimental",
                       "pages": [
                         "docs/api-reference/autogen/agentchat/realtime/experimental/overview",
+                        "docs/api-reference/autogen/agentchat/realtime/experimental/AudioObserver",
                         "docs/api-reference/autogen/agentchat/realtime/experimental/FunctionObserver",
                         "docs/api-reference/autogen/agentchat/realtime/experimental/RealtimeAgent",
                         "docs/api-reference/autogen/agentchat/realtime/experimental/RealtimeObserver",
@@ -1135,6 +1136,7 @@
                             "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/overview",
                             "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/AudioDelta",
                             "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/FunctionCall",
+                            "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/InputAudioBufferDelta",
                             "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/RealtimeEvent",
                             "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/SessionCreated",
                             "docs/api-reference/autogen/agentchat/realtime/experimental/realtime_events/SessionUpdated",
