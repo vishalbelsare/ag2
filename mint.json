@@ -288,6 +288,7 @@
             "docs/use-cases/notebooks/notebooks/agentchat_MathChat",
             "docs/use-cases/notebooks/notebooks/agentchat_small_llm_rag_planning",
             "docs/use-cases/notebooks/notebooks/agentchat_groupchat_RAG",
+            "docs/use-cases/notebooks/notebooks/agentchat_structured_outputs_from_config",
             "docs/use-cases/notebooks/notebooks/agentchat_assistant_agent_standalone",
             "docs/use-cases/notebooks/notebooks/agentchat_nested_chats_chess",
             "docs/use-cases/notebooks/notebooks/agentchat_swarm",
