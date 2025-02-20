@@ -1718,7 +1718,14 @@
                       "group": "browser_use",
                       "pages": [
                         "docs/api-reference/autogen/tools/experimental/browser_use/overview",
-                        "docs/api-reference/autogen/tools/experimental/browser_use/BrowserUseResult"
+                        "docs/api-reference/autogen/tools/experimental/browser_use/BrowserUseResult",
+                        {
+                          "group": "langchain_factory",
+                          "pages": [
+                            "docs/api-reference/autogen/tools/experimental/browser_use/langchain_factory/overview",
+                            "docs/api-reference/autogen/tools/experimental/browser_use/langchain_factory/LangchainFactory"
+                          ]
+                        }
                       ]
                     }
                   ]
