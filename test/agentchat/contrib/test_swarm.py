@@ -23,11 +23,17 @@ from autogen.agentchat.contrib.swarm_agent import (
     _setup_context_variables,
     a_initiate_swarm_chat,
     initiate_swarm_chat,
+    make_remove_function,
     register_hand_off,
 )
 from autogen.agentchat.conversable_agent import ConversableAgent, UpdateSystemMessage
 from autogen.agentchat.groupchat import GroupChat, GroupChatManager
 from autogen.agentchat.user_proxy_agent import UserProxyAgent
+from autogen.tools.tool import Tool
+
+from ...conftest import (
+    Credentials,
+)
 
 TEST_MESSAGES = [{"role": "user", "content": "Initial message"}]
 
@@ -1203,6 +1209,78 @@ def test_update_on_condition_str():
     assert last_speaker is not None
 
     assert condition_container.captured_condition == "Transfer based on condition2"
+
+
+def test_agent_tool_registration_for_execution(mock_credentials: Credentials):
+    """Tests that an agent's tools property is used for registering tools for execution with the internal tool executor."""
+
+    agent = ConversableAgent(
+        name="my_agent",
+        llm_config=mock_credentials.llm_config,
+    )
+
+    def sample_tool_func(my_prop: str) -> str:
+        return my_prop * 2
+
+    # Create the mock tool and add it to the agent's _tools property
+    mock_tool = Tool(name="test_tool", description="A test tool", func_or_tool=sample_tool_func)
+    agent.register_for_llm()(mock_tool)
+
+    # Prepare swarm agents, this is where the tool will be registered for execution
+    # with the internal tool executor agent
+    tool_execution, _ = _prepare_swarm_agents(agent, [agent])
+
+    # Check that the tool is register for execution with the tool_execution agent
+    assert "test_tool" in tool_execution._function_map
+
+
+def test_compress_message_func():
+    # test make_remove_function, which is the core to enable `exclude_transit_message` passed to `initiate_swarm_chat`
+    message_processor = make_remove_function([
+        "transfer_Agent_1_to_Agent_2"  # remove the function call
+    ])
+
+    messages = [
+        {"content": "start", "name": "_User", "role": "user"},
+        {
+            "content": "None",
+            "tool_calls": [
+                {
+                    "id": "call_Lkt8SsSwatkffvkPIgXjBNO3",
+                    "function": {"arguments": "{}", "name": "transfer_Agent_1_to_Agent_2"},
+                    "type": "function",
+                }
+            ],
+            "name": "Agent_1",
+            "role": "assistant",
+        },
+        {
+            "content": "Swarm agent --> Agent_2",
+            "tool_responses": [
+                {"tool_call_id": "call_Lkt8SsSwatkffvkPIgXjBNO3", "role": "tool", "content": "Swarm agent --> Agent_2"}
+            ],
+            "name": "_Swarm_Tool_Executor",
+            "role": "tool",
+        },
+        {
+            "content": "None",
+            "tool_calls": [
+                {"id": "mock_call_id", "function": {"arguments": "{}", "name": "custom_func"}, "type": "function"}
+            ],
+            "name": "Agent_2",
+            "role": "assistant",
+        },
+        {
+            "content": "N/A",
+            "tool_responses": [{"tool_call_id": "mock_call_id", "role": "tool", "content": "N/A"}],
+            "name": "_Swarm_Tool_Executor",
+            "role": "tool",
+        },
+    ]
+    modified = message_processor(messages)
+    assert len(modified) == 3 and modified[-1]["tool_responses"][0]["tool_call_id"] == "mock_call_id", (
+        f"Wrong message processing: {modified}"
+    )
 
 
 if __name__ == "__main__":
