@@ -166,7 +166,6 @@
         {
           "group": "Model Providers",
           "pages": [
-            "docs/user-guide/models/openai",
             "docs/user-guide/models/amazon-bedrock",
             "docs/user-guide/models/anthropic",
             "docs/user-guide/models/cerebras",
@@ -187,6 +186,7 @@
             "docs/user-guide/models/lm-studio",
             "docs/user-guide/models/mistralai",
             "docs/user-guide/models/ollama",
+            "docs/user-guide/models/openai",
             "docs/user-guide/models/togetherai",
             "docs/user-guide/models/vLLM"
           ]
@@ -1654,6 +1654,66 @@
                     "docs/api-reference/autogen/oai/mistral/MistralAIClient",
                     "docs/api-reference/autogen/oai/mistral/calculate_mistral_cost",
                     "docs/api-reference/autogen/oai/mistral/tool_def_to_mistral"
+                  ]
+                },
+                {
+                  "group": "oai_models",
+                  "pages": [
+                    "docs/api-reference/autogen/oai/oai_models/overview",
+                    "docs/api-reference/autogen/oai/oai_models/ChatCompletion",
+                    "docs/api-reference/autogen/oai/oai_models/ChatCompletionMessage",
+                    "docs/api-reference/autogen/oai/oai_models/ChatCompletionMessageToolCall",
+                    "docs/api-reference/autogen/oai/oai_models/Choice",
+                    "docs/api-reference/autogen/oai/oai_models/CompletionUsage",
+                    {
+                      "group": "chat_completion",
+                      "pages": [
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion/overview",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion/ChatCompletion",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion/Choice",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion/ChoiceLogprobs"
+                      ]
+                    },
+                    {
+                      "group": "chat_completion_audio",
+                      "pages": [
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_audio/overview",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_audio/ChatCompletionAudio"
+                      ]
+                    },
+                    {
+                      "group": "chat_completion_message",
+                      "pages": [
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_message/overview",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_message/ChatCompletionMessage",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_message/FunctionCall"
+                      ]
+                    },
+                    {
+                      "group": "chat_completion_message_tool_call",
+                      "pages": [
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_message_tool_call/overview",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_message_tool_call/ChatCompletionMessageToolCall",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_message_tool_call/Function"
+                      ]
+                    },
+                    {
+                      "group": "chat_completion_token_logprob",
+                      "pages": [
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_token_logprob/overview",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_token_logprob/ChatCompletionTokenLogprob",
+                        "docs/api-reference/autogen/oai/oai_models/chat_completion_token_logprob/TopLogprob"
+                      ]
+                    },
+                    {
+                      "group": "completion_usage",
+                      "pages": [
+                        "docs/api-reference/autogen/oai/oai_models/completion_usage/overview",
+                        "docs/api-reference/autogen/oai/oai_models/completion_usage/CompletionTokensDetails",
+                        "docs/api-reference/autogen/oai/oai_models/completion_usage/CompletionUsage",
+                        "docs/api-reference/autogen/oai/oai_models/completion_usage/PromptTokensDetails"
+                      ]
+                    }
                   ]
                 },
                 {

@@ -8,7 +8,7 @@ title: autogen.oai.client.OpenAIClient
 </h2>
 
 ```python
-OpenAIClient(client: Union[OpenAI, AzureOpenAI], response_format: Union[BaseModel, dict[str, Any], None] = None)
+OpenAIClient(**kwargs)
 ```
 
     Follows the Client protocol and wraps the OpenAI client.
@@ -16,26 +16,7 @@ OpenAIClient(client: Union[OpenAI, AzureOpenAI], response_format: Union[BaseM
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `client` | **Type:** Union[OpenAI, AzureOpenAI] |
-| `response_format` | **Type:** Union[BaseModel, dict[str, Any], None]<br/><br/>**Default:** None |
-
-### Static Methods
-
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
-#### get_usage
-
-```python
-get_usage(response: Union[ChatCompletion, Completion]) -> dict
-```
-
-    
-
-<b>Parameters:</b>
-| Name | Description |
-|--|--|
-| `response` | **Type:** Union[ChatCompletion, Completion] |
-
-<br />
+| `**kwargs` |  |
 
 ### Instance Methods
 
@@ -43,15 +24,16 @@ get_usage(response: Union[ChatCompletion, Completion]) -> dict
 #### cost
 
 ```python
-cost(self, response: Union[ChatCompletion, Completion]) -> float
+cost(*args, **kwargs) -> 
 ```
 
-    Calculate the cost of the response.
+    Call self as a function.
 
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `response` | **Type:** Union[ChatCompletion, Completion] |
+| `*args` |  |
+| `**kwargs` |  |
 
 <br />
 
@@ -59,20 +41,33 @@ cost(self, response: Union[ChatCompletion, Completion]) -> float
 #### create
 
 ```python
-create(self, params: dict[str, Any]) -> ChatCompletion
+create(*args, **kwargs) -> 
 ```
 
-    Create a completion for a given config using openai's client.<br/>
+    Call self as a function.
 
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `params` | The params for the completion.<br/><br/>**Type:** dict[str, Any] |
+| `*args` |  |
+| `**kwargs` |  |
 
-<b>Returns:</b>
-| Type | Description |
+<br />
+
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>
+#### get_usage
+
+```python
+get_usage(*args, **kwargs) -> 
+```
+
+    Call self as a function.
+
+<b>Parameters:</b>
+| Name | Description |
 |--|--|
-| openai.types.chat.chat_completion.ChatCompletion | The completion. |
+| `*args` |  |
+| `**kwargs` |  |
 
 <br />
 
@@ -80,19 +75,15 @@ create(self, params: dict[str, Any]) -> ChatCompletion
 #### message_retrieval
 
 ```python
-message_retrieval(self, response: Union[ChatCompletion, Completion]) -> list[str] | list[ChatCompletionMessage]
+message_retrieval(*args, **kwargs) -> 
 ```
 
-    Retrieve the messages from the response.<br/>
+    Call self as a function.
 
 <b>Parameters:</b>
 | Name | Description |
 |--|--|
-| `response` | The response from openai.<br/><br/>**Type:** Union[ChatCompletion, Completion] |
-
-<b>Returns:</b>
-| Type | Description |
-|--|--|
-| list[str] \| list[openai.types.chat.chat_completion_message.ChatCompletionMessage] | The message from the response. |
+| `*args` |  |
+| `**kwargs` |  |
 
 <br />
