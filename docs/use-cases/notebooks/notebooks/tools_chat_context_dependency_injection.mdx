@@ -35,29 +35,24 @@ Logs conversation history, making it easier to trace issues.
 
 To install `AG2`, simply run the following command:
 
-```bash
-pip install ag2
-```
+````bash
+pip install ag2[openai,n```
 
-> **Note:** If you have been using `autogen` or `pyautogen`, all you
-> need to do is upgrade it using:
->
+> **Note:** If you have been using `autogen` or `pyautogen`, all you need to do is upgrade it using:  
 > ```bash
 > pip install -U autogen
 > ```
->
-> or
->
+> or  
 > ```bash
 > pip install -U pyautogen
 > ```
->
-> as `pyautogen`, `autogen`, and `ag2` are aliases for the same PyPI
-> package.
+> as `pyautogen`, `autogen`, and `ag2` are aliases for the same PyPI package.  
+
 
 ## Imports
 
-```python
+::: {.cell}
+``` {.python .cell-code}
 import os
 from typing import Annotated, Literal
 
@@ -65,7 +60,9 @@ from pydantic import BaseModel
 
 from autogen.agentchat import AssistantAgent, UserProxyAgent
 from autogen.tools.dependency_injection import BaseContext, ChatContext, Depends
-```
+````
+
+:::
 
 ## Define BaseContext Class
 
