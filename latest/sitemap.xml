@@ -289,6 +289,14 @@
          <lastmod>2025-02-27</lastmod>
     </url>
     <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/agents/contrib/TimeReplyAgent/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/agents/contrib/TimeToolAgent/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/agents/experimental/DeepResearchAgent/</loc>
          <lastmod>2025-02-27</lastmod>
     </url>
@@ -693,6 +701,10 @@
          <lastmod>2025-02-27</lastmod>
     </url>
     <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/contrib/TimeTool/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/dependency_injection/Field/</loc>
          <lastmod>2025-02-27</lastmod>
     </url>
@@ -782,6 +794,30 @@
     </url>
     <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/tests/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/building/creating-a-tool/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/building/creating-an-agent/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/how-ag2-works/generate-reply/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/how-ag2-works/hooks/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/how-ag2-works/initiate-chat/</loc>
+         <lastmod>2025-02-27</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/contributor-guide/how-ag2-works/overview/</loc>
          <lastmod>2025-02-27</lastmod>
     </url>
     <url>
