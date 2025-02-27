@@ -337,6 +337,22 @@
         "docs/contributor-guide/documentation",
         "docs/contributor-guide/file-bug-report",
         "docs/contributor-guide/maintainer",
+        {
+          "group": "How AG2 Works",
+          "pages": [
+            "docs/contributor-guide/how-ag2-works/overview",
+            "docs/contributor-guide/how-ag2-works/initiate-chat",
+            "docs/contributor-guide/how-ag2-works/generate-reply",
+            "docs/contributor-guide/how-ag2-works/hooks"
+          ]
+        },
+        {
+          "group": "Building Agents & Tools",
+          "pages": [
+            "docs/contributor-guide/building/creating-a-tool",
+            "docs/contributor-guide/building/creating-an-agent"
+          ]
+        },
         "docs/contributor-guide/pre-commit",
         "docs/contributor-guide/tests",
         "docs/contributor-guide/Research"
@@ -1209,6 +1225,14 @@
               "group": "agents",
               "pages": [
                 {
+                  "group": "contrib",
+                  "pages": [
+                    "docs/api-reference/autogen/agents/contrib/overview",
+                    "docs/api-reference/autogen/agents/contrib/TimeReplyAgent",
+                    "docs/api-reference/autogen/agents/contrib/TimeToolAgent"
+                  ]
+                },
+                {
                   "group": "experimental",
                   "pages": [
                     "docs/api-reference/autogen/agents/experimental/overview",
@@ -1802,6 +1826,13 @@
                 "docs/api-reference/autogen/tools/load_basemodels_if_needed",
                 "docs/api-reference/autogen/tools/serialize_to_str",
                 "docs/api-reference/autogen/tools/tool",
+                {
+                  "group": "contrib",
+                  "pages": [
+                    "docs/api-reference/autogen/tools/contrib/overview",
+                    "docs/api-reference/autogen/tools/contrib/TimeTool"
+                  ]
+                },
                 {
                   "group": "dependency_injection",
                   "pages": [
