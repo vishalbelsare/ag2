@@ -1464,6 +1464,7 @@
                 "docs/api-reference/autogen/import_utils/optional_import_block",
                 "docs/api-reference/autogen/import_utils/patch_object",
                 "docs/api-reference/autogen/import_utils/require_optional_import",
+                "docs/api-reference/autogen/import_utils/run_for_optional_imports",
                 "docs/api-reference/autogen/import_utils/skip_on_missing_imports"
               ]
             },
