@@ -112,6 +112,8 @@ class OccamAgent(ConversableAgent):
         # )
         # print(f"Agent run status: {agent_run_detail.status}")
         # print(f"Agent run result: {agent_run_detail.result}")
+        # print("================================================")
+        # print(f"Agent ran for {agent_run_detail.running_time_seconds} seconds")
 
         self.register_reply(
             trigger=[Agent, None],
