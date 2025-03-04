@@ -242,6 +242,7 @@ class ConversableAgent(LLMAgent):
             else (lambda x: content_str(x.get("content")) == "TERMINATE")
         )
         self.silent = silent
+        self.run_executor: Optional[ConversableAgent] = None
 
         # Take a copy to avoid modifying the given dict
         if isinstance(llm_config, dict):
@@ -282,6 +283,8 @@ class ConversableAgent(LLMAgent):
         self.register_reply([Agent, None], ConversableAgent.a_generate_oai_reply, ignore_async_in_sync_chat=True)
 
         self._context_variables = context_variables if context_variables is not None else {}
+
+        self._tools: list[Tool] = []
 
         # Register functions to the agent
         if isinstance(functions, list):
@@ -1332,7 +1335,7 @@ class ConversableAgent(LLMAgent):
         self._process_received_message(message, sender, silent)
         if request_reply is False or (request_reply is None and self.reply_at_receive[sender] is False):
             return
-        reply = await self.a_generate_reply(sender=sender)
+        reply = await self.a_generate_reply(messages=self.chat_messages[sender], sender=sender)
         if reply is not None:
             await self.a_send(reply, sender, silent=silent)
 
@@ -1741,7 +1744,7 @@ class ConversableAgent(LLMAgent):
         else:
             return self._finished_chats
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the agent."""
         self.clear_history()
         self.reset_consecutive_auto_reply_counter()
@@ -2176,7 +2179,12 @@ class ConversableAgent(LLMAgent):
             config = self
         if messages is None:
             messages = self._oai_messages[sender] if sender else []
+
+        # if there are no messages, continue the conversation
+        if not messages:
+            return False, None
         message = messages[-1]
+
         reply = ""
         no_human_input_msg = ""
         sender_name = "the sender" if sender is None else sender.name
@@ -2486,13 +2494,13 @@ class ConversableAgent(LLMAgent):
         # Call the hookable method that gives registered hooks a chance to update agent state, used for their context variables.
         self.update_agent_state_before_reply(messages)
 
-        # Call the hookable method that gives registered hooks a chance to process all messages.
-        # Message modifications do not affect the incoming messages or self._oai_messages.
-        messages = self.process_all_messages_before_reply(messages)
-
         # Call the hookable method that gives registered hooks a chance to process the last message.
         # Message modifications do not affect the incoming messages or self._oai_messages.
         messages = self.process_last_received_message(messages)
+
+        # Call the hookable method that gives registered hooks a chance to process all messages.
+        # Message modifications do not affect the incoming messages or self._oai_messages.
+        messages = self.process_all_messages_before_reply(messages)
 
         for reply_func_tuple in self._reply_func_list:
             reply_func = reply_func_tuple["reply_func"]
@@ -2869,6 +2877,22 @@ class ConversableAgent(LLMAgent):
 
         return self._handle_carryover(message, kwargs)
 
+    @property
+    def tools(self) -> list[Tool]:
+        """Get the agent's tools (registered for LLM)
+
+        Note this is a copy of the tools list, use add_tool and remove_tool to modify the tools list.
+        """
+        return self._tools.copy()
+
+    def remove_tool_for_llm(self, tool: Tool) -> None:
+        """Remove a tool (register for LLM tool)"""
+        try:
+            self._register_for_llm(tool=tool, api_style="tool", is_remove=True)
+            self._tools.remove(tool)
+        except ValueError:
+            raise ValueError(f"Tool {tool} not found in collection")
+
     def register_function(self, function_map: dict[str, Union[Callable[..., Any]]]):
         """Register functions to the agent.
 
@@ -2949,9 +2973,7 @@ class ConversableAgent(LLMAgent):
                 logger.error(error_msg)
                 raise AssertionError(error_msg)
             else:
-                self.llm_config["tools"] = [
-                    tool for tool in self.llm_config["tools"] if tool["function"]["name"] != tool_sig
-                ]
+                self.llm_config["tools"] = [tool for tool in self.llm_config["tools"] if tool != tool_sig]
         else:
             if not isinstance(tool_sig, dict):
                 raise ValueError(
@@ -3020,6 +3042,24 @@ class ConversableAgent(LLMAgent):
 
         return wrapped_func
 
+    @staticmethod
+    def _create_tool_if_needed(
+        func_or_tool: Union[F, Tool],
+        name: Optional[str],
+        description: Optional[str],
+    ) -> Tool:
+        if isinstance(func_or_tool, Tool):
+            tool: Tool = func_or_tool
+            # create new tool object if name or description is not None
+            if name or description:
+                tool = Tool(func_or_tool=tool, name=name, description=description)
+        elif inspect.isfunction(func_or_tool):
+            function: Callable[..., Any] = func_or_tool
+            tool = Tool(func_or_tool=function, name=name, description=description)
+        else:
+            raise TypeError(f"'func_or_tool' must be a function or a Tool object, got '{type(func_or_tool)}' instead.")
+        return tool
+
     def register_for_llm(
         self,
         *,
@@ -3066,7 +3106,9 @@ class ConversableAgent(LLMAgent):
 
         """
 
-        def _decorator(func_or_tool: Union[F, Tool]) -> Tool:
+        def _decorator(
+            func_or_tool: Union[F, Tool], name: Optional[str] = name, description: Optional[str] = description
+        ) -> Tool:
             """Decorator for registering a function to be used by an agent.
 
             Args:
@@ -3080,29 +3122,31 @@ class ConversableAgent(LLMAgent):
                 RuntimeError: if the LLM config is not set up before registering a function.
 
             """
-            tool = Tool(func_or_tool=func_or_tool, name=name, description=description)
+            tool = self._create_tool_if_needed(func_or_tool, name, description)
 
             self._register_for_llm(tool, api_style)
+            self._tools.append(tool)
 
             return tool
 
         return _decorator
 
-    def _register_for_llm(self, tool: Tool, api_style: Literal["tool", "function"]) -> None:
+    def _register_for_llm(self, tool: Tool, api_style: Literal["tool", "function"], is_remove: bool = False) -> None:
         # register the function to the agent if there is LLM config, raise an exception otherwise
         if self.llm_config is None:
             raise RuntimeError("LLM config must be setup before registering a function for LLM.")
 
         if api_style == "function":
-            self.update_function_signature(tool.function_schema, is_remove=False)
+            self.update_function_signature(tool.function_schema, is_remove=is_remove)
         elif api_style == "tool":
-            self.update_tool_signature(tool.tool_schema, is_remove=False)
+            self.update_tool_signature(tool.tool_schema, is_remove=is_remove)
         else:
             raise ValueError(f"Unsupported API style: {api_style}")
 
     def register_for_execution(
         self,
         name: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> Callable[[Union[Tool, F]], Tool]:
         """Decorator factory for registering a function to be executed by an agent.
 
@@ -3125,22 +3169,22 @@ class ConversableAgent(LLMAgent):
 
         """
 
-        def _decorator(func_or_tool: Union[Tool, F]) -> Tool:
+        def _decorator(
+            func_or_tool: Union[Tool, F], name: Optional[str] = name, description: Optional[str] = description
+        ) -> Tool:
             """Decorator for registering a function to be used by an agent.
 
             Args:
-                func: the function to be registered.
+                func_or_tool: the function or the tool to be registered.
+                name: the name of the function.
+                description: the description of the function.
 
             Returns:
-                The function to be registered, with the _description attribute set to the function description.
-
-            Raises:
-                ValueError: if the function description is not provided and not propagated by a previous decorator.
+                The tool to be registered.
 
             """
-            nonlocal name
 
-            tool = Tool(func_or_tool=func_or_tool, name=name)
+            tool = self._create_tool_if_needed(func_or_tool, name, description)
             chat_context = ChatContext(self)
             chat_context_params = {param: chat_context for param in tool._chat_context_param_names}
 
@@ -3263,7 +3307,7 @@ class ConversableAgent(LLMAgent):
             return self.client.total_usage_summary
 
     @contextmanager
-    def _create_executor(
+    def _create_or_get_executor(
         self,
         executor_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[Tool, Iterable[Tool]]] = None,
@@ -3285,19 +3329,20 @@ class ConversableAgent(LLMAgent):
         if "is_termination_msg" not in executor_kwargs:
             executor_kwargs["is_termination_msg"] = lambda x: (x["content"] is not None) and "TERMINATE" in x["content"]
 
-        executor = ConversableAgent(
-            name=agent_name,
-            human_input_mode=agent_human_input_mode,
-            **executor_kwargs,
-        )
-
         try:
+            if not self.run_executor:
+                self.run_executor = ConversableAgent(
+                    name=agent_name,
+                    human_input_mode=agent_human_input_mode,
+                    **executor_kwargs,
+                )
+
             tools = [] if tools is None else tools
             tools = [tools] if isinstance(tools, Tool) else tools
             for tool in tools:
-                tool.register_for_execution(executor)
+                tool.register_for_execution(self.run_executor)
                 tool.register_for_llm(self)
-            yield executor
+            yield self.run_executor
         finally:
             if tools is not None:
                 for tool in tools:
@@ -3330,7 +3375,7 @@ class ConversableAgent(LLMAgent):
             clear_history: whether to clear the chat history.
             user_input: the user will be asked for input at their turn.
         """
-        with self._create_executor(
+        with self._create_or_get_executor(
             executor_kwargs=executor_kwargs,
             tools=tools,
             agent_name="user",
@@ -3380,7 +3425,7 @@ class ConversableAgent(LLMAgent):
             clear_history: whether to clear the chat history.
             user_input: the user will be asked for input at their turn.
         """
-        with self._create_executor(
+        with self._create_or_get_executor(
             executor_kwargs=executor_kwargs,
             tools=tools,
             agent_name="user",

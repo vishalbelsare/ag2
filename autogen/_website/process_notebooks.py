@@ -27,9 +27,10 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from textwrap import dedent, indent
-from typing import Any, Callable, Optional, Sequence, TypeVar, TypedDict, Union
+from typing import Any, Callable, Optional, Sequence, TypeVar, Union
 
 from ..import_utils import optional_import_block, require_optional_import
+from .utils import NavigationGroup
 
 with optional_import_block():
     import nbformat
@@ -534,6 +535,7 @@ def extract_img_tag_from_figure_tag(content: str, img_rel_path: Path) -> str:
 
 
 # rendered_notebook is the final mdx file
+@require_optional_import("yaml", "docs")
 def post_process_mdx(
     rendered_mdx: Path,
     source_notebooks: Path,
@@ -801,7 +803,7 @@ def add_notebooks_blogs_and_user_stories_to_nav(website_build_directory: Path) -
     mint_config["navigation"].append(user_stories_section)
 
     # add blogs to navigation
-    blogs_dir = website_build_directory / "_blogs"
+    blogs_dir = website_build_directory / "docs" / "_blogs"
     blog_section = {"group": "Blog", "pages": [generate_nav_group(blogs_dir, "Recent posts", "docs/blog")]}
     mint_config["navigation"].append(blog_section)
 
@@ -922,6 +924,7 @@ def separate_front_matter_and_content(file_path: Path) -> tuple[str, str]:
     return "", content
 
 
+@require_optional_import("yaml", "docs")
 def _get_authors_info(authors_yml: Path) -> dict[str, dict[str, str]]:
     try:
         all_authors_info = yaml.safe_load(authors_yml.read_text(encoding="utf-8"))
@@ -932,6 +935,7 @@ def _get_authors_info(authors_yml: Path) -> dict[str, dict[str, str]]:
     return all_authors_info
 
 
+@require_optional_import("yaml", "docs")
 def _add_authors_and_social_preview(
     website_build_dir: Path, target_dir: Path, all_authors_info: dict[str, dict[str, str]]
 ) -> None:
@@ -969,7 +973,7 @@ def _add_authors_and_social_preview(
             rel_file_path = (
                 str(file_path.relative_to(website_build_dir.parent))
                 .replace("build/docs/", "website/docs/")
-                .replace("website/docs/blog/", "website/_blogs/")
+                .replace("website/docs/blog/", "website/docs/_blogs/")
             )
             content_with_edit_url = ensure_edit_url(new_content, Path(rel_file_path))
 
@@ -986,7 +990,7 @@ def add_authors_and_social_img_to_blog_and_user_stories(website_build_directory:
     Args:
         website_build_directory (Path): Build directory of the website
     """
-    blog_dir = website_build_directory / "_blogs"
+    blog_dir = website_build_directory / "docs" / "_blogs"
     generated_blog_dir = website_build_directory / "docs" / "blog"
 
     authors_yml = website_build_directory / "blogs_and_user_stories_authors.yml"
@@ -1030,11 +1034,6 @@ def cleanup_tmp_dirs(website_build_directory: Path, re_generate_notebooks: bool)
         notebooks_dir = notebooks_target_dir(website_build_directory)
         print(f"Removing the {notebooks_dir} and to ensure a clean build.")
         shutil.rmtree(notebooks_dir, ignore_errors=True)
-
-
-class NavigationGroup(TypedDict):
-    group: str
-    pages: list[Union[str, "NavigationGroup"]]
 
 
 def get_files_path_from_navigation(navigation: list[NavigationGroup]) -> list[Path]:
