@@ -4,20 +4,13 @@
 
 
 import os
-from typing import Optional, Union, Any
-
-from autogen.agentchat import Agent, ConversableAgent
-from autogen.oai import OpenAIWrapper
-from autogen.doc_utils import export_module
-from autogen.io.base import IOStream
-from autogen.messages.agent_messages import (
-    TerminationAndHumanReplyMessage,
-)
+from typing import Any, Optional, Union
 
 from occam_core.agents.model import AgentIOModel, OccamLLMMessage
-from occamai.api_client import OccamClient
-from occamai.api_client import AgentInstanceParamsModel, AgentRunDetail
+from occamai.api_client import AgentInstanceParamsModel, AgentRunDetail, OccamClient
 
+from autogen.agentchat import Agent, ConversableAgent
+from autogen.doc_utils import export_module
 
 __all__ = ["OccamAgent"]
 
@@ -26,13 +19,7 @@ __all__ = ["OccamAgent"]
 class OccamAgent(ConversableAgent):
     def _convert_ag_messages_to_agent_io_model(self, messages: list[dict]) -> AgentIOModel:
         return AgentIOModel(
-            chat_messages=[
-                OccamLLMMessage(
-                    role=message["role"],
-                    content=message["content"]
-                )
-                for message in messages
-            ]
+            chat_messages=[OccamLLMMessage(role=message["role"], content=message["content"]) for message in messages]
         )
 
     def occam_reply_func(
@@ -70,7 +57,7 @@ class OccamAgent(ConversableAgent):
         # )
 
         # True indicates final reply, string goes back into the chat's messages.
-        return True, "TESTING!" # ".join([m.content for m in agent_output.chat_messages])
+        return True, "".join([m.content for m in agent_output.chat_messages])
 
     def __init__(
         self,
@@ -87,13 +74,12 @@ class OccamAgent(ConversableAgent):
         """
 
         super().__init__(*args, **kwargs)
-        
+
         self.occam_client = OccamClient(api_key=api_key, base_url=base_url)
 
         # Initialise agent.
         occam_agent_instance = self.occam_client.agents.instantiate_agent(
-            agent_name="DeepSeek: R1 Distill Llama 70B",
-            agent_params=agent_params
+            agent_name="DeepSeek: R1 Distill Llama 70B", agent_params=agent_params
         )
         self.occam_agent_instance_id = occam_agent_instance.agent_instance_id
         print(f"Created Occam Agent instance: {self.occam_agent_instance_id}")
@@ -130,7 +116,5 @@ if __name__ == "__main__":
     agent = OccamAgent(api_key=api_key, base_url=base_url, name="occam-agent")
     other_agent = ConversableAgent(name="other-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
     other_agent.initiate_chat(
-        recipient=agent,
-        message="Hello, tell me an interesting fact about the moon.",
-        max_turns=2
+        recipient=agent, message="Hello, tell me an interesting fact about the moon.", max_turns=2
     )
