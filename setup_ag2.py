@@ -30,6 +30,7 @@ setuptools.setup(
     extras_require={
         "flaml": ["pyautogen[flaml]==" + __version__],
         "openai": ["pyautogen[openai]==" + __version__],
+        "openai-realtime": ["pyautogen[openai-realtime]==" + __version__],
         "jupyter-executor": ["pyautogen[jupyter-executor]==" + __version__],
         "retrievechat": ["pyautogen[retrievechat]==" + __version__],
         "retrievechat-pgvector": ["pyautogen[retrievechat-pgvector]==" + __version__],
@@ -54,6 +55,7 @@ setuptools.setup(
         "lmm": ["pyautogen[lmm]==" + __version__],
         "graph": ["pyautogen[graph]==" + __version__],
         "gemini": ["pyautogen[gemini]==" + __version__],
+        "gemini-realtime": ["pyautogen[gemini-realtime]==" + __version__],
         "together": ["pyautogen[together]==" + __version__],
         "websurfer": ["pyautogen[websurfer]==" + __version__],
         "redis": ["pyautogen[redis]==" + __version__],
@@ -68,6 +70,7 @@ setuptools.setup(
         "ollama": ["pyautogen[ollama]==" + __version__],
         "bedrock": ["pyautogen[bedrock]==" + __version__],
         "agent-occam": ["pyautogen[agent-occam]==" + __version__],
+        "deepseek": ["pyautogen[deepseek]==" + __version__],
         "commsagent-discord": ["pyautogen[commsagent-discord]==" + __version__],
         "commsagent-slack": ["pyautogen[commsagent-slack]==" + __version__],
         "commsagent-telegram": ["pyautogen[commsagent-telegram]==" + __version__],

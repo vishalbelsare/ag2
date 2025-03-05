@@ -265,7 +265,7 @@ NB_VERSION = 4
 @require_quarto_bin
 @require_optional_import("nbclient", "docs")
 def test_notebook(notebook_path: Path, timeout: int = 300) -> tuple[Path, Optional[Union[NotebookError, NotebookSkip]]]:
-    nb = nbformat.read(str(notebook_path), NB_VERSION)  # type: ignore
+    nb = nbformat.read(str(notebook_path), NB_VERSION)  # type: ignore[arg-type]
 
     if "skip_test" in nb.metadata:
         return notebook_path, NotebookSkip(reason=nb.metadata.skip_test)
@@ -603,7 +603,7 @@ def post_process_mdx(
     # Create the front matter metadata js file for examples by notebook section
     add_front_matter_to_metadata_mdx(front_matter, website_build_directory, rendered_mdx)
 
-    # Dump front_matter to ysaml
+    # Dump front_matter to yaml
     front_matter_str = yaml.dump(front_matter, default_flow_style=False)
 
     # Convert callout blocks

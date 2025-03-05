@@ -8,10 +8,15 @@
 from unittest.mock import MagicMock
 
 import pytest
-from openai.types.chat.parsed_chat_completion import ChatCompletion, ChatCompletionMessage, Choice
 from pydantic import BaseModel, ValidationError
 
 import autogen
+from autogen.import_utils import optional_import_block
+
+with optional_import_block() as result:
+    import openai  # noqa: F401
+    from openai.types.chat.parsed_chat_completion import ChatCompletion, ChatCompletionMessage, Choice
+
 
 from ..conftest import (
     Credentials,
@@ -23,11 +28,11 @@ from ..conftest import (
 credentials_structured_output = [
     pytest.param(
         credentials_gpt_4o_mini.__name__,
-        marks=pytest.mark.openai,
+        marks=[pytest.mark.openai, pytest.mark.aux_neg_flag],
     ),
     pytest.param(
         credentials_gemini_flash.__name__,
-        marks=pytest.mark.gemini,
+        marks=[pytest.mark.gemini, pytest.mark.aux_neg_flag],
     ),
 ]
 

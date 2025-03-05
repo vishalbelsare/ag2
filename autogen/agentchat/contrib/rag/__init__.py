@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .query_engine import VectorDbQueryEngine
+from .chroma_db_query_engine import ChromaDBQueryEngine
+from .query_engine import RAGQueryEngine
 
-__all__ = ["VectorDbQueryEngine"]
+__all__ = ["ChromaDBQueryEngine", "RAGQueryEngine"]
