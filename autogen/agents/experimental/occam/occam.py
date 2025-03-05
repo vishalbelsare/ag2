@@ -17,7 +17,7 @@ __all__ = ["OccamAgent"]
 
 @export_module("autogen.agents")
 class OccamAgent(ConversableAgent):
-    def _convert_ag_messages_to_agent_io_model(self, messages: list[dict]) -> AgentIOModel:
+    def _convert_ag_messages_to_agent_io_model(self, messages: list[dict[str, Any]]) -> AgentIOModel:  # type: ignore[no-any-unimported]
         return AgentIOModel(
             chat_messages=[OccamLLMMessage(role=message["role"], content=message["content"]) for message in messages]
         )
@@ -36,6 +36,8 @@ class OccamAgent(ConversableAgent):
         * Auto-resume when topped up after an auto-pause, we don't have control over the workflow that the agent is running within.
         * Don't auto-resume and rely on user to always resume.
         """
+        if messages is None:
+            messages = []
 
         # TODO: Convert messages to AgentIOModel
         agent_io_model = self._convert_ag_messages_to_agent_io_model(messages)
@@ -44,7 +46,7 @@ class OccamAgent(ConversableAgent):
             agent_instance_id=self.occam_agent_instance_id,
             sync=True,
             agent_input_model=agent_io_model,
-        )
+        )  # type: ignore[no-any-unimported]
         print(f"Agent run status: {agent_run_detail.status}")
         print(f"Agent run result: {agent_run_detail.result}")
 
@@ -62,10 +64,10 @@ class OccamAgent(ConversableAgent):
     def __init__(
         self,
         api_key: str,
-        agent_params: Optional[AgentInstanceParamsModel] = AgentInstanceParamsModel(),
+        agent_params: Optional[AgentInstanceParamsModel] = None,
         base_url: str = "https://api.occam.ai",
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """Initialize the Occam Agent.
 
@@ -76,6 +78,9 @@ class OccamAgent(ConversableAgent):
         super().__init__(*args, **kwargs)
 
         self.occam_client = OccamClient(api_key=api_key, base_url=base_url)
+
+        if agent_params is None:
+            agent_params = AgentInstanceParamsModel()
 
         # Initialise agent.
         occam_agent_instance = self.occam_client.agents.instantiate_agent(
@@ -113,7 +118,7 @@ if __name__ == "__main__":
     api_key = os.getenv("OCCAM_API_KEY")
     base_url = os.getenv("OCCAM_BASE_URL")
 
-    agent = OccamAgent(api_key=api_key, base_url=base_url, name="occam-agent")
+    agent = OccamAgent(api_key=str(api_key), base_url=str(base_url), name="occam-agent")
     other_agent = ConversableAgent(name="other-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
     other_agent.initiate_chat(
         recipient=agent, message="Hello, tell me an interesting fact about the moon.", max_turns=2
