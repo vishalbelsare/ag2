@@ -4,7 +4,7 @@
 
 
 import os
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 from autogen.agentchat import Agent, ConversableAgent
 from autogen.oai import OpenAIWrapper
@@ -37,10 +37,10 @@ class OccamAgent(ConversableAgent):
 
     def occam_reply_func(
         self,
-        messages: Optional[list[dict]] = None,
+        messages: Optional[list[dict[str, Any]]] = None,
         sender: Optional[Agent] = None,
-        config: Optional[OpenAIWrapper] = None,
-    ) -> tuple[bool, Union[str, dict, None]]:
+        config: Optional[Any] = None,
+    ) -> tuple[bool, Optional[Union[str, dict[str, Any]]]]:
         """
         TODO:
         - Support path of resume, can do by ping before running the agent.
@@ -70,7 +70,7 @@ class OccamAgent(ConversableAgent):
         # )
 
         # True indicates final reply, string goes back into the chat's messages.
-        return True, "".join([m.content for m in agent_output.chat_messages])
+        return True, "TESTING!" # ".join([m.content for m in agent_output.chat_messages])
 
     def __init__(
         self,
@@ -87,6 +87,7 @@ class OccamAgent(ConversableAgent):
         """
 
         super().__init__(*args, **kwargs)
+        
         self.occam_client = OccamClient(api_key=api_key, base_url=base_url)
 
         # Initialise agent.
@@ -117,7 +118,7 @@ class OccamAgent(ConversableAgent):
 
         self.register_reply(
             trigger=[Agent, None],
-            reply_func=self.occam_reply_func,
+            reply_func=OccamAgent.occam_reply_func,
             remove_other_reply_funcs=True,
         )
 
@@ -127,7 +128,9 @@ if __name__ == "__main__":
     base_url = os.getenv("OCCAM_BASE_URL")
 
     agent = OccamAgent(api_key=api_key, base_url=base_url, name="occam-agent")
-    agent.initiate_chat(
+    other_agent = ConversableAgent(name="other-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
+    other_agent.initiate_chat(
         recipient=agent,
-        message="Hello, tell me an interesting fact about the moon."
+        message="Hello, tell me an interesting fact about the moon.",
+        max_turns=2
     )
