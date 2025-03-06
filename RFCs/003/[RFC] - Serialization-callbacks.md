@@ -35,13 +35,6 @@ async def run_agents_and_process_events():
 
     return response
 
-async def load_run_response():
-    response = Checkpoint(
-        save_path=f"/checkpoints/alice-and-bob/{datetime.now()}"
-    ).load_last()
-
-    return response
-
 async def process_event_loop(response: AsyncRunResponseProtocol, websocket: websockets.WebSocketServerProtocol):
     async for event in response.events:
         if event.type == "input_request":
@@ -60,16 +53,33 @@ async def process_event_loop(response: AsyncRunResponseProtocol, websocket: webs
 
         elif event.type == "error":
             await websocket.send(json.dumps({"type": "error", "error": event.error}))
+            return # we'll continue from this point using checkpoint
 
-async def handler(websocket: websockets.WebSocketServerProtocol, path: str):
+
+async def create_new_run(websocket: websockets.WebSocketServerProtocol, path: str):
     response = await run_agents_and_process_events()
     await process_event_loop(response, websocket)
 
-async def main():
+async def continue_checkpoint(websocket: websockets.WebSocketServerProtocol, path: str):
+    checkpoint = Checkpoints(
+        save_path=f"/checkpoints/alice-and-bob/{datetime.now()}"
+    ).load_last()
+
+    response = checkpoint.continue()
+
+    await process_event_loop(response, websocket)
+
+
+async def main(handler):
     server = await websockets.serve(handler, "localhost", 8765)
     print("WebSocket server started on ws://localhost:8765")
     await server.wait_closed()
 
-asyncio.run(main())
+# run until error
+asyncio.run(main(create_new_run))
+
+# continue from error
+asyncio.run(main(continue_checkpoint))
+
 
 ```
