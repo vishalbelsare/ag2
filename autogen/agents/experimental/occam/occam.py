@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
-import os
 from typing import Any, Optional, Union
 
 from occam_core.agents.model import AgentIOModel, OccamLLMMessage
@@ -39,7 +37,7 @@ class OccamAgent(ConversableAgent):
         if messages is None:
             messages = []
 
-        # TODO: Convert messages to AgentIOModel
+        # Convert messages to AgentIOModel
         agent_io_model = self._convert_ag_messages_to_agent_io_model(messages)
 
         agent_run_detail: AgentRunDetail = self.occam_client.agents.run_agent(
@@ -78,8 +76,7 @@ class OccamAgent(ConversableAgent):
         super().__init__(*args, **kwargs)
 
         self.occam_client = OccamClient(api_key=api_key, base_url=base_url)
-
-        if agent_params is None:
+        if not agent_params:
             agent_params = AgentInstanceParamsModel()
 
         # Initialise agent.
@@ -89,37 +86,8 @@ class OccamAgent(ConversableAgent):
         self.occam_agent_instance_id = occam_agent_instance.agent_instance_id
         print(f"Created Occam Agent instance: {self.occam_agent_instance_id}")
 
-        # TODO: Remove below code, it's in the reply_func
-        # agent_run_detail: AgentRunDetail = self.occam_client.agents.run_agent(
-        #     agent_instance_id=self.occam_agent_instance_id,
-        #     sync=True,
-        #     agent_input_model=AgentIOModel(
-        #         chat_messages=[
-        #             OccamLLMMessage(
-        #                 role="user",
-        #                 content="Hello, tell me an interesting fact about the moon."
-        #             )
-        #         ]
-        #     )
-        # )
-        # print(f"Agent run status: {agent_run_detail.status}")
-        # print(f"Agent run result: {agent_run_detail.result}")
-        # print("================================================")
-        # print(f"Agent ran for {agent_run_detail.running_time_seconds} seconds")
-
         self.register_reply(
             trigger=[Agent, None],
             reply_func=OccamAgent.occam_reply_func,
             remove_other_reply_funcs=True,
         )
-
-
-if __name__ == "__main__":
-    api_key = os.getenv("OCCAM_API_KEY")
-    base_url = os.getenv("OCCAM_BASE_URL")
-
-    agent = OccamAgent(api_key=str(api_key), base_url=str(base_url), name="occam-agent")
-    other_agent = ConversableAgent(name="other-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
-    other_agent.initiate_chat(
-        recipient=agent, message="Hello, tell me an interesting fact about the moon.", max_turns=2
-    )
