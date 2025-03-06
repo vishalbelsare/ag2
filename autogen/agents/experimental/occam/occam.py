@@ -15,6 +15,8 @@ __all__ = ["OccamAgent"]
 
 @export_module("autogen.agents")
 class OccamAgent(ConversableAgent):
+    client: OccamClient
+
     def _convert_ag_messages_to_agent_io_model(self, messages: list[dict[str, Any]]) -> AgentIOModel:  # type: ignore[no-any-unimported]
         return AgentIOModel(
             chat_messages=[OccamLLMMessage(role=message["role"], content=message["content"]) for message in messages]
@@ -61,9 +63,9 @@ class OccamAgent(ConversableAgent):
 
     def __init__(
         self,
-        api_key: str,
+        client: OccamClient,
+        agent_name: str,
         agent_params: Optional[AgentInstanceParamsModel] = None,
-        base_url: str = "https://api.occam.ai",
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -75,13 +77,13 @@ class OccamAgent(ConversableAgent):
 
         super().__init__(*args, **kwargs)
 
-        self.occam_client = OccamClient(api_key=api_key, base_url=base_url)
+        self.occam_client = client
         if not agent_params:
             agent_params = AgentInstanceParamsModel()
 
         # Initialise agent.
         occam_agent_instance = self.occam_client.agents.instantiate_agent(
-            agent_name="DeepSeek: R1 Distill Llama 70B", agent_params=agent_params
+            agent_name=agent_name, agent_params=agent_params
         )
         self.occam_agent_instance_id = occam_agent_instance.agent_instance_id
         print(f"Created Occam Agent instance: {self.occam_agent_instance_id}")
