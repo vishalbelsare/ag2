@@ -40,6 +40,7 @@ from .exception_utils import (
     SenderRequiredError,
     UndefinedNextAgentError,
 )
+from .io.run import a_run, run
 from .oai import (
     Cache,
     ModelClient,
@@ -90,6 +91,7 @@ __all__ = [
     "UserProxyAgent",
     "__version__",
     "a_initiate_swarm_chat",
+    "a_run",
     "config_list_from_dotenv",
     "config_list_from_json",
     "config_list_from_models",
@@ -102,4 +104,5 @@ __all__ = [
     "initiate_swarm_chat",
     "register_function",
     "register_hand_off",
+    "run",
 ]
