@@ -32,7 +32,6 @@ from ..code_utils import (
     PYTHON_VARIANTS,
     UNKNOWN,
     check_can_use_docker_or_throw,
-    content_str,
     decide_use_docker,
     execute_code,
     extract_code,
@@ -61,6 +60,7 @@ from ..runtime_logging import log_event, log_function_use, log_new_agent, loggin
 from ..tools import ChatContext, Tool, load_basemodels_if_needed, serialize_to_str
 from .agent import Agent, LLMAgent
 from .chat import ChatResult, _post_process_carryover_item, a_initiate_chats, initiate_chats
+from .termination import Keyword, TerminateProtocol
 from .utils import consolidate_chat_info, gather_usage_summary
 
 __all__ = ("ConversableAgent",)
@@ -145,7 +145,7 @@ class ConversableAgent(LLMAgent):
         self,
         name: str,
         system_message: Optional[Union[str, list]] = "You are a helpful AI Assistant.",
-        is_termination_msg: Optional[Callable[[dict[str, Any]], bool]] = None,
+        is_termination_msg: Union[Callable[[dict[str, Any]], bool], TerminateProtocol] = None,
         max_consecutive_auto_reply: Optional[int] = None,
         human_input_mode: Literal["ALWAYS", "NEVER", "TERMINATE"] = "TERMINATE",
         function_map: Optional[dict[str, Callable[..., Any]]] = None,
@@ -235,9 +235,7 @@ class ConversableAgent(LLMAgent):
         self._oai_system_message = [{"content": system_message, "role": "system"}]
         self._description = description if description is not None else system_message
         self._is_termination_msg = (
-            is_termination_msg
-            if is_termination_msg is not None
-            else (lambda x: content_str(x.get("content")) == "TERMINATE")
+            is_termination_msg if is_termination_msg is not None else Keyword("TERMINATE").is_termination_message
         )
         self.silent = silent
         self.run_executor: Optional[ConversableAgent] = None
@@ -293,6 +291,8 @@ class ConversableAgent(LLMAgent):
             self._add_single_function(functions)
         elif functions is not None:
             raise TypeError("Functions must be a callable or a list of callables")
+
+        self._functions = functions
 
         # Setting up code execution.
         # Do not register code execution reply if code execution is disabled.
@@ -362,7 +362,31 @@ class ConversableAgent(LLMAgent):
         }
 
         # Associate agent update state hooks
+        self._update_agent_state_before_reply = update_agent_state_before_reply
         self._register_update_agent_state_before_reply(update_agent_state_before_reply)
+
+    def __reduce__(self):
+        # Return a tuple of the callable to recreate the object and its arguments
+        return (
+            self.__class__,  # The class itself
+            (
+                self._name,
+                self._oai_system_message[0]["content"],
+                self._is_termination_msg,
+                self._max_consecutive_auto_reply,
+                self.human_input_mode,
+                self.function_map,
+                self._code_execution_config,
+                self.llm_config,
+                self._default_auto_reply,
+                self.description,
+                self.chat_messages,
+                self.silent,
+                self._context_variables,
+                self._functions,
+                self._update_agent_state_before_reply,
+            ),  # Args for __init__
+        )
 
     def _validate_name(self, name: str) -> None:
         if not self.llm_config or "config_list" not in self.llm_config or len(self.llm_config["config_list"]) == 0:

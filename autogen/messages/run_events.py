@@ -4,7 +4,7 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Callable, Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 EventType = Literal[
-    "input_request", "async_input_request", "input_response", "agent_message", "output", "system", "error"
+    "input_request", "async_input_request", "input_response", "agent_message", "output", "system", "error", "terminate"
 ]
 Message = dict[str, Any]
 
@@ -34,9 +34,10 @@ class Event(BaseModel):
 
 class InputRequestEvent(Event):
     prompt: str
+    respond: Optional[Callable[[str], None]] = None
 
-    def respond(self, response: "InputResponseEvent") -> None:
-        pass
+    # def respond(self, response: "InputResponseEvent") -> None:
+    #     pass
 
     type: EventType = "input_request"
 
@@ -78,3 +79,8 @@ class ErrorEvent(Event):
     type: EventType = "error"
 
     error: str
+
+
+class TerminationEvent(Event):
+    type: EventType = "terminate"
+    summary: Optional[str] = None
