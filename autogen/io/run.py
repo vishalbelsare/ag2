@@ -18,14 +18,14 @@ from .run_response import AsyncRunResponseProtocol, RunResponseProtocol
 
 class MultiprocessingIOStream:
     def __init__(self) -> None:
-        self._input_stream: multiprocessing.Queue[dict[str, Any]] = multiprocessing.Queue()
-        self._output_stream: multiprocessing.Queue[str] = multiprocessing.Queue()
+        self._input_stream: multiprocessing.Queue = multiprocessing.Queue()  # type: ignore[type-arg]
+        self._output_stream: multiprocessing.Queue = multiprocessing.Queue()  # type: ignore[type-arg]
 
     def input(self, prompt: str = "", *, password: bool = False) -> str:
         # if password:
         #     return getpass.getpass(prompt if prompt != "" else "Password: ")
         self.send(InputRequestEvent(uuid=uuid4(), prompt=prompt))
-        return self._output_stream.get()
+        return self._output_stream.get()  # type: ignore[no-any-return]
 
     def print(self, *objects: Any, sep: str = " ", end: str = "\n", flush: bool = False) -> None:
         print_message = PrintMessage(*objects, sep=sep, end=end)
@@ -35,7 +35,7 @@ class MultiprocessingIOStream:
         self._input_stream.put(message.model_dump())
 
     @property
-    def input_stream(self) -> multiprocessing.Queue[dict[str, Any]]:
+    def input_stream(self) -> multiprocessing.Queue:  # type: ignore[type-arg]
         return self._input_stream
 
 
@@ -46,7 +46,7 @@ class RunResponse:
         self.termination_msg = termination_msg
         self._uuid = uuid4()
 
-    def _queue_generator(self, q: multiprocessing.Queue[dict[str, Any]]) -> Iterable[Event]:
+    def _queue_generator(self, q: multiprocessing.Queue) -> Iterable[Event]:  # type: ignore[type-arg]
         """A generator to yield items from the queue until the termination message is found."""
         while True:
             try:
