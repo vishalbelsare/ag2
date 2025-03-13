@@ -2,14 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from .credentials import get_credentials_from_json
+from autogen.tools.experimental.google_api.authentication.credentials import get_credentials_from_json
 
 
-def main() -> None:
+def test_end2end() -> None:
     """Shows basic usage of the Sheets API.
     Prints values from a sample spreadsheet.
     """
