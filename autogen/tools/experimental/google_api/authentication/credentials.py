@@ -4,12 +4,17 @@
 
 
 import os.path
+from typing import Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from sqlmodel import Field, SQLModel, Session, create_engine, select
 
-__all__ = ["get_credentials_from_json"]
+__all__ = [
+    "UserCredentials",
+    "get_credentials_from_json",
+]
 
 
 # Refactored example from:
@@ -37,3 +42,40 @@ def get_credentials_from_json(
             token.write(creds.to_json())
 
     return creds  # type: ignore[no-any-return]
+
+
+class UserCredentials(SQLModel, table=True):  # type: ignore
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int
+    refresh_token: str
+    client_id: str
+    client_secret: str
+
+
+def _get_user_credentials_from_db(
+    user_id: int,
+    db_engine_url: str = "sqlite:///database.db",
+) -> Optional[UserCredentials]:
+    engine = create_engine(db_engine_url)
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        statement = (
+            select(UserCredentials).where(UserCredentials.user_id == user_id).order_by(UserCredentials.id.desc())  # type: ignore[union-attr]
+        )
+        user_creds = session.exec(statement).first()
+        print(user_creds)
+
+    return user_creds  # type: ignore[no-any-return]
+
+
+def _set_user_credentials_to_db(
+    user_creds: UserCredentials,
+    db_engine_url: str = "sqlite:///database.db",
+) -> None:
+    engine = create_engine(db_engine_url)
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        session.add(user_creds)
+        session.commit()

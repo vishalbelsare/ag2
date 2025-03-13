@@ -10,7 +10,22 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from autogen.tools.experimental.google_api.authentication.credentials import get_credentials_from_json
+from autogen.tools.experimental.google_api.authentication.credentials import (
+    UserCredentials,
+    _get_user_credentials_from_db,
+    _set_user_credentials_to_db,
+    get_credentials_from_json,
+)
+
+
+class TestUserCredentials:
+    def test_user_credentials(self) -> None:
+        data = {"user_id": 1, "refresh_token": "refresh", "client_id": "client", "client_secret": "secret"}
+        user_credentials = UserCredentials(**data)
+        _set_user_credentials_to_db(user_credentials)
+
+        user_credentials_from_db = _get_user_credentials_from_db(1)
+        assert user_credentials_from_db.model_dump()["refresh_token"] == "refresh"  # type: ignore[union-attr]
 
 
 def test_end2end() -> None:
