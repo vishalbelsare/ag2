@@ -62,6 +62,9 @@ class TestSelectorParser(unittest.TestCase):
     def test_parse_object_true_value(self):
         self.assertParses('{"key": True}')
 
+    def test_parse_object_false_value(self):
+        self.assertParses('{"key": False}')
+
     def test_parse_object_true_value_identifier_key(self):
         self.assertParses('{key: True}')
 
