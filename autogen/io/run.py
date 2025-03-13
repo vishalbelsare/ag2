@@ -9,9 +9,9 @@ import queue
 from typing import Any, Iterable, Optional
 from uuid import UUID, uuid4
 
-from ..agentchat import Agent
+from ..agentchat import Agent, GroupChat, GroupChatManager
 from ..messages.print_message import PrintMessage
-from ..messages.run_events import AgentMessageEvent, Event, InputRequestEvent, Message, TerminationEvent
+from ..messages.run_events import Event, InputRequestEvent, Message, TerminationEvent, get_event
 from .base import IOStream
 from .run_response import AsyncRunResponseProtocol, RunResponseProtocol
 
@@ -40,10 +40,9 @@ class MultiprocessingIOStream:
 
 
 class RunResponse:
-    def __init__(self, iostream: MultiprocessingIOStream, termination_msg: str = "TERMINATE"):
+    def __init__(self, iostream: MultiprocessingIOStream):
         self.iostream = iostream
         self._summary = None
-        self.termination_msg = termination_msg
         self._uuid = uuid4()
 
     def _queue_generator(self, q: multiprocessing.Queue) -> Iterable[Event]:  # type: ignore[type-arg]
@@ -52,14 +51,14 @@ class RunResponse:
             try:
                 # Get an item from the queue
                 item = q.get(timeout=0.1)  # Adjust timeout as needed
-                if item["type"] == "input_request":
-                    event: Event = InputRequestEvent.parse_obj(item)
-                    event.respond = lambda response: self.iostream._output_stream.put(response)  # type: ignore[attr-defined]
-                elif item["type"] == "terminate":
-                    self._summary = item["summary"]
+                event = get_event(item)
+
+                if isinstance(event, TerminationEvent):
+                    self._summary = event.summary
                     break
-                else:
-                    event: Event = AgentMessageEvent(uuid=uuid4(), message=item)  # type: ignore[no-redef]
+
+                if isinstance(event, InputRequestEvent):
+                    event.respond = lambda response: self.iostream._output_stream.put(response)
 
                 yield event
             except queue.Empty:
@@ -92,6 +91,25 @@ def run_single_agent(agent: Agent, iostream: MultiprocessingIOStream, message: s
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
+def run_group_chat(*agents: Agent, iostream: MultiprocessingIOStream, message: str, **kwargs: Any) -> None:
+    with IOStream.set_default(iostream):  # type: ignore[arg-type]
+        groupchat = GroupChat(agents=agents, speaker_selection_method="auto", messages=[])
+
+        manager = GroupChatManager(
+            name="group_manager",
+            groupchat=groupchat,
+            llm_config=agents[0].llm_config,
+            is_termination_msg=lambda x: "DONE!" in (x.get("content", "") or "").upper(),
+        )
+
+        chat_result = agents[0].initiate_chat(
+            recipient=manager,
+            message=message,
+        )
+
+        iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
+
+
 def run(
     *agents: Agent, message: Optional[str] = None, previous_run: Optional[RunResponseProtocol] = None, **kwargs: Any
 ) -> RunResponseProtocol:
@@ -109,6 +127,12 @@ def run(
 
     if len(agents) == 1:
         process = multiprocessing.Process(target=run_single_agent, args=(agents[0], iostream, message), kwargs=kwargs)
+        process.start()
+
+    else:
+        process = multiprocessing.Process(
+            target=run_group_chat, args=(agents), kwargs={**kwargs, "iostream": iostream, "message": message}
+        )
         process.start()
 
     return response

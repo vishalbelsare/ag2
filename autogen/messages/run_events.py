@@ -4,7 +4,7 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-from typing import Annotated, Any, Callable, Literal, Optional
+from typing import Annotated, Any, Callable, ClassVar, Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -21,7 +21,15 @@ __all__ = [
 ]
 
 EventType = Literal[
-    "input_request", "async_input_request", "input_response", "agent_message", "output", "system", "error", "terminate"
+    "input_request",
+    "async_input_request",
+    "input_response",
+    "agent_message",
+    "output",
+    "system",
+    "error",
+    "terminate",
+    "unknown",
 ]
 Message = dict[str, Any]
 
@@ -29,58 +37,100 @@ Message = dict[str, Any]
 class Event(BaseModel):
     uuid: Annotated[UUID, Field(default_factory=uuid4)]
 
-    type: EventType
+    type: ClassVar[EventType]
+
+    @classmethod
+    def accept(cls, message: dict[str, Any]) -> None:
+        return message["type"] == cls.type
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Serialize the Event instance, including the `type` field."""
+        data = super().model_dump(**kwargs)
+        data["type"] = self.type  # Include the ClassVar type explicitly
+        return data
 
 
+_registered_events: list[type[Event]] = []
+
+
+class UnkownEventType(Event):
+    raw: Message
+
+    type: ClassVar[EventType] = "unknown"
+
+
+def register_event() -> Callable[[type[Event]], type[Event]]:
+    def decorator(event_cls: type[Event]) -> type[Event]:
+        global _registered_events
+        _registered_events.append(event_cls)
+        return event_cls
+
+    return decorator
+
+
+def get_event(message: dict[str, Any]) -> Event:
+    global _registered_events
+    for event_cls in _registered_events:
+        if event_cls.accept(message):
+            return event_cls.model_validate(message)
+    # raise ValueError(f"Unknown event type for: {message=}")
+    return UnkownEventType(raw=message)
+
+
+@register_event()
 class InputRequestEvent(Event):
     prompt: str
     respond: Optional[Callable[[str], None]] = None
 
-    # def respond(self, response: "InputResponseEvent") -> None:
-    #     pass
-
-    type: EventType = "input_request"
+    type: ClassVar[EventType] = "input_request"
 
 
+@register_event()
 class AsyncInputRequestEvent(Event):
     prompt: str
 
     async def a_respond(self, response: "InputResponseEvent") -> None:
         pass
 
-    type: EventType = "async_input_request"
+    type: ClassVar[EventType] = "async_input_request"
 
 
+@register_event()
 class InputResponseEvent(Event):
-    type: EventType = "input_response"
+    type: ClassVar[EventType] = "input_response"
 
     value: str
 
 
+@register_event()
 class AgentMessageEvent(Event):
     message: Message
 
-    type: EventType = "agent_message"
+    type: ClassVar[EventType] = "agent_message"
 
 
+@register_event()
 class OutputEvent(Event):
     value: str
 
-    type: EventType = "output"
+    type: ClassVar[EventType] = "output"
 
 
+@register_event()
 class SystemEvent(Event):
     value: str
 
-    type: EventType = "system"
+    type: ClassVar[EventType] = "system"
 
 
+@register_event()
 class ErrorEvent(Event):
-    type: EventType = "error"
+    type: ClassVar[EventType] = "error"
 
     error: str
 
 
+@register_event()
 class TerminationEvent(Event):
-    type: EventType = "terminate"
+    type: ClassVar[EventType] = "terminate"
     summary: Optional[str] = None
