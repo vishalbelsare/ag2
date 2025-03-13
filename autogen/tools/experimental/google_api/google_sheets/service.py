@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 # from prisma.errors import RecordNotFoundError
 # from ..db_helpers import get_db_connection
 # from ..model import GoogleSheetValues
-from .oauth_settings import oauth2_settings
+from ..authentication.oauth_settings import oauth2_settings
 
 __all__ = [
     "build_service",
