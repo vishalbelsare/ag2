@@ -4,18 +4,21 @@
 
 from typing import Any, Optional, Union
 
-from occam_core.agents.model import AgentIOModel, OccamLLMMessage
-from occamai.api_client import AgentInstanceParamsModel, AgentRunDetail, OccamClient
+from ....agentchat import Agent, ConversableAgent
+from ....doc_utils import export_module
+from ....import_utils import optional_import_block, require_optional_import
 
-from autogen.agentchat import Agent, ConversableAgent
-from autogen.doc_utils import export_module
+with optional_import_block():
+    from occam_core.agents.model import AgentIOModel, OccamLLMMessage
+    from occamai.api_client import AgentInstanceParamsModel, AgentRunDetail, OccamClient
 
 __all__ = ["OccamAgent"]
 
 
+@require_optional_import(["occam_core.agents.model", "occamai.api_client"], "occam")
 @export_module("autogen.agents")
 class OccamAgent(ConversableAgent):
-    client: OccamClient
+    client: "OccamClient"  # type: ignore[no-any-unimported]
 
     def _convert_ag_messages_to_agent_io_model(self, messages: list[dict[str, Any]]) -> AgentIOModel:  # type: ignore[no-any-unimported]
         return AgentIOModel(
@@ -42,7 +45,7 @@ class OccamAgent(ConversableAgent):
         # Convert messages to AgentIOModel
         agent_io_model = self._convert_ag_messages_to_agent_io_model(messages)
 
-        agent_run_detail: AgentRunDetail = self.occam_client.agents.run_agent(
+        agent_run_detail: AgentRunDetail = self.occam_client.agents.run_agent(  # type: ignore[no-any-unimported]
             agent_instance_id=self.occam_agent_instance_id,
             sync=True,
             agent_input_model=agent_io_model,
@@ -61,18 +64,22 @@ class OccamAgent(ConversableAgent):
         # True indicates final reply, string goes back into the chat's messages.
         return True, "".join([m.content for m in agent_output.chat_messages])
 
-    def __init__(
+    def __init__(  # type: ignore[no-any-unimported]
         self,
-        client: OccamClient,
+        client: "OccamClient",
         agent_name: str,
-        agent_params: Optional[AgentInstanceParamsModel] = None,
+        agent_params: Optional["AgentInstanceParamsModel"] = None,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         """Initialize the Occam Agent.
 
         Args:
-            llm_config (dict[str, Any]): The LLM configuration.
+            client (OccamClient): The Occam client.
+            agent_name (str): The agent name.
+            agent_params (Optional[AgentInstanceParamsModel]): The agent instance parameters.
+            *args: Additional arguments.
+            **kwargs: Additional keyword arguments.
         """
 
         super().__init__(*args, **kwargs)
@@ -87,6 +94,10 @@ class OccamAgent(ConversableAgent):
         )
         self.occam_agent_instance_id = occam_agent_instance.agent_instance_id
         print(f"Created Occam Agent instance: {self.occam_agent_instance_id}")
+
+        # POPULATE `system_message` and, optionally, `description` for use in group chat auto-speaker selection
+        # This should contain a description of what the agent does.
+        self.update_system_message("POPULATE THIS - DON'T LEAVE IT LIKE THIS!")
 
         self.register_reply(
             trigger=[Agent, None],

@@ -1,9 +1,13 @@
+# Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
-from autogen.agentchat.conversable_agent import ConversableAgent
-from autogen.agents.experimental.occam.occam import OccamAgent
 
 from occamai.api_client import AgentInstanceParamsModel, OccamClient
 
+from autogen.agentchat.conversable_agent import ConversableAgent
+from autogen.agents.experimental.occam.occam import OccamAgent
 
 if __name__ == "__main__":
     api_key = os.getenv("OCCAM_API_KEY")
@@ -16,7 +20,7 @@ if __name__ == "__main__":
 
     # TODO: Agent selection and param building
     ...
-    agent_name="DeepSeek: R1 Distill Llama 70B"
+    agent_name = "DeepSeek: R1 Distill Llama 70B"
     agent_params = AgentInstanceParamsModel()
 
     occam_agent = OccamAgent(
