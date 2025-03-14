@@ -6,7 +6,7 @@ import logging
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -16,10 +16,12 @@ from ....agentchat.contrib.swarm_agent import (
     AfterWork,
     AfterWorkOption,
     OnCondition,
+    OnContextCondition,
     SwarmResult,
     initiate_swarm_chat,
     register_hand_off,
 )
+from ....agentchat.utils import ContextExpression
 from ....doc_utils import export_module
 from ....oai.client import OpenAIWrapper
 from .chroma_query_engine import VectorChromaQueryEngine
@@ -36,7 +38,7 @@ DEFAULT_SYSTEM_MESSAGE = """
 """
 TASK_MANAGER_NAME = "TaskManagerAgent"
 TASK_MANAGER_SYSTEM_MESSAGE = """
-    You are a task manager agent. You can do one of 4 tasks:
+    You are a task manager agent. You have 2 priorities:
     1. You initiate the tasks which updates the context variables based on the task decisions (DocumentTask) from the DocumentTriageAgent.
     If the DocumentTriageAgent has suggested any ingestions or queries, call initiate_tasks to record them.
     Put all ingestion and query tasks into the one tool call.
@@ -60,20 +62,17 @@ TASK_MANAGER_SYSTEM_MESSAGE = """
                 }
             ]
         }
-    2. You hand off control to the ingest agent if there are any documents to ingest.
-    3. If there are no documents to ingest and there are queries to run, hand control off to the query agent.
-    4. If there are no documents to ingest and no queries to run, hand control off to the summary agent.
+    2. If there are no documents to ingest and no queries to run, hand control off to the summary agent.
 
     Put all file paths and URLs into the ingestions. A http/https URL is also a valid path and should be ingested.
 
     Use the initiate_tasks tool to incorporate all ingestions and queries. Don't call it again until new ingestions or queries are raised.
 
-    New ingestations and queries may be raised from time to time, so use the initiate_tasks again if you see new ingestions/queries.
+    New ingestions and queries may be raised from time to time, so use the initiate_tasks again if you see new ingestions/queries.
 
-    Use tools to transfer to the ingest agent, query agent, or summary agent based on the context variables.
-
-    IF CALLING A TOOL, ONLY CALL TOOLS ONCE IN YOUR ENTIRE RESPONSE.
+    Transfer to the summary agent if all ingestion and query tasks are done.
     """
+
 DEFAULT_ERROR_SWARM_MESSAGE: str = """
 Document Agent failed to perform task.
 """
@@ -181,6 +180,7 @@ class DocAgent(ConversableAgent):
             parsed_docs_path (Union[str, Path]): The path where parsed documents will be stored.
             collection_name (Optional[str]): The unique name for the data store collection. If omitted, a random name will be used. Populate this to reuse previous ingested data.
             query_engine (Optional[RAGQueryEngine]): The query engine to use for querying documents, defaults to VectorChromaQueryEngine if none provided.
+                                                     Use enable_query_citations and implement query_with_citations method to enable citation support. e.g. VectorChromaCitationQueryEngine
 
         The DocAgent is responsible for generating a group of agents to solve a task.
 
@@ -240,12 +240,18 @@ class DocAgent(ConversableAgent):
                 if doc not in self.documents_ingested:
                     self.documents_ingested.append(doc)
 
+        class TaskInitInfo(BaseModel):
+            ingestions: Annotated[list[Ingest], Field(description="List of documents, files, and URLs to ingest")]
+            queries: Annotated[list[Query], Field(description="List of queries to run")]
+
         def initiate_tasks(
-            ingestions: list[Ingest],
-            queries: list[Query],
-            context_variables: dict[str, Any],
+            task_init_info: Annotated[TaskInitInfo, "Documents, Files, URLs to ingest and the queries to run"],
+            context_variables: Annotated[dict[str, Any], "Context variables"],
         ) -> SwarmResult:
             """Add documents to ingest and queries to answer when received."""
+            ingestions = task_init_info.ingestions
+            queries = task_init_info.queries
+
             logger.info("initiate_tasks context_variables", context_variables)
             if "TaskInitiated" in context_variables:
                 return SwarmResult(values="Task already initiated", context_variables=context_variables)
@@ -289,12 +295,30 @@ class DocAgent(ConversableAgent):
                     context_variables=context_variables,
                 )
 
-            query = context_variables["QueriesToRun"][0]["query"]
+            query = context_variables["QueriesToRun"][0].query
             try:
-                answer = query_engine.query(query)
+                if (
+                    hasattr(query_engine, "enable_query_citations")
+                    and query_engine.enable_query_citations
+                    and hasattr(query_engine, "query_with_citations")
+                    and callable(query_engine.query_with_citations)
+                ):
+                    answer_with_citations = query_engine.query_with_citations(query)  # type: ignore[union-attr]
+                    answer = answer_with_citations.answer
+                    txt_citations = [
+                        {
+                            "text_chunk": source.node.get_text(),
+                            "file_path": source.metadata["file_path"],
+                        }
+                        for source in answer_with_citations.citations
+                    ]
+                    logger.info(f"Citations:\n {txt_citations}")
+                else:
+                    answer = query_engine.query(query)
+                    txt_citations = []
                 context_variables["QueriesToRun"].pop(0)
                 context_variables["CompletedTaskCount"] += 1
-                context_variables["QueryResults"].append({"query": query, "answer": answer})
+                context_variables["QueryResults"].append({"query": query, "answer": answer, "citations": txt_citations})
                 return SwarmResult(values=answer, context_variables=context_variables)
             except Exception as e:
                 return SwarmResult(
@@ -305,7 +329,11 @@ class DocAgent(ConversableAgent):
 
         self._query_agent = ConversableAgent(
             name="QueryAgent",
-            system_message="You are a query agent. You answer the user's questions only using the query function provided to you. You can only call use the execute_rag_query tool once per turn.",
+            system_message="""
+            You are a query agent.
+            You answer the user's questions only using the query function provided to you.
+            You can only call use the execute_rag_query tool once per turn.
+            """,
             llm_config=llm_config,
             functions=[execute_rag_query],
         )
@@ -320,11 +348,16 @@ class DocAgent(ConversableAgent):
                 "Output two sections: 'Ingestions:' and 'Queries:' with the results of the tasks. Number the ingestions and queries. "
                 "If there are no ingestions output 'No ingestions', if there are no queries output 'No queries' under their respective sections. "
                 "Don't add markdown formatting. "
-                "Format the Query and Answers as 'Query:\nAnswer:'. Add a number to each query if more than one. Use the context below:\n"
+                "For each query, there is one answer and, optionally, a list of citations."
+                "For each citation, it contains two fields: 'text_chunk' and 'file_path'."
+                "Format the Query and Answers and Citations as 'Query:\nAnswer:\n\nCitations:'. Add a number to each query if more than one. Use the context below:\n"
+                "For each query, output the full citation contents and list them one by one,"
+                "format each citation as '\nSource [X] (chunk file_path here):\n\nChunk X:\n(text_chunk here)' and mark a separator between each citation using '\n#########################\n\n'."
+                "If there are no citations at all, DON'T INCLUDE ANY mention of citations.\n"
                 f"Documents ingested: {agent.get_context('DocumentsIngested')}\n"
                 f"Documents left to ingest: {len(agent.get_context('DocumentsToIngest'))}\n"
                 f"Queries left to run: {len(agent.get_context('QueriesToRun'))}\n"
-                f"Query and Answers: {agent.get_context('QueryResults')}\n"
+                f"Query and Answers and Citations: {agent.get_context('QueryResults')}\n"
             )
 
             return system_message
@@ -334,16 +367,6 @@ class DocAgent(ConversableAgent):
             llm_config=llm_config,
             update_agent_state_before_reply=[UpdateSystemMessage(create_summary_agent_prompt)],
         )
-
-        def has_ingest_tasks(agent: ConversableAgent, messages: list[dict[str, Any]]) -> bool:
-            logger.debug("has_ingest_tasks context_variables:", agent._context_variables)
-            return len(agent.get_context("DocumentsToIngest")) > 0
-
-        def has_only_query_tasks(agent: ConversableAgent, messages: list[dict[str, Any]]) -> bool:
-            logger.debug("has_only_query_tasks context_variables:", agent._context_variables)
-            if len(agent.get_context("DocumentsToIngest")) > 0:
-                return False
-            return len(agent.get_context("QueriesToRun")) > 0
 
         def summary_task(agent: ConversableAgent, messages: list[dict[str, Any]]) -> bool:
             return (
@@ -355,19 +378,23 @@ class DocAgent(ConversableAgent):
         register_hand_off(
             agent=self._task_manager_agent,
             hand_to=[
-                OnCondition(
-                    self._data_ingestion_agent,
-                    "If there are any DocumentsToIngest in context variables, transfer to data ingestion agent",
-                    available=has_ingest_tasks,
+                OnContextCondition(  # Go straight to data ingestion agent if we have documents to ingest
+                    target=self._data_ingestion_agent,
+                    condition=ContextExpression("len(${DocumentsToIngest}) > 0"),
                 ),
-                OnCondition(
-                    self._query_agent,
-                    "If there are any QueriesToRun in context variables and no DocumentsToIngest, transfer to query_agent",
-                    available=has_only_query_tasks,
+                OnContextCondition(  # Go to Query agent if we have queries to run (ingestion above run first)
+                    target=self._query_agent,
+                    condition=ContextExpression("len(${QueriesToRun}) > 0"),
+                ),
+                OnContextCondition(  # Go to Summary agent if no documents or queries left to run and we have query results
+                    target=self._summary_agent,
+                    condition=ContextExpression(
+                        "len(${DocumentsToIngest}) == 0 and len(${QueriesToRun}) == 0 and len(${QueryResults}) > 0"
+                    ),
                 ),
                 OnCondition(
                     self._summary_agent,
-                    "Call this function as work is done and a summary will be created",
+                    "Call this function if all work is done and a summary will be created",
                     available=summary_task,
                 ),
                 AfterWork(AfterWorkOption.STAY),
@@ -413,6 +440,7 @@ class DocAgent(ConversableAgent):
         sender: Optional[Agent] = None,
         config: Optional[OpenAIWrapper] = None,
     ) -> tuple[bool, Optional[Union[str, dict[str, Any]]]]:
+        """Reply function that generates the inner swarm reply for the DocAgent."""
         context_variables = {
             "CompletedTaskCount": 0,
             "DocumentsToIngest": [],
@@ -445,6 +473,7 @@ class DocAgent(ConversableAgent):
         return True, chat_result.summary
 
     def _get_document_input_message(self, messages: Optional[Union[list[dict[str, Any]], str]]) -> str:  # type: ignore[type-arg]
+        """Gets and validates the input message(s) for the document agent."""
         if isinstance(messages, str):
             return messages
         elif (

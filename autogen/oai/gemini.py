@@ -54,6 +54,7 @@ from io import BytesIO
 from typing import Any, Optional, Type
 
 import requests
+from packaging import version
 from pydantic import BaseModel
 
 from ..import_utils import optional_import_block, require_optional_import
@@ -73,6 +74,7 @@ with optional_import_block():
         FunctionResponse,
         GenerateContentConfig,
         GenerateContentResponse,
+        GoogleSearch,
         Part,
         Schema,
         Tool,
@@ -138,14 +140,7 @@ class GeminiClient:
         like in Google Cloud Shell.
 
         Args:
-            api_key (str): The API key for using Gemini.
-                credentials (google.auth.credentials.Credentials): credentials to be used for authentication with vertexai.
-            google_application_credentials (str): Path to the JSON service account key file of the service account.
-                Alternatively, the GOOGLE_APPLICATION_CREDENTIALS environment variable
-                can also be set instead of using this argument.
-            project_id (str): Google Cloud project id, which is only valid in case no API key is specified.
-            location (str): Compute region to be used, like 'us-west1'.
-                This parameter is only valid in case no API key is specified.
+            **kwargs: The keyword arguments to initialize the Gemini client.
         """
         self.api_key = kwargs.get("api_key")
         if not self.api_key:
@@ -538,10 +533,11 @@ class GeminiClient:
                     else rst.append(Content(parts=parts, role=role))
                 )
             elif part_type == "tool" or part_type == "tool_call":
+                role = "function" if version.parse(genai.__version__) < version.parse("1.4.0") else "user"
                 rst.append(
-                    VertexAIContent(parts=parts, role="function")
+                    VertexAIContent(parts=parts, role=role)
                     if self.use_vertexai
-                    else rst.append(Content(parts=parts, role="function"))
+                    else rst.append(Content(parts=parts, role=role))
                 )
             elif part_type == "image":
                 # Image has multiple parts, some can be text and some can be image based
@@ -575,10 +571,21 @@ class GeminiClient:
                 rst.pop()
 
         # The Gemini is restrict on order of roles, such that
-        # 1. The messages should be interleaved between user and model.
+        # 1. The first message must be from the user role.
         # 2. The last message must be from the user role.
+        # 3. The messages should be interleaved between user and model.
+        # We add a dummy message "start chat" if the first role is not the user.
         # We add a dummy message "continue" if the last role is not the user.
-        if rst[-1].role not in ["user", "function"]:
+        if rst[0].role != "user":
+            text_part, _ = self._oai_content_to_gemini_content({"content": "start chat"})
+            rst.insert(
+                0,
+                VertexAIContent(parts=text_part, role="user")
+                if self.use_vertexai
+                else Content(parts=text_part, role="user"),
+            )
+
+        if rst[-1].role != "user":
             text_part, _ = self._oai_content_to_gemini_content({"content": "continue"})
             rst.append(
                 VertexAIContent(parts=text_part, role="user")
@@ -627,6 +634,22 @@ class GeminiClient:
         return schema
 
     @staticmethod
+    def _check_if_prebuilt_google_search_tool_exists(tools: list[dict[str, Any]]) -> bool:
+        """Check if the Google Search tool is present in the tools list."""
+        exists = False
+        for tool in tools:
+            if tool["function"]["name"] == "prebuilt_google_search":
+                exists = True
+                break
+
+        if exists and len(tools) > 1:
+            raise ValueError(
+                "Google Search tool can be used only by itself. Please remove other tools from the tools list."
+            )
+
+        return exists
+
+    @staticmethod
     def _unwrap_references(function_parameters: dict[str, Any]) -> dict[str, Any]:
         if "properties" not in function_parameters:
             return function_parameters
@@ -642,6 +665,9 @@ class GeminiClient:
 
     def _tools_to_gemini_tools(self, tools: list[dict[str, Any]]) -> list[Tool]:
         """Create Gemini tools (as typically requires Callables)"""
+        if self._check_if_prebuilt_google_search_tool_exists(tools) and not self.use_vertexai:
+            return [Tool(google_search=GoogleSearch())]
+
         functions = []
         for tool in tools:
             if self.use_vertexai:

@@ -28,6 +28,7 @@ from ..messages.agent_messages import (
     SpeakerAttemptFailedMultipleAgentsMessage,
     SpeakerAttemptFailedNoAgentsMessage,
     SpeakerAttemptSuccessfulMessage,
+    TerminationMessage,
 )
 from ..oai.client import ModelClient
 from ..runtime_logging import log_new_agent, logging_enabled
@@ -703,13 +704,13 @@ class GroupChat:
         5. If we run out of turns and no single agent can be determined, the next speaker in the list of agents is returned
 
         Args:
-            last_speaker Agent: The previous speaker in the group chat
-            selector ConversableAgent:
-            messages Optional[List[Dict]]: Current chat messages
-            agents Optional[List[Agent]]: Valid list of agents for speaker selection
+            last_speaker: The previous speaker in the group chat
+            selector: The ConversableAgent that initiated the speaker selection
+            messages: Current chat messages
+            agents: Valid list of agents for speaker selection
 
         Returns:
-            Dict: a counter for mentioned agents.
+            A counter for mentioned agents.
         """
         # If no agents are passed in, assign all the group chat's agents
         if agents is None:
@@ -788,13 +789,13 @@ class GroupChat:
         5. If we run out of turns and no single agent can be determined, the next speaker in the list of agents is returned
 
         Args:
-            last_speaker Agent: The previous speaker in the group chat
-            selector ConversableAgent:
-            messages Optional[List[Dict]]: Current chat messages
-            agents Optional[List[Agent]]: Valid list of agents for speaker selection
+            last_speaker: The previous speaker in the group chat
+            selector: The ConversableAgent that initiated the speaker selection
+            messages: Current chat messages
+            agents: Valid list of agents for speaker selection
 
         Returns:
-            Dict: a counter for mentioned agents.
+            A counter for mentioned agents.
         """
         # If no agents are passed in, assign all the group chat's agents
         if agents is None:
@@ -1148,6 +1149,8 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ) -> tuple[bool, Optional[str]]:
         """Run a group chat."""
+        iostream = IOStream.get_default()
+
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
@@ -1155,6 +1158,7 @@ class GroupChatManager(ConversableAgent):
         groupchat = config
         send_introductions = getattr(groupchat, "send_introductions", False)
         silent = getattr(self, "_silent", False)
+        termination_reason = None
 
         if send_introductions:
             # Broadcast the intro
@@ -1175,8 +1179,13 @@ class GroupChatManager(ConversableAgent):
             for agent in groupchat.agents:
                 if agent != speaker:
                     self.send(message, agent, request_reply=False, silent=True)
-            if self._is_termination_msg(message) or i == groupchat.max_round - 1:
-                # The conversation is over or it's the last round
+            if self._is_termination_msg(message):
+                # The conversation is over
+                termination_reason = f"Termination message condition on the GroupChatManager '{self.name}' met"
+                break
+            elif i == groupchat.max_round - 1:
+                # It's the last round
+                termination_reason = f"Maximum rounds ({groupchat.max_round}) reached"
                 break
             try:
                 # select the next speaker
@@ -1197,10 +1206,12 @@ class GroupChatManager(ConversableAgent):
                     raise
             except NoEligibleSpeakerError:
                 # No eligible speaker, terminate the conversation
+                termination_reason = "No eligible speaker found"
                 break
 
             if reply is None:
                 # no reply is generated, exit the chat
+                termination_reason = "No reply generated"
                 break
 
             # check for "clear history" phrase in reply and activate clear history function if found
@@ -1219,6 +1230,10 @@ class GroupChatManager(ConversableAgent):
             for a in groupchat.agents:
                 a.client_cache = a.previous_cache
                 a.previous_cache = None
+
+        if termination_reason:
+            iostream.send(TerminationMessage(termination_reason=termination_reason))
+
         return True, None
 
     async def a_run_chat(
@@ -1228,6 +1243,8 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ):
         """Run a group chat asynchronously."""
+        iostream = IOStream.get_default()
+
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
@@ -1235,6 +1252,7 @@ class GroupChatManager(ConversableAgent):
         groupchat = config
         send_introductions = getattr(groupchat, "send_introductions", False)
         silent = getattr(self, "_silent", False)
+        termination_reason = None
 
         if send_introductions:
             # Broadcast the intro
@@ -1253,6 +1271,7 @@ class GroupChatManager(ConversableAgent):
 
             if self._is_termination_msg(message):
                 # The conversation is over
+                termination_reason = f"Termination message condition on the GroupChatManager '{self.name}' met"
                 break
 
             # broadcast the message to all agents except the speaker
@@ -1261,6 +1280,7 @@ class GroupChatManager(ConversableAgent):
                     await self.a_send(message, agent, request_reply=False, silent=True)
             if i == groupchat.max_round - 1:
                 # the last round
+                termination_reason = f"Maximum rounds ({groupchat.max_round}) reached"
                 break
             try:
                 # select the next speaker
@@ -1278,10 +1298,14 @@ class GroupChatManager(ConversableAgent):
                     raise
             except NoEligibleSpeakerError:
                 # No eligible speaker, terminate the conversation
+                termination_reason = "No eligible speaker found"
                 break
 
             if reply is None:
+                # no reply is generated, exit the chat
+                termination_reason = "No reply generated"
                 break
+
             # The speaker sends the message without requesting a reply
             await speaker.a_send(reply, self, request_reply=False, silent=silent)
             message = self.last_message(speaker)
@@ -1289,6 +1313,10 @@ class GroupChatManager(ConversableAgent):
             for a in groupchat.agents:
                 a.client_cache = a.previous_cache
                 a.previous_cache = None
+
+        if termination_reason:
+            iostream.send(TerminationMessage(termination_reason=termination_reason))
+
         return True, None
 
     def resume(
@@ -1301,14 +1329,14 @@ class GroupChatManager(ConversableAgent):
         as per the original group chat.
 
         Args:
-            - messages Union[List[Dict], str]: The content of the previous chat's messages, either as a Json string or a list of message dictionaries.
-            - remove_termination_string (str or function): Remove the termination string from the last message to prevent immediate termination
+            messages: The content of the previous chat's messages, either as a Json string or a list of message dictionaries.
+            remove_termination_string: Remove the termination string from the last message to prevent immediate termination
                 If a string is provided, this string will be removed from last message.
                 If a function is provided, the last message will be passed to this function.
-            - silent (bool or None): (Experimental) whether to print the messages for this conversation. Default is False.
+            silent: (Experimental) whether to print the messages for this conversation. Default is False.
 
         Returns:
-            - Tuple[ConversableAgent, Dict]: A tuple containing the last agent who spoke and their message
+            A tuple containing the last agent who spoke and their message
         """
         # Convert messages from string to messages list, if needed
         if isinstance(messages, str):
@@ -1404,14 +1432,14 @@ class GroupChatManager(ConversableAgent):
         as per the original group chat.
 
         Args:
-            - messages Union[List[Dict], str]: The content of the previous chat's messages, either as a Json string or a list of message dictionaries.
-            - remove_termination_string (str or function): Remove the termination string from the last message to prevent immediate termination
+            messages: The content of the previous chat's messages, either as a Json string or a list of message dictionaries.
+            remove_termination_string: Remove the termination string from the last message to prevent immediate termination
                 If a string is provided, this string will be removed from last message.
                 If a function is provided, the last message will be passed to this function, and the function returns the string after processing.
-            - silent (bool or None): (Experimental) whether to print the messages for this conversation. Default is False.
+            silent: (Experimental) whether to print the messages for this conversation. Default is False.
 
         Returns:
-            - Tuple[ConversableAgent, Dict]: A tuple containing the last agent who spoke and their message
+            A tuple containing the last agent who spoke and their message
         """
         # Convert messages from string to messages list, if needed
         if isinstance(messages, str):
@@ -1527,9 +1555,10 @@ class GroupChatManager(ConversableAgent):
         """Removes termination string, if required, and checks if termination may occur.
 
         Args:
-            remove_termination_string (str or function): Remove the termination string from the last message to prevent immediate termination
+            remove_termination_string: Remove the termination string from the last message to prevent immediate termination
                 If a string is provided, this string will be removed from last message.
                 If a function is provided, the last message will be passed to this function, and the function returns the string after processing.
+            messages: List of chat messages
 
         Returns:
             None
@@ -1556,10 +1585,10 @@ class GroupChatManager(ConversableAgent):
         """Reads the saved state of messages in Json format for resume and returns as a messages list
 
         Args:
-            - message_string: Json string, the saved state
+            message_string: Json string, the saved state
 
         Returns:
-            - List[Dict]: List of messages
+            A list of messages
         """
         try:
             state = json.loads(message_string)
@@ -1573,10 +1602,10 @@ class GroupChatManager(ConversableAgent):
         The state is made up of a list of messages
 
         Args:
-            - messages (List[Dict]): set of messages to convert to a string
+            messages: set of messages to convert to a string
 
         Returns:
-            - str: Json representation of the messages which can be persisted for resuming later
+            A JSON representation of the messages which can be persisted for resuming later
         """
         return json.dumps(messages)
 

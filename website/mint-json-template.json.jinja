@@ -151,12 +151,12 @@
           "group": "Advanced Concepts",
           "pages": [
             "docs/user-guide/advanced-concepts/rag",
-
             {
               "group": "GroupChat",
               "pages":
               [
                 "docs/user-guide/advanced-concepts/groupchat/groupchat",
+                "docs/user-guide/advanced-concepts/groupchat/tools",
                 "docs/user-guide/advanced-concepts/groupchat/custom-group-chat",
                 "docs/user-guide/advanced-concepts/groupchat/resuming-group-chat"
               ]
@@ -171,9 +171,36 @@
                 "docs/user-guide/advanced-concepts/swarm/use-case"
               ]
             },
+            {
+              "group": "RealtimeAgent",
+              "pages":
+              [
+                "docs/user-guide/advanced-concepts/realtime-agent/index",
+                "docs/user-guide/advanced-concepts/realtime-agent/websocket",
+                "docs/user-guide/advanced-concepts/realtime-agent/webrtc",
+                "docs/user-guide/advanced-concepts/realtime-agent/twilio"
+              ]
+            },
             "docs/user-guide/advanced-concepts/code-execution",
             "docs/user-guide/advanced-concepts/conversation-patterns-deep-dive",
-            "docs/user-guide/advanced-concepts/llm-configuration-deep-dive"
+            "docs/user-guide/advanced-concepts/llm-configuration-deep-dive",
+            {
+              "group": "Pattern Cookbook",
+              "pages":
+              [
+                "docs/user-guide/advanced-concepts/pattern-cookbook/overview",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/context_aware_routing",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/escalation",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/feedback_loop",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/hierarchical",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/organic",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/pipeline",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/redundant",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/star",
+                "docs/user-guide/advanced-concepts/pattern-cookbook/triage_with_tasks"
+
+              ]
+            }
           ]
         },
         {
@@ -210,7 +237,16 @@
           "pages": [
             "docs/user-guide/reference-agents/index",
             "docs/user-guide/reference-agents/captainagent",
-            "docs/user-guide/reference-agents/communication-agents",
+            {
+              "group": "Communication Platforms",
+              "pages":
+              [
+                "docs/user-guide/reference-agents/communication-platforms/overview",
+                "docs/user-guide/reference-agents/communication-platforms/discordagent",
+                "docs/user-guide/reference-agents/communication-platforms/slackagent",
+                "docs/user-guide/reference-agents/communication-platforms/telegramagent"
+              ]
+            },
             "docs/user-guide/reference-agents/docagent",
             "docs/user-guide/reference-agents/reasoningagent",
             "docs/user-guide/reference-agents/websurferagent",
@@ -222,9 +258,25 @@
           "pages":
           [
             "docs/user-guide/reference-tools/index",
+            {
+              "group": "Google APIs",
+              "pages":
+              [
+                "docs/user-guide/reference-tools/google-api/google-search"
+              ]
+            },
             "docs/user-guide/reference-tools/browser-use",
-            "docs/user-guide/reference-tools/crawl4ai",
-            "docs/user-guide/reference-tools/deep-research"
+            "docs/user-guide/reference-tools/deep-research",
+            {
+              "group": "Communication Platforms",
+              "pages":
+              [
+                "docs/user-guide/reference-tools/communication-platforms/discord",
+                "docs/user-guide/reference-tools/communication-platforms/slack",
+                "docs/user-guide/reference-tools/communication-platforms/telegram"
+              ]
+            },
+            "docs/user-guide/reference-tools/crawl4ai"
           ]
         }
       ]
