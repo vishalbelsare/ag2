@@ -4,8 +4,8 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-import multiprocessing
 import queue
+import threading
 from typing import Any, Iterable, Optional
 from uuid import UUID, uuid4
 
@@ -16,10 +16,10 @@ from .base import IOStream
 from .run_response import AsyncRunResponseProtocol, RunResponseProtocol
 
 
-class MultiprocessingIOStream:
+class ThreadIOStream:
     def __init__(self) -> None:
-        self._input_stream: multiprocessing.Queue = multiprocessing.Queue()  # type: ignore[type-arg]
-        self._output_stream: multiprocessing.Queue = multiprocessing.Queue()  # type: ignore[type-arg]
+        self._input_stream: queue.Queue = queue.Queue()  # type: ignore[type-arg]
+        self._output_stream: queue.Queue = queue.Queue()  # type: ignore[type-arg]
 
     def input(self, prompt: str = "", *, password: bool = False) -> str:
         # if password:
@@ -35,17 +35,17 @@ class MultiprocessingIOStream:
         self._input_stream.put(message.model_dump())
 
     @property
-    def input_stream(self) -> multiprocessing.Queue:  # type: ignore[type-arg]
+    def input_stream(self) -> queue.Queue:  # type: ignore[type-arg]
         return self._input_stream
 
 
 class RunResponse:
-    def __init__(self, iostream: MultiprocessingIOStream):
+    def __init__(self, iostream: ThreadIOStream):
         self.iostream = iostream
         self._summary: Optional[str] = None
         self._uuid = uuid4()
 
-    def _queue_generator(self, q: multiprocessing.Queue) -> Iterable[Event]:  # type: ignore[type-arg]
+    def _queue_generator(self, q: queue.Queue) -> Iterable[Event]:  # type: ignore[type-arg]
         """A generator to yield items from the queue until the termination message is found."""
         while True:
             try:
@@ -85,13 +85,13 @@ class RunResponse:
         return self._uuid
 
 
-def run_single_agent(agent: Agent, iostream: MultiprocessingIOStream, message: str, **kwargs: Any) -> None:
+def run_single_agent(agent: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
         chat_result = agent.run(message=message, **kwargs)  # type: ignore[attr-defined]
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
-def run_group_chat(*agents: Agent, iostream: MultiprocessingIOStream, message: str, **kwargs: Any) -> None:
+def run_group_chat(*agents: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
         groupchat = GroupChat(agents=agents, speaker_selection_method="auto", messages=[])
 
@@ -125,20 +125,15 @@ def run(
         kwargs: Additional arguments to pass to the agents.
 
     """
-    iostream = MultiprocessingIOStream()
+    iostream = ThreadIOStream()
     response = RunResponse(iostream)
 
     if len(agents) == 1:
-        process = multiprocessing.Process(
-            target=run_single_agent, args=(agents[0], iostream, initial_message), kwargs=kwargs
-        )
-        process.start()
-
+        threading.Thread(target=run_single_agent, args=(agents[0], iostream, initial_message), kwargs=kwargs).start()
     else:
-        process = multiprocessing.Process(
-            target=run_group_chat, args=(agents), kwargs={**kwargs, "iostream": iostream, "message": initial_message}
-        )
-        process.start()
+        threading.Thread(
+            target=run_group_chat, args=agents, kwargs={**kwargs, "iostream": iostream, "message": initial_message}
+        ).start()
 
     return response
 

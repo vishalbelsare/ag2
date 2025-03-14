@@ -4,13 +4,14 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Protocol, Union, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Protocol, Union, runtime_checkable
 
 from ..cache.abstract_cache_base import AbstractCache
 from ..doc_utils import export_module
 
 if TYPE_CHECKING:
     # mypy will fail if Conversible agent does not implement Agent protocol
+    from ..tools.tool import Tool
     from .chat import ChatResult
     from .conversable_agent import ConversableAgent
 
@@ -174,6 +175,32 @@ class Agent(Protocol):
         summary_args: Optional[dict[str, Any]] = {},
         message: Optional[Union["LLMMessageType", str, Callable[..., Any]]] = None,
         **kwargs: Any,
+    ) -> "ChatResult": ...
+
+    def run(
+        self,
+        message: str,
+        *,
+        tools: Optional[Union["Tool", Iterable["Tool"]]] = None,
+        executor_kwargs: Optional[dict[str, Any]] = None,
+        max_turns: Optional[int] = None,
+        msg_to: Literal["agent", "user"] = "agent",
+        clear_history: bool = False,
+        user_input: bool = True,
+        summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
+    ) -> "ChatResult": ...
+
+    async def a_run(
+        self,
+        message: str,
+        *,
+        tools: Optional[Union["Tool", Iterable["Tool"]]] = None,
+        executor_kwargs: Optional[dict[str, Any]] = None,
+        max_turns: Optional[int] = None,
+        msg_to: Literal["agent", "user"] = "agent",
+        clear_history: bool = False,
+        user_input: bool = True,
+        summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
     ) -> "ChatResult": ...
 
 
