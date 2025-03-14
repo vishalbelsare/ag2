@@ -27,6 +27,8 @@ from typing import (
     Union,
 )
 
+import dill
+
 from ..cache.cache import AbstractCache
 from ..code_utils import (
     PYTHON_VARIANTS,
@@ -366,28 +368,39 @@ class ConversableAgent(LLMAgent):
         self._update_agent_state_before_reply = update_agent_state_before_reply
         self._register_update_agent_state_before_reply(update_agent_state_before_reply)
 
-    def __reduce__(self):
-        # Return a tuple of the callable to recreate the object and its arguments
-        return (
-            self.__class__,  # The class itself
-            (
-                self._name,
-                self._oai_system_message[0]["content"],
-                self._is_termination_msg,
-                self._max_consecutive_auto_reply,
-                self.human_input_mode,
-                self.function_map,
-                self._code_execution_config,
-                self.llm_config,
-                self._default_auto_reply,
-                self.description,
-                self.chat_messages,
-                self.silent,
-                self._context_variables,
-                self._functions,
-                self._update_agent_state_before_reply,
-            ),  # Args for __init__
-        )
+    # def __reduce__(self):
+    #     # Return a tuple of the callable to recreate the object and its arguments
+    #     return (
+    #         self.__class__,  # The class itself
+    #         (
+    #             self._name,
+    #             self._oai_system_message[0]["content"],
+    #             self._is_termination_msg,
+    #             self._max_consecutive_auto_reply,
+    #             self.human_input_mode,
+    #             self._function_map,
+    #             self._code_execution_config,
+    #             self.llm_config,
+    #             self._default_auto_reply,
+    #             self.description,
+    #             self.chat_messages,
+    #             self.silent,
+    #             self._context_variables,
+    #             self._functions,
+    #             self._update_agent_state_before_reply,
+    #         ),  # Args for __init__
+    #     )
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Serialize function_map using dill
+        state["function_map"] = {key: dill.dumps(func) for key, func in self.function_map.items()}
+        return state
+
+    def __setstate__(self, state):
+        # Deserialize function_map using dill
+        self.__dict__.update(state)
+        self._function_map = {key: dill.loads(func) for key, func in state["function_map"].items()}
 
     def _validate_name(self, name: str) -> None:
         if not self.llm_config or "config_list" not in self.llm_config or len(self.llm_config["config_list"]) == 0:
