@@ -21,14 +21,18 @@ __all__ = ["EvaluationAgent"]
 
 @export_module("autogen.agents.contrib")
 class EvaluationAgent(ConversableAgent):
-    """Utilises multiple agents, evaluating their performance then selecting and returning the best one."""
+    """Utilises multiple agents, evaluating their performance then selecting and returning the best one.
 
-    # Internal process:
-    # 1. Synthesize the task from the input
-    # 2. Each agent gives their response
-    # 3. Evaluator evaluates and selects the response
-    # 4. Return the selected response
+    The agent follows the internal process:
+    1. Synthesize the task from the input using an LLM
+    2. Ask each agent to respond to the task (asynchronously)
+    3. Evaluator evaluates and selects the response
+    4. Return the selected response
 
+    You must pass in at least two agents.
+    """
+
+    # Evaluator agent system message, cannot be overridden
     DEFAULT_EVALUATOR_MESSAGE = (
         "You are responsible for evaluating and selecting the best response from a set of agents. "
         "Each agent, identified by a name, will be given a chance to respond. "
@@ -36,6 +40,7 @@ class EvaluationAgent(ConversableAgent):
         "[agent_outputs]"
     )
 
+    # Default evaluation guidance, can be overridden
     DEFAULT_EVALUATON_GUIDANCE = (
         "1. Carefully review each approach and result\n"
         "2. Evaluate each solution based on criteria appropriate to the task\n"
@@ -43,6 +48,7 @@ class EvaluationAgent(ConversableAgent):
         "4. You must select a response as the best response"
     )
 
+    # Default reply template for the EvaluationAgent, can be overridden
     DEFAULT_REPLY_TEMPLATE = "AGENT '[agent_name]' RESPONSE SELECTED.\n\nREASON:\n[reason]\n\nRESPONSE:\n[response]"
 
     def __init__(
@@ -52,6 +58,7 @@ class EvaluationAgent(ConversableAgent):
         agents: list[ConversableAgent],
         evaluation_guidance: Optional[str] = None,
         reply_template: Optional[str] = None,
+        silence: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the EvaluationAgent.
@@ -66,6 +73,7 @@ class EvaluationAgent(ConversableAgent):
                 Three placeholders are available for substitution: [agent_name], [reason], and [response].
                 Default is:
                 "AGENT '[agent_name]' RESPONSE SELECTED.\n\nREASON:\n[reason]\n\nRESPONSE:\n[response]"
+            silence (bool): Whether to silence the agent's internal conversations. Default is False meaning all internal conversations will be visible.
             **kwargs (Any): Additional keyword arguments to pass to the base class.
         """
 
@@ -75,21 +83,25 @@ class EvaluationAgent(ConversableAgent):
         # Initialise the base class, ignoring llm_config as we'll put that on internal agents
         super().__init__(**kwargs)
 
-        # Store your custom parameters
+        # Store custom parameters
         self._evaluation_agents = agents
         self._evaluation_llm_config = llm_config
         self._evaluation_guidance = evaluation_guidance if evaluation_guidance else self.DEFAULT_EVALUATON_GUIDANCE
         self._evaluation_reply_template = reply_template if reply_template else self.DEFAULT_REPLY_TEMPLATE
-
-        # Create agents
-        self._create_synthesizer()
-        self._create_evaluator()
+        self._evaluation_silence = silence
 
         # Register our reply function for evaluation with the agent
         # This will be the agent's only reply function
         self.register_reply(
             trigger=[Agent, None], reply_func=self._generate_evaluate_reply, remove_other_reply_funcs=True
         )
+
+    # Class used internally to get the string result from a function or, if it fails, what we should return
+    class FunctionStringResult(BaseModel):
+        result: str = ""
+        success: bool = True
+
+    # SYNTHESIZING TASK
 
     # Structured Output for the synthesizer agent
     class EvaluationTask(BaseModel):
@@ -98,48 +110,7 @@ class EvaluationAgent(ConversableAgent):
             description="If the task is not clear, describe clarity needed. Only ask if absolutely critical."
         )
 
-    def _create_synthesizer(self) -> None:
-        """Create the internal synthesizer agent."""
-
-        # Add the response_format to the agent
-        synthesizer_llm_config = deepcopy(self._evaluation_llm_config)
-        synthesizer_llm_config["response_format"] = EvaluationAgent.EvaluationTask
-
-        self._synthesizer_agent = ConversableAgent(
-            name="evaluationagent_synthesizer",
-            llm_config=synthesizer_llm_config,
-            system_message="Analyze the messages and determine the task being asked to be solved and reply with it, keeping it as close to word-to-word as possible. If clarification is needed, provide details on the clarity needed.",
-        )
-
-    def _generate_evaluator_system_message(self, agent: ConversableAgent, messages: list[dict[str, Any]]) -> str:
-        """Generate the system message for the internal evaluator agent."""
-        system_message = EvaluationAgent.DEFAULT_EVALUATOR_MESSAGE.replace(
-            "[evaluation_guidance]", self._evaluation_guidance
-        )
-
-        # Compile the responses to the answers here.
-
-        return system_message
-
-    # Structured Output for the evaluator agent
-    class NominatedResponse(BaseModel):
-        agent_name: str = Field(description="Name of agent that provided the response.")
-        response: str = Field(description="Exact, word-for-word, response selected.")
-        reason: str = Field(description="Brief reason why it was the best response.")
-
-    def _create_evaluator(self) -> None:
-        """Create the internal evaluator agent."""
-
-        # Add the response_format to the agent
-        evaluator_llm_config = deepcopy(self._evaluation_llm_config)
-        evaluator_llm_config["response_format"] = EvaluationAgent.NominatedResponse
-
-        self._evaluator_agent = ConversableAgent(
-            name="evaluationagent_evaluator",
-            llm_config=evaluator_llm_config,
-            update_agent_state_before_reply=[UpdateSystemMessage(self._generate_evaluator_system_message)],
-        )
-
+    # Consolidate messages from the outside chat for the synthesizer to determine the task from
     def _consolidate_messages(self, messages: Optional[Union[list[dict[str, Any]], str]]) -> str:  # type: ignore[type-arg]
         """Consolidates the external chat's messages for the Synthesizer to analyse"""
         if isinstance(messages, str):
@@ -154,6 +125,54 @@ class EvaluationAgent(ConversableAgent):
             return consolidated_message.strip()
         else:
             raise NotImplementedError("Invalid messages format. Must be a list of messages or a string.")
+
+    def _create_synthesizer(self) -> None:
+        """Create the internal synthesizer agent."""
+
+        # Add the response_format to the agent
+        synthesizer_llm_config = deepcopy(self._evaluation_llm_config)
+        synthesizer_llm_config["response_format"] = EvaluationAgent.EvaluationTask
+
+        self._synthesizer_agent = ConversableAgent(
+            name="evaluationagent_synthesizer",
+            llm_config=synthesizer_llm_config,
+            system_message="Analyze the messages and determine the task being asked to be solved and reply with it, keeping it as close to word-to-word as possible. If clarification is needed, provide details on the clarity needed.",
+        )
+
+    def _synthesize_task(self, user_agent: ConversableAgent, messages: list[dict[str, Any]]) -> FunctionStringResult:
+        """Synthesize the task from the outside messages."""
+        self._create_synthesizer()
+
+        consolidate_incoming_messages = self._consolidate_messages(messages)
+
+        sythesized_result = user_agent.initiate_chat(
+            recipient=self._synthesizer_agent,
+            message=consolidate_incoming_messages,
+            max_turns=1,
+            silent=self._evaluation_silence,
+        )
+
+        # Evaluate the result of the task synthesis
+        try:
+            evaluation_task = EvaluationAgent.EvaluationTask.model_validate_json(sythesized_result.summary)
+        except Exception as e:
+            EvaluationAgent.FunctionStringResult(
+                result=f"EvaluationAgent was unable to determine the task: {e}", success=False
+            )
+
+        if not evaluation_task.task:
+            EvaluationAgent.FunctionStringResult(
+                result="EvaluationAgent was unable to determine the task.", success=False
+            )
+
+        if evaluation_task.clarification_needed:
+            EvaluationAgent.FunctionStringResult(
+                result=f"I need clarity on the task: {evaluation_task.clarification_needed}", success=False
+            )
+
+        return EvaluationAgent.FunctionStringResult(result=evaluation_task.task)
+
+    # GATHER RESPONSES
 
     def _compile_responses_nested_chat(self, task: str) -> list[dict[str, Any]]:
         """Compile the nested chat for the responses part of the evaluation process."""
@@ -191,41 +210,8 @@ class EvaluationAgent(ConversableAgent):
 
         return response
 
-    # Inner evaluation process
-    def _generate_evaluate_reply(
-        self,
-        agent: ConversableAgent,
-        messages: Optional[list[dict[str, Any]]] = None,
-        sender: Optional[Agent] = None,
-        config: Optional[OpenAIWrapper] = None,
-    ) -> tuple[bool, Union[str, dict[str, Any]]]:
-        # 1. Synthesize the task from the input
-        user_agent = ConversableAgent(
-            name="evaluation_user",
-            human_input_mode="NEVER",
-        )
-
-        consolidate_incoming_messages = self._consolidate_messages(messages)
-
-        sythesized_result = user_agent.initiate_chat(
-            recipient=self._synthesizer_agent, message=consolidate_incoming_messages, max_turns=1
-        )
-
-        # Evaluate the result of the task synthesis
-        try:
-            evaluation_task = EvaluationAgent.EvaluationTask.model_validate_json(sythesized_result.summary)
-        except Exception as e:
-            return True, {"content": f"EvaluationAgent was unable to determine the task: {e}"}
-
-        if not evaluation_task.task:
-            return True, {"content": "EvaluationAgent was unable to determine the task."}
-
-        if evaluation_task.clarification_needed:
-            return True, {"content": f"I need clarity on the task: {evaluation_task.clarification_needed}"}
-
-        task = evaluation_task.task
-
-        # 2. Each agent gives their response using an asynchronous nested chat
+    def _gather_responses(self, user_agent: ConversableAgent, task: str) -> FunctionStringResult:
+        """Gather responses from all agents for the task."""
         gathering_agent = ConversableAgent(
             name="evaluation_gather",
         )
@@ -257,17 +243,84 @@ class EvaluationAgent(ConversableAgent):
                 recipient=gathering_agent,
                 max_turns=1,
                 message="",  # Prevent it trying to get user input
+                silent=self._evaluation_silence,
                 summary_method=self._compile_nested_responses,
             )
         )
 
-        compiled_responses = responses_result.summary
+        if responses_result.summary == "":
+            return EvaluationAgent.FunctionStringResult(
+                result="EvaluationAgent was unable to gather responses from all agents.", success=False
+            )
 
-        if compiled_responses == "":
-            return True, {"content": "EvaluationAgent was unable to gather responses from all agents."}
+        # Compiled responses
+        return EvaluationAgent.FunctionStringResult(result=responses_result.summary)
+
+    # EVALUATOR AGENT
+
+    # Structured Output for the evaluator agent
+    class NominatedResponse(BaseModel):
+        agent_name: str = Field(description="Name of agent that provided the response.")
+        response: str = Field(description="Exact, word-for-word, response selected.")
+        reason: str = Field(description="Brief reason why it was the best response.")
+
+    def _generate_evaluator_system_message(self, agent: ConversableAgent, messages: list[dict[str, Any]]) -> str:
+        """Generate the system message for the internal evaluator agent."""
+        # Substitute the evaluation guidance into the system message
+        return EvaluationAgent.DEFAULT_EVALUATOR_MESSAGE.replace("[evaluation_guidance]", self._evaluation_guidance)
+
+    def _create_evaluator(self) -> None:
+        """Create the internal evaluator agent."""
+
+        # Add the response_format to the agent
+        evaluator_llm_config = deepcopy(self._evaluation_llm_config)
+        evaluator_llm_config["response_format"] = EvaluationAgent.NominatedResponse
+
+        self._evaluator_agent = ConversableAgent(
+            name="evaluationagent_evaluator",
+            llm_config=evaluator_llm_config,
+            update_agent_state_before_reply=[UpdateSystemMessage(self._generate_evaluator_system_message)],
+        )
+
+    # Inner evaluation process
+    def _generate_evaluate_reply(
+        self,
+        agent: ConversableAgent,
+        messages: Optional[list[dict[str, Any]]] = None,
+        sender: Optional[Agent] = None,
+        config: Optional[OpenAIWrapper] = None,
+    ) -> tuple[bool, Union[str, dict[str, Any]]]:
+        if not messages:
+            return True, {"content": "EvaluationAgent requires messages to evaluate, please reply with a task."}
+
+        # Supplemental agent used for chatting with internal agents
+        user_agent = ConversableAgent(
+            name="evaluation_user",
+            human_input_mode="NEVER",
+        )
+
+        # 1. Synthesize the task from the input
+        synthesized_task = self._synthesize_task(user_agent, messages)
+
+        if not synthesized_task.success:
+            return True, {"content": synthesized_task.result}
+
+        task = synthesized_task.result
+
+        # 2. Each agent gives their response using an asynchronous nested chat
+        gather_compiled_responses = self._gather_responses(user_agent, task)
+
+        if not gather_compiled_responses.success:
+            return True, {"content": gather_compiled_responses.result}
+
+        compiled_responses = gather_compiled_responses.result
 
         # 3. Evaluator evaluates and selects the response
-        evaluation = user_agent.initiate_chat(recipient=self._evaluator_agent, message=compiled_responses, max_turns=1)
+        self._create_evaluator()
+
+        evaluation = user_agent.initiate_chat(
+            recipient=self._evaluator_agent, message=compiled_responses, max_turns=1, silent=self._evaluation_silence
+        )
 
         # Extract the nominated response
         try:
@@ -282,18 +335,16 @@ class EvaluationAgent(ConversableAgent):
         if nominated_response.agent_name not in [a.name for a in self._evaluation_agents]:
             return True, {"content": "EvaluationAgent provided an invalid agent name when selecting a response."}
 
-        nominated_agent = nominated_response.agent_name
-        nominated_reason = nominated_response.reason
-        agent_response = self._evaluation_agent_responses[nominated_agent]
-
         # We'll get the response from the agent's original response, rather than this structured output one
         # so that we can ensure it remains as it was originally
+        agent_response = self._evaluation_agent_responses[nominated_response.agent_name]
 
         # Compile the response and return it using the self._evaluation_reply_template
         compiled_reply = (
-            self._evaluation_reply_template.replace("[agent_name]", nominated_agent)
-            .replace("[reason]", nominated_reason)
+            self._evaluation_reply_template.replace("[agent_name]", nominated_response.agent_name)
+            .replace("[reason]", nominated_response.reason)
             .replace("[response]", agent_response)
         )
 
+        # 4. Return the selected response in the specified compiled format
         return True, compiled_reply
