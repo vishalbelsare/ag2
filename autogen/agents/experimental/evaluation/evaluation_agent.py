@@ -89,6 +89,7 @@ class EvaluationAgent(ConversableAgent):
         self._evaluation_guidance = evaluation_guidance if evaluation_guidance else self.DEFAULT_EVALUATON_GUIDANCE
         self._evaluation_reply_template = reply_template if reply_template else self.DEFAULT_REPLY_TEMPLATE
         self._evaluation_silence = silence
+        self._evaluation_async = False
 
         # Register our reply function for evaluation with the agent
         # This will be the agent's only reply function
@@ -223,30 +224,30 @@ class EvaluationAgent(ConversableAgent):
         gathering_agent.register_nested_chats(
             chat_queue=responses_nested_chat,
             position=0,
-            use_async=True,
+            use_async=self._evaluation_async,
             trigger=Agent,  # Any agent sender will trigger this
         )
 
-        # Synchronously get the responses
-        """
-        responses_result = user_agent.initiate_chat(
-            recipient=gathering_agent,
-            max_turns=1,
-            message="", # Prevent it trying to get user input
-            summary_method=self._compile_nested_responses
-        )
-        """
-
-        # Asynchronously get the responses
-        responses_result = asyncio.run(
-            user_agent.a_initiate_chat(
+        if self._evaluation_async:
+            # Asynchronously get the responses
+            responses_result = asyncio.run(
+                user_agent.a_initiate_chat(
+                    recipient=gathering_agent,
+                    max_turns=1,
+                    message="",  # Prevent it trying to get user input
+                    silent=self._evaluation_silence,
+                    summary_method=self._compile_nested_responses,
+                )
+            )
+        else:
+            # Synchronously get the responses
+            responses_result = user_agent.initiate_chat(
                 recipient=gathering_agent,
                 max_turns=1,
                 message="",  # Prevent it trying to get user input
                 silent=self._evaluation_silence,
                 summary_method=self._compile_nested_responses,
             )
-        )
 
         if responses_result.summary == "":
             return EvaluationAgent.FunctionStringResult(
