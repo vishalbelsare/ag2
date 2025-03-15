@@ -36,6 +36,7 @@ class EvaluationAgent(ConversableAgent):
     DEFAULT_EVALUATOR_MESSAGE = (
         "You are responsible for evaluating and selecting the best response from a set of agents. "
         "Each agent, identified by a name, will be given a chance to respond. "
+        "Remember, you are only evaluating and it's not your opinion so don't add your judgement, change responses, or decline to respond. "
         "Evaluation Criteria:\n[evaluation_guidance]\n"
         "[agent_outputs]"
     )
@@ -56,9 +57,11 @@ class EvaluationAgent(ConversableAgent):
         *,
         llm_config: dict[str, Any],
         agents: list[ConversableAgent],
+        response_instructions: Optional[str] = None,
         evaluation_guidance: Optional[str] = None,
         reply_template: Optional[str] = None,
-        silence: bool = False,
+        async_responses: bool = True,
+        silent: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the EvaluationAgent.
@@ -66,6 +69,7 @@ class EvaluationAgent(ConversableAgent):
         Args:
             llm_config (dict[str, Any]): LLM Configuration for the internal synthesizer and evaluator agents.
             agents (list[ConversableAgent]): List of agents that will provide their responses for evaluation.
+            response_instructions (str): Instructions for the agents on how to respond to the task. This will be appended to the end of the synthesized task message.
             evaluation_guidance (str): Guidance on how to evaluate the agents, used by the internal evaluator agent.
                 Default is:
                 "1. Carefully review each approach and result\n2. Evaluate each solution based on criteria appropriate to the task\n3. Select the absolute best response\n4. You must select a response as the best response"
@@ -73,7 +77,8 @@ class EvaluationAgent(ConversableAgent):
                 Three placeholders are available for substitution: [agent_name], [reason], and [response].
                 Default is:
                 "AGENT '[agent_name]' RESPONSE SELECTED.\n\nREASON:\n[reason]\n\nRESPONSE:\n[response]"
-            silence (bool): Whether to silence the agent's internal conversations. Default is False meaning all internal conversations will be visible.
+            async_responses (bool): Whether to gather responses asynchronously. Default is True.
+            silent (bool): Whether to silence the agent's internal conversations. Default is False meaning all internal conversations will be visible.
             **kwargs (Any): Additional keyword arguments to pass to the base class.
         """
 
@@ -85,11 +90,12 @@ class EvaluationAgent(ConversableAgent):
 
         # Store custom parameters
         self._evaluation_agents = agents
+        self._evaluation_response_instructions = response_instructions
         self._evaluation_llm_config = llm_config
         self._evaluation_guidance = evaluation_guidance if evaluation_guidance else self.DEFAULT_EVALUATON_GUIDANCE
         self._evaluation_reply_template = reply_template if reply_template else self.DEFAULT_REPLY_TEMPLATE
-        self._evaluation_silence = silence
-        self._evaluation_async = False
+        self._evaluation_silent = silent
+        self._evaluation_async = async_responses
 
         # Register our reply function for evaluation with the agent
         # This will be the agent's only reply function
@@ -137,7 +143,10 @@ class EvaluationAgent(ConversableAgent):
         self._synthesizer_agent = ConversableAgent(
             name="evaluationagent_synthesizer",
             llm_config=synthesizer_llm_config,
-            system_message="Analyze the messages and determine the task being asked to be solved and reply with it, keeping it as close to word-to-word as possible. If clarification is needed, provide details on the clarity needed.",
+            system_message=(
+                "Analyze the messages and determine the task being asked to be solved and reply with it, keeping it as close to word-to-word as possible. "
+                "If clarification is needed, provide details on the clarity needed. No other information is being be provided to the respondents."
+            ),
         )
 
     def _synthesize_task(self, user_agent: ConversableAgent, messages: list[dict[str, Any]]) -> FunctionStringResult:
@@ -150,24 +159,24 @@ class EvaluationAgent(ConversableAgent):
             recipient=self._synthesizer_agent,
             message=consolidate_incoming_messages,
             max_turns=1,
-            silent=self._evaluation_silence,
+            silent=self._evaluation_silent,
         )
 
         # Evaluate the result of the task synthesis
         try:
             evaluation_task = EvaluationAgent.EvaluationTask.model_validate_json(sythesized_result.summary)
         except Exception as e:
-            EvaluationAgent.FunctionStringResult(
+            return EvaluationAgent.FunctionStringResult(
                 result=f"EvaluationAgent was unable to determine the task: {e}", success=False
             )
 
         if not evaluation_task.task:
-            EvaluationAgent.FunctionStringResult(
+            return EvaluationAgent.FunctionStringResult(
                 result="EvaluationAgent was unable to determine the task.", success=False
             )
 
         if evaluation_task.clarification_needed:
-            EvaluationAgent.FunctionStringResult(
+            return EvaluationAgent.FunctionStringResult(
                 result=f"I need clarity on the task: {evaluation_task.clarification_needed}", success=False
             )
 
@@ -187,7 +196,7 @@ class EvaluationAgent(ConversableAgent):
                 "message": f"Please provide your response to the task:\n\n{task}",
                 "summary_method": "last_msg",
                 "max_turns": 1,
-                # Exclude all chat results before this one from being carried over (so they don't influence this agent)
+                # Exclude all chat results before this one from being carried over (so the agent only sees the task)
                 "finished_chat_indexes_to_exclude_from_carryover": [] if i == 0 else list(range(i)),
             }
 
@@ -235,7 +244,7 @@ class EvaluationAgent(ConversableAgent):
                     recipient=gathering_agent,
                     max_turns=1,
                     message="",  # Prevent it trying to get user input
-                    silent=self._evaluation_silence,
+                    silent=self._evaluation_silent,
                     summary_method=self._compile_nested_responses,
                 )
             )
@@ -245,7 +254,7 @@ class EvaluationAgent(ConversableAgent):
                 recipient=gathering_agent,
                 max_turns=1,
                 message="",  # Prevent it trying to get user input
-                silent=self._evaluation_silence,
+                silent=self._evaluation_silent,
                 summary_method=self._compile_nested_responses,
             )
 
@@ -308,6 +317,9 @@ class EvaluationAgent(ConversableAgent):
 
         task = synthesized_task.result
 
+        if self._evaluation_response_instructions:
+            task += f"\n\n{self._evaluation_response_instructions}"
+
         # 2. Each agent gives their response using an asynchronous nested chat
         gather_compiled_responses = self._gather_responses(user_agent, task)
 
@@ -320,7 +332,7 @@ class EvaluationAgent(ConversableAgent):
         self._create_evaluator()
 
         evaluation = user_agent.initiate_chat(
-            recipient=self._evaluator_agent, message=compiled_responses, max_turns=1, silent=self._evaluation_silence
+            recipient=self._evaluator_agent, message=compiled_responses, max_turns=1, silent=self._evaluation_silent
         )
 
         # Extract the nominated response
