@@ -17,6 +17,17 @@ __all__ = [
 ]
 
 
+def _refresh_or_get_new_credentials_from_localhost(
+    client_secret_file: str, scopes: list[str], creds: Optional[Credentials]
+) -> Credentials:
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())  # type: ignore[no-untyped-call]
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, scopes)
+        creds = flow.run_local_server(port=0)
+    return creds  # type: ignore[return-value]
+
+
 # Refactored example from:
 # https://developers.google.com/sheets/api/quickstart/python#configure_the_sample
 def get_credentials_from_json(
@@ -32,14 +43,11 @@ def get_credentials_from_json(
         creds = Credentials.from_authorized_user_file(users_token_file, scopes)  # type: ignore[no-untyped-call]
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())  # type: ignore[no-untyped-call]
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, scopes)
-            creds = flow.run_local_server(port=0)
+        creds = _refresh_or_get_new_credentials_from_localhost(client_secret_file, scopes, creds)
+
         # Save the credentials for the next run
         with open(users_token_file, "w") as token:
-            token.write(creds.to_json())
+            token.write(creds.to_json())  # type: ignore[no-untyped-call]
 
     return creds  # type: ignore[no-any-return]
 
@@ -76,6 +84,44 @@ def _set_user_credentials_to_db(
     engine = create_engine(db_engine_url)
     SQLModel.metadata.create_all(engine)
 
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
         session.add(user_creds)
         session.commit()
+
+
+def _check_credentials_and_update_if_needed(
+    client_secret_file: str,
+    scopes: list[str],
+    user_id: Optional[int] = None,
+    user_creds: Optional[UserCredentials] = None,
+    db_engine_url: str = "sqlite:///database.db",
+) -> Credentials:
+    if not user_id and not user_creds:
+        raise ValueError("Either user_id or user_creds must be provided")
+
+    if user_creds:
+        creds = Credentials.from_authorized_user_info(  # type: ignore[no-untyped-call]
+            info={
+                "refresh_token": user_creds.refresh_token,
+                "client_id": user_creds.client_id,
+                "client_secret": user_creds.client_secret,
+            },
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive.metadata.readonly",
+            ],
+        )
+    else:
+        creds = None
+    if not creds or not creds.valid:
+        creds = _refresh_or_get_new_credentials_from_localhost(client_secret_file, scopes, creds)
+
+        if not user_creds:
+            user_creds = UserCredentials(
+                user_id=user_id,
+                refresh_token=creds.refresh_token,
+                client_id=creds.client_id,
+                client_secret=creds.client_secret,
+            )
+        _set_user_credentials_to_db(user_creds=user_creds, db_engine_url=db_engine_url)
+    return creds  # type: ignore[no-any-return]

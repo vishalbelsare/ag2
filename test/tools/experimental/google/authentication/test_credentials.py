@@ -7,11 +7,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import os
+import tempfile
+from typing import Generator
+
+import pytest
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from autogen.tools.experimental.google.authentication.credentials import (
     UserCredentials,
+    _check_credentials_and_update_if_needed,
     _get_user_credentials_from_db,
     _set_user_credentials_to_db,
     get_credentials_from_json,
@@ -19,13 +25,34 @@ from autogen.tools.experimental.google.authentication.credentials import (
 
 
 class TestUserCredentials:
-    def test_user_credentials(self) -> None:
+    @pytest.fixture
+    def tmp_db_engine_url(self) -> Generator[str, None, None]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = os.path.join(temp_dir, "test_database.db")
+            yield f"sqlite:///{db_path}"
+
+    def test_user_credentials(self, tmp_db_engine_url: str) -> None:
         data = {"user_id": 1, "refresh_token": "refresh", "client_id": "client", "client_secret": "secret"}
         user_credentials = UserCredentials(**data)
-        _set_user_credentials_to_db(user_credentials)
+        _set_user_credentials_to_db(
+            user_creds=user_credentials,
+            db_engine_url=tmp_db_engine_url,
+        )
 
-        user_credentials_from_db = _get_user_credentials_from_db(1)
-        assert user_credentials_from_db.model_dump()["refresh_token"] == "refresh"  # type: ignore[union-attr]
+        user_credentials_from_db = _get_user_credentials_from_db(1, tmp_db_engine_url)
+        assert user_credentials_from_db == user_credentials
+        assert user_credentials_from_db.model_dump(exclude={"id"}) == data
+
+        user_credentials_from_db = _get_user_credentials_from_db(2, tmp_db_engine_url)
+        assert user_credentials_from_db is None
+
+    def test_check_credentials_and_update_if_needed(self, tmp_db_engine_url: str) -> None:
+        _check_credentials_and_update_if_needed(
+            client_secret_file="client_secret_ag2.json",
+            scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+            user_creds=UserCredentials(user_id=1, refresh_token="refresh", client_id="client", client_secret="secret"),
+            db_engine_url=tmp_db_engine_url,
+        )
 
 
 def test_end2end() -> None:
