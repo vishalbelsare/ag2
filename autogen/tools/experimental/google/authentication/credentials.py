@@ -72,7 +72,6 @@ def _get_user_credentials_from_db(
             select(UserCredentials).where(UserCredentials.user_id == user_id).order_by(UserCredentials.id.desc())  # type: ignore[union-attr]
         )
         user_creds = session.exec(statement).first()
-        print(user_creds)
 
     return user_creds  # type: ignore[no-any-return]
 
@@ -106,13 +105,15 @@ def _check_credentials_and_update_if_needed(
                 "client_id": user_creds.client_id,
                 "client_secret": user_creds.client_secret,
             },
-            scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive.metadata.readonly",
-            ],
+            # scopes=[
+            #     "https://www.googleapis.com/auth/spreadsheets",
+            #     "https://www.googleapis.com/auth/drive.metadata.readonly",
+            # ],
+            scopes=scopes,
         )
     else:
         creds = None
+
     if not creds or not creds.valid:
         creds = _refresh_or_get_new_credentials_from_localhost(client_secret_file, scopes, creds)
 
