@@ -6,10 +6,13 @@
 import os.path
 from typing import Optional
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from sqlmodel import Field, SQLModel, Session, create_engine, select
+from .....import_utils import optional_import_block
+
+with optional_import_block():
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from sqlmodel import Field, SQLModel, Session, create_engine, select
 
 __all__ = [
     "UserCredentials",
@@ -19,8 +22,8 @@ __all__ = [
 
 
 def _refresh_or_get_new_credentials_from_localhost(
-    client_secret_file: str, scopes: list[str], creds: Optional[Credentials]
-) -> Credentials:
+    client_secret_file: str, scopes: list[str], creds: Optional["Credentials"]
+) -> "Credentials":
     if creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())  # type: ignore[no-untyped-call]
     else:
@@ -35,7 +38,7 @@ def get_credentials_from_json(
     client_secret_file: str,
     scopes: list[str],
     users_token_file: str = "token.json",
-) -> Credentials:
+) -> "Credentials":
     # The users_token_file stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
@@ -95,7 +98,7 @@ def get_credentials_from_db(
     user_id: Optional[int] = None,
     user_creds: Optional[UserCredentials] = None,
     db_engine_url: str = "sqlite:///database.db",
-) -> Credentials:
+) -> "Credentials":
     if not user_id and not user_creds:
         raise ValueError("Either user_id or user_creds must be provided")
 
