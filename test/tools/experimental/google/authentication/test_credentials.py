@@ -10,7 +10,7 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from autogen.tools.experimental.google_api.authentication.credentials import (
+from autogen.tools.experimental.google.authentication.credentials import (
     UserCredentials,
     _get_user_credentials_from_db,
     _set_user_credentials_to_db,
