@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .credentials import get_credentials_from_json
+from .credentials import UserCredentials, get_credentials_from_db, get_credentials_from_json
 
-__all__ = ["get_credentials_from_json"]
+__all__ = [
+    "UserCredentials",
+    "get_credentials_from_db",
+    "get_credentials_from_json",
+]

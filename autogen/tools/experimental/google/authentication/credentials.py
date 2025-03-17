@@ -13,6 +13,7 @@ from sqlmodel import Field, SQLModel, Session, create_engine, select
 
 __all__ = [
     "UserCredentials",
+    "get_credentials_from_db",
     "get_credentials_from_json",
 ]
 
@@ -88,7 +89,7 @@ def _set_user_credentials_to_db(
         session.commit()
 
 
-def _check_credentials_and_update_if_needed(
+def get_credentials_from_db(
     client_secret_file: str,
     scopes: list[str],
     user_id: Optional[int] = None,
@@ -105,10 +106,6 @@ def _check_credentials_and_update_if_needed(
                 "client_id": user_creds.client_id,
                 "client_secret": user_creds.client_secret,
             },
-            # scopes=[
-            #     "https://www.googleapis.com/auth/spreadsheets",
-            #     "https://www.googleapis.com/auth/drive.metadata.readonly",
-            # ],
             scopes=scopes,
         )
     else:

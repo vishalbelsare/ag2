@@ -19,14 +19,42 @@ from googleapiclient.errors import HttpError
 
 from autogen.tools.experimental.google.authentication.credentials import (
     UserCredentials,
-    _check_credentials_and_update_if_needed,
     _get_user_credentials_from_db,
     _set_user_credentials_to_db,
+    get_credentials_from_db,
     get_credentials_from_json,
 )
 
 
 class TestUserCredentials:
+    def test_get_credentials_from_json(self) -> None:
+        token_json = {
+            "token": "token",
+            "refresh_token": "refresh_token",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "client_id": "scdas",
+        }
+        # create tempfile from which it will read and write
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+            f.write(str(token_json))
+            f.seek(0)
+            with unittest.mock.patch(
+                "autogen.tools.experimental.google.authentication.credentials.Credentials.from_authorized_user_file",
+            ) as mock_from_authorized_user_file:
+                user_creds = MagicMock()
+                user_creds.valid = True
+                mock_from_authorized_user_file.return_value = user_creds
+
+                creds = get_credentials_from_json(
+                    client_secret_file="client_secret_test.json",
+                    scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+                    users_token_file=f.name,
+                )
+                mock_from_authorized_user_file.assert_called_once_with(
+                    f.name, ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+                )
+                assert creds == user_creds
+
     @pytest.fixture
     def tmp_db_engine_url(self) -> Generator[str, None, None]:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -48,9 +76,9 @@ class TestUserCredentials:
         user_credentials_from_db = _get_user_credentials_from_db(2, tmp_db_engine_url)
         assert user_credentials_from_db is None
 
-    def test_check_credentials_and_update_if_needed_raises_exception(self) -> None:
+    def test_get_credentials_from_db_raises_exception(self) -> None:
         with pytest.raises(ValueError, match="Either user_id or user_creds must be provided"):
-            _check_credentials_and_update_if_needed(
+            get_credentials_from_db(
                 client_secret_file="client_secret_test.json",
                 scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
             )
@@ -62,7 +90,7 @@ class TestUserCredentials:
             False,
         ],
     )
-    def test_check_credentials_and_update_if_needed(self, tmp_db_engine_url: str, valid_creds: bool) -> None:
+    def test_get_credentials_from_db(self, tmp_db_engine_url: str, valid_creds: bool) -> None:
         with unittest.mock.patch(
             "autogen.tools.experimental.google.authentication.credentials.Credentials.from_authorized_user_info",
         ) as mock_from_authorized_user_info:
@@ -73,7 +101,7 @@ class TestUserCredentials:
             user_creds.valid = valid_creds
             mock_from_authorized_user_info.return_value = user_creds
 
-            _check_credentials_and_update_if_needed(
+            get_credentials_from_db(
                 client_secret_file="client_secret_ag2.json",
                 scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
                 user_creds=UserCredentials(
@@ -100,34 +128,54 @@ class TestUserCredentials:
             else:
                 assert creds_from_db is not None, creds_from_db
 
-
-def test_end2end() -> None:
-    """Shows basic usage of the Sheets API.
-    Prints values from a sample spreadsheet.
-    """
-    client_secret_file = "client_secret_ag2.json"
-    creds = get_credentials_from_json(
-        client_secret_file=client_secret_file,
-        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
+    @pytest.mark.parametrize(
+        "use_json",
+        [
+            True,
+            False,
+        ],
     )
-
-    try:
-        service = build("sheets", "v4", credentials=creds)
-
-        # Call the Sheets API
-        sheet = service.spreadsheets()
+    def test_end2end(self, use_json: bool, tmp_db_engine_url: str) -> None:
+        """Shows basic usage of the Sheets API.
+        Prints values from a sample spreadsheet.
+        """
+        client_secret_file = "client_secret_ag2.json"
         # The ID and range of a sample spreadsheet.
         spreadsheet_id = "1BdWBOyCAyIPE6sgtPqGPxDqrgBpvl6zmSgGRQ_I3s-Y"
         range_name = "Sheet1!A2:E"
-        result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
-        values = result.get("values", [])
 
-        if not values:
-            print("No data found.")
-            return
+        if use_json:
+            creds = get_credentials_from_json(
+                client_secret_file=client_secret_file,
+                scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+            )
+        else:
+            creds = get_credentials_from_db(
+                client_secret_file=client_secret_file,
+                scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+                user_id=1,
+                db_engine_url=tmp_db_engine_url,
+            )
 
-        print("Name, Major:")
-        for row in values:
-            print(row)
-    except HttpError as err:
-        print(err)
+        try:
+            service = build("sheets", "v4", credentials=creds)
+
+            # Call the Sheets API
+            sheet = service.spreadsheets()
+
+            result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
+            values = result.get("values", [])
+
+            if not use_json:
+                creds_from_db = _get_user_credentials_from_db(1, tmp_db_engine_url)
+                assert creds_from_db is not None, creds_from_db
+
+            if not values:
+                print("No data found.")
+                return
+
+            for row in values:
+                print(row)
+        except HttpError as err:
+            print(err)
