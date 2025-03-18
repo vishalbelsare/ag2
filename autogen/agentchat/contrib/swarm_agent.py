@@ -290,7 +290,7 @@ def _establish_swarm_agent(agent: ConversableAgent) -> None:
     agent._swarm_is_established = True  # type: ignore[attr-defined]
 
 
-def _link_agents_to_swarm_manager(agents: Sequence[Agent], group_chat_manager: Agent) -> None:
+def _link_agents_to_swarm_manager(agents: Sequence[Agent], group_chat_manager: GroupChatManager) -> None:
     """Link all agents to the GroupChatManager so they can access the underlying GroupChat and other agents.
 
     This is primarily used so that agents can set the tool executor's _swarm_next_agent attribute to control

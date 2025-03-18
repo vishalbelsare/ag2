@@ -24,7 +24,7 @@ from .contrib.swarm_agent import (
     register_hand_off,
 )
 from .conversable_agent import UPDATE_SYSTEM_MESSAGE, ConversableAgent, UpdateSystemMessage, register_function
-from .groupchat import GroupChat, GroupChatManager
+from .groupchat import ChatManagerProtocol, GroupChat, GroupChatManager
 from .user_proxy_agent import UserProxyAgent
 from .utils import ContextExpression, gather_usage_summary
 
@@ -36,6 +36,7 @@ __all__ = [
     "AfterWorkOption",
     "Agent",
     "AssistantAgent",
+    "ChatManagerProtocol",
     "ChatResult",
     "ContextExpression",
     "ContextStr",

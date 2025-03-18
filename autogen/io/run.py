@@ -9,7 +9,8 @@ import threading
 from typing import Any, Iterable, Optional
 from uuid import UUID, uuid4
 
-from ..agentchat import Agent, GroupChat, GroupChatManager
+from ..agentchat import Agent, ChatManagerProtocol
+from ..agentchat.groupchat.chat_managers.round_robin import RoundRobinChatManager
 from ..messages.print_message import PrintMessage
 from ..messages.run_events import Event, InputRequestEvent, Message, TerminationEvent, get_event
 from .base import IOStream
@@ -91,20 +92,18 @@ def run_single_agent(agent: Agent, iostream: ThreadIOStream, message: str, **kwa
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
-def run_group_chat(*agents: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
+def run_group_chat(
+    *agents: Agent,
+    iostream: ThreadIOStream,
+    message: str,
+    chat_manager: ChatManagerProtocol,
+    previous_run: Optional[RunResponseProtocol],
+) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
-        groupchat = GroupChat(agents=agents, speaker_selection_method="auto", messages=[])
-
-        manager = GroupChatManager(
-            name="group_manager",
-            groupchat=groupchat,
-            llm_config=agents[0].llm_config,
-            is_termination_msg=lambda x: "DONE!" in (x.get("content", "") or "").upper(),
-        )
-
-        chat_result = agents[0].initiate_chat(
-            recipient=manager,
+        chat_result = chat_manager.run(
+            *agents,
             message=message,
+            messages=previous_run.messages if previous_run else [],
         )
 
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
@@ -114,6 +113,7 @@ def run(
     *agents: Agent,
     initial_message: Optional[str] = None,
     previous_run: Optional[RunResponseProtocol] = None,
+    chat_manager: Optional[ChatManagerProtocol] = None,
     **kwargs: Any,
 ) -> RunResponseProtocol:
     """Run the agents with the given initial message.
@@ -122,8 +122,8 @@ def run(
         agents (Agent): The agents to run.
         initial_message (str): The initial message to send to the first agent.
         previous_run (RunResponseProtocol): The previous run to continue.
+        chat_manager (ChatManagerProtocol): The chat manager to use for the group chat.
         kwargs: Additional arguments to pass to the agents.
-
     """
     iostream = ThreadIOStream()
     response = RunResponse(iostream)
@@ -132,7 +132,14 @@ def run(
         threading.Thread(target=run_single_agent, args=(agents[0], iostream, initial_message), kwargs=kwargs).start()
     else:
         threading.Thread(
-            target=run_group_chat, args=agents, kwargs={**kwargs, "iostream": iostream, "message": initial_message}
+            target=run_group_chat,
+            args=agents,
+            kwargs={
+                "iostream": iostream,
+                "message": initial_message,
+                "chat_manager": chat_manager if chat_manager else RoundRobinChatManager(),
+                "previous_run": previous_run,
+            },
         ).start()
 
     return response
