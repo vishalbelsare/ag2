@@ -12,18 +12,30 @@ import unittest
 from unittest.mock import MagicMock
 
 import pytest
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
-from autogen.tools.experimental.google.authentication.credentials import (
-    UserCredentials,
-    _get_user_credentials_from_db,
-    _set_user_credentials_to_db,
-    get_credentials_from_db,
-    get_credentials_from_json,
+from autogen.import_utils import optional_import_block, run_for_optional_imports
+
+with optional_import_block():
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+
+    from autogen.tools.experimental.google.authentication.credentials import (
+        UserCredentials,
+        _get_user_credentials_from_db,
+        _set_user_credentials_to_db,
+        get_credentials_from_db,
+        get_credentials_from_json,
+    )
+
+
+@run_for_optional_imports(
+    [
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+        "sqlmodel",
+    ],
+    "google-api",
 )
-
-
 class TestUserCredentials:
     def test_get_credentials_from_json(self) -> None:
         token_json = {

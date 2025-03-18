@@ -6,13 +6,22 @@
 import os.path
 from typing import Optional
 
-from .....import_utils import optional_import_block
+from .....import_utils import optional_import_block, require_optional_import
 
 with optional_import_block():
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
     from sqlmodel import Field, SQLModel, Session, create_engine, select
+
+    # This class needs to be defined here because SQLModel is optional
+    class UserCredentials(SQLModel, table=True):  # type: ignore
+        id: Optional[int] = Field(default=None, primary_key=True)
+        user_id: int
+        refresh_token: str
+        client_id: str
+        client_secret: str
+
 
 __all__ = [
     "UserCredentials",
@@ -21,6 +30,13 @@ __all__ = [
 ]
 
 
+@require_optional_import(
+    [
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+    ],
+    "google-api",
+)
 def _refresh_or_get_new_credentials_from_localhost(
     client_secret_file: str, scopes: list[str], creds: Optional["Credentials"]
 ) -> "Credentials":
@@ -34,6 +50,13 @@ def _refresh_or_get_new_credentials_from_localhost(
 
 # Refactored example from:
 # https://developers.google.com/sheets/api/quickstart/python#configure_the_sample
+@require_optional_import(
+    [
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+    ],
+    "google-api",
+)
 def get_credentials_from_json(
     client_secret_file: str,
     scopes: list[str],
@@ -56,18 +79,18 @@ def get_credentials_from_json(
     return creds  # type: ignore[no-any-return]
 
 
-class UserCredentials(SQLModel, table=True):  # type: ignore
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int
-    refresh_token: str
-    client_id: str
-    client_secret: str
-
-
+@require_optional_import(
+    [
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+        "sqlmodel",
+    ],
+    "google-api",
+)
 def _get_user_credentials_from_db(
     user_id: int,
     db_engine_url: str = "sqlite:///database.db",
-) -> Optional[UserCredentials]:
+) -> Optional["UserCredentials"]:
     engine = create_engine(db_engine_url)
     SQLModel.metadata.create_all(engine)
 
@@ -80,8 +103,16 @@ def _get_user_credentials_from_db(
     return user_creds  # type: ignore[no-any-return]
 
 
+@require_optional_import(
+    [
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+        "sqlmodel",
+    ],
+    "google-api",
+)
 def _set_user_credentials_to_db(
-    user_creds: UserCredentials,
+    user_creds: "UserCredentials",
     db_engine_url: str = "sqlite:///database.db",
 ) -> None:
     engine = create_engine(db_engine_url)
@@ -92,11 +123,19 @@ def _set_user_credentials_to_db(
         session.commit()
 
 
+@require_optional_import(
+    [
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+        "sqlmodel",
+    ],
+    "google-api",
+)
 def get_credentials_from_db(
     client_secret_file: str,
     scopes: list[str],
     user_id: Optional[int] = None,
-    user_creds: Optional[UserCredentials] = None,
+    user_creds: Optional["UserCredentials"] = None,
     db_engine_url: str = "sqlite:///database.db",
 ) -> "Credentials":
     if not user_id and not user_creds:
