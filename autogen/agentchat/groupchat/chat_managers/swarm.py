@@ -46,7 +46,7 @@ class SwarmChatManager:
         result, _, _ = initiate_swarm_chat(
             initial_agent=agents[0],
             agents=list(agents),
-            messages=message if len(messages) == 0 else [*messages, message],
+            messages=message if len(messages) == 0 else [*messages, {"role": "user", "content": message}],
             max_rounds=self.max_rounds,
             swarm_manager_args={"llm_config": self.llm_config},
             after_work=self.after_work,

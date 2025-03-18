@@ -1039,6 +1039,34 @@ class GroupChatManager(ConversableAgent):
         human_input_mode: Literal["ALWAYS", "NEVER", "TERMINATE"] = "NEVER",
         system_message: Optional[Union[str, list]] = "Group chat manager.",
         silent: bool = False,
+        max_round: int = 10,
+        select_speaker_message_template: str = """You are in a role play game. The following roles are available:
+            {roles}.
+            Read the following conversation.
+            Then select the next role from {agentlist} to play. Only return the role.""",
+        select_speaker_prompt_template: str = SELECT_SPEAKER_PROMPT_TEMPLATE,
+        select_speaker_auto_multiple_template: str = """You provided more than one name in your text, please return just the name of the next speaker. To determine the speaker use these prioritised rules:
+        1. If the context refers to themselves as a speaker e.g. "As the..." , choose that speaker's name
+        2. If it refers to the "next" speaker name, choose that name
+        3. Otherwise, choose the first provided speaker's name in the context
+        The names are case-sensitive and should not be abbreviated or changed.
+        Respond with ONLY the name of the speaker and DO NOT provide a reason.""",
+        select_speaker_auto_none_template: str = """You didn't choose a speaker. As a reminder, to determine the speaker use these prioritised rules:
+        1. If the context refers to themselves as a speaker e.g. "As the..." , choose that speaker's name
+        2. If it refers to the "next" speaker name, choose that name
+        3. Otherwise, choose the first provided speaker's name in the context
+        The names are case-sensitive and should not be abbreviated or changed.
+        The only names that are accepted are {agentlist}.
+        Respond with ONLY the name of the speaker and DO NOT provide a reason.""",
+        func_call_filter: bool = True,
+        max_retries_for_selecting_speaker: int = 2,
+        allow_repeat_speaker: Optional[Union[bool, list[Agent]]] = None,
+        allowed_or_disallowed_speaker_transitions: Optional[dict[str, Any]] = None,
+        speaker_transitions_type: Literal["allowed", "disallowed", None] = None,
+        enable_clear_history: bool = False,
+        send_introductions: bool = False,
+        select_speaker_transform_messages: Optional[transform_messages.TransformMessages] = None,
+        select_speaker_auto_model_client_cls: Optional[Union[ModelClient, list[ModelClient]]] = None,
         **kwargs: Any,
     ):
         if (
@@ -1063,9 +1091,100 @@ class GroupChatManager(ConversableAgent):
         self._last_speaker = None
         self._silent = silent
         self._groupchat = None
+        self._maxround = max_round
+        self._select_speaker_message_template = select_speaker_message_template
+        self._select_speaker_prompt_template = select_speaker_prompt_template
+        self._select_speaker_auto_multiple_template = select_speaker_auto_multiple_template
+        self._select_speaker_auto_none_template = select_speaker_auto_none_template
+        self._func_call_filter = func_call_filter
+        self._max_retries_for_selecting_speaker = max_retries_for_selecting_speaker
+        self._allow_repeat_speaker = allow_repeat_speaker
+        self._allowed_or_disallowed_speaker_transitions = allowed_or_disallowed_speaker_transitions
+        self._speaker_transitions_type = speaker_transitions_type
+        self._enable_clear_history = enable_clear_history
+        self._send_introductions = send_introductions
+        self._select_speaker_transforms = select_speaker_transform_messages
+        self._select_speaker_auto_model_client_cls = select_speaker_auto_model_client_cls
 
         if groupchat is not None:
             self.initialize_groupchat(groupchat)
+
+    def run(
+        self,
+        *agents: "Agent",
+        message: str,
+        messages: list["LLMMessageType"],
+    ) -> "ChatResult":
+        """Run a group chat with the provided agents and messages.
+
+        Args:
+            agents: The agents participating in the group chat.
+            message: Initial message to start the group chat.
+            messages: The messages to use in the group chat.
+
+        Returns:
+            A ChatResult object.
+        """
+        groupchat = GroupChat(
+            agents=agents,
+            messages=messages,
+            speaker_selection_method="auto",
+            max_round=self._maxround,
+            select_speaker_message_template=self._select_speaker_message_template,
+            select_speaker_prompt_template=self._select_speaker_prompt_template,
+            select_speaker_auto_multiple_template=self._select_speaker_auto_multiple_template,
+            select_speaker_auto_none_template=self._select_speaker_auto_none_template,
+            func_call_filter=self._func_call_filter,
+            max_retries_for_selecting_speaker=self._max_retries_for_selecting_speaker,
+            allow_repeat_speaker=self._allow_repeat_speaker,
+            allowed_or_disallowed_speaker_transitions=self._allowed_or_disallowed_speaker_transitions,
+            speaker_transitions_type=self._speaker_transitions_type,
+            enable_clear_history=self._enable_clear_history,
+            send_introductions=self._send_introductions,
+            select_speaker_transform_messages=self._select_speaker_transforms,
+            select_speaker_auto_model_client_cls=self._select_speaker_auto_model_client_cls,
+        )
+
+        self.initialize_groupchat(groupchat)
+
+        return agents[0].initiate_chat(
+            recipient=self,
+            message=message,
+        )
+
+    async def a_run(
+        self,
+        *agents: "Agent",
+        message: str,
+        messages: list["LLMMessageType"],
+    ) -> "ChatResult":
+        """Run a group chat with the provided agents and messages.
+
+        Args:
+            agents: The agents participating in the group chat.
+            message: Initial message to start the group chat.
+            messages: The messages to use in the group chat.
+
+        Returns:
+            A ChatResult object.
+        """
+        groupchat = GroupChat(
+            agents=agents,
+            messages=messages,
+            speaker_selection_method="auto",
+            max_round=self._maxround,
+            select_speaker_message_template=self._select_speaker_message_template,
+            select_speaker_prompt_template=self._select_speaker_prompt_template,
+            select_speaker_auto_multiple_template=self._select_speaker_auto_multiple_template,
+            select_speaker_auto_none_template=self._select_speaker_auto_none_template,
+        )
+
+        self.initialize_groupchat(groupchat)
+
+        return await agents[0].a_initiate_chat(
+            recipient=self,
+            message=message,
+        )
 
     def initialize_groupchat(self, groupchat: GroupChat) -> None:
         """Initialize a group chat manager with a group chat."""
@@ -1703,61 +1822,3 @@ class GroupChatManager(ConversableAgent):
         reply_content = " ".join(words[:clear_word_index] + words[clear_word_index + skip_words_number :])
 
         return reply_content
-
-    def run(
-        self,
-        *agents: "Agent",
-        message: str,
-        messages: list["LLMMessageType"],
-    ) -> "ChatResult":
-        """Run a group chat with the provided agents and messages.
-
-        Args:
-            agents: The agents participating in the group chat.
-            message: Initial message to start the group chat.
-            messages: The messages to use in the group chat.
-
-        Returns:
-            A ChatResult object.
-        """
-        groupchat = GroupChat(
-            agents=agents,
-            messages=messages,
-            speaker_selection_method="auto",
-        )
-
-        self.initialize_groupchat(groupchat)
-
-        return agents[0].initiate_chat(
-            recipient=self,
-            message=message,
-        )
-
-    async def a_run(
-        self,
-        *agents: "Agent",
-        message: str,
-        messages: list["LLMMessageType"],
-    ) -> "ChatResult":
-        """Run a group chat with the provided agents and messages.
-
-        Args:
-            agents: The agents participating in the group chat.
-            message: Initial message to start the group chat.
-            messages: The messages to use in the group chat.
-
-        Returns:
-            A ChatResult object.
-        """
-        groupchat = GroupChat(
-            agents=agents,
-            messages=messages,
-            speaker_selection_method="auto",
-        )
-
-        self.initialize_groupchat(groupchat)
-
-        return await agents[0].a_initiate_chat(
-            recipient=self,
-            message=message,
-        )

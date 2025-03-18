@@ -6,8 +6,12 @@
 # SPDX-License-Identifier: MIT
 import queue
 import threading
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional, Union
 from uuid import UUID, uuid4
+
+from autogen.agentchat.agent import DEFAULT_SUMMARY_METHOD
+from autogen.cache.abstract_cache_base import AbstractCache
+from autogen.tools.tool import Tool
 
 from ..agentchat import Agent, ChatManagerProtocol
 from ..agentchat.groupchat.chat_managers.round_robin import RoundRobinChatManager
@@ -88,7 +92,7 @@ class RunResponse:
 
 def run_single_agent(agent: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
-        chat_result = agent.run(message=message, **kwargs)  # type: ignore[attr-defined]
+        chat_result = agent.run(message=message, user_input=False, **kwargs)  # type: ignore[attr-defined]
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
@@ -114,6 +118,16 @@ def run(
     initial_message: Optional[str] = None,
     previous_run: Optional[RunResponseProtocol] = None,
     chat_manager: Optional[ChatManagerProtocol] = None,
+    # What to do with this? Goes to initiate_chat but not to initiate_swarm_chat
+    clear_history: bool = False,
+    max_turns: Optional[int] = None,
+    summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
+    summary_args: Optional[dict[str, Any]] = {},
+    cache: Optional[AbstractCache] = None,
+    # Single agent run specific arguments
+    tools: Optional[Union[Tool, Iterable[Tool]]] = None,
+    executor_kwargs: Optional[dict[str, Any]] = None,
+    user_input: bool = True,
     **kwargs: Any,
 ) -> RunResponseProtocol:
     """Run the agents with the given initial message.
@@ -123,6 +137,14 @@ def run(
         initial_message (str): The initial message to send to the first agent.
         previous_run (RunResponseProtocol): The previous run to continue.
         chat_manager (ChatManagerProtocol): The chat manager to use for the group chat.
+        clear_history (bool): Whether to clear the history of the agents.
+        max_turns (int): The maximum number of turns to run.
+        summary_method (Union[str, Callable[..., Any]]): The method to use to summarize the chat.
+        summary_args (dict[str, Any]): The arguments to pass to the summary method.
+        cache (AbstractCache): The cache to use.
+        tools (Union[Tool, Iterable[Tool]]): The tools to use.
+        executor_kwargs (dict[str, Any]): The arguments to pass to the executor.
+        user_input (bool): Whether to allow user input.
         kwargs: Additional arguments to pass to the agents.
     """
     iostream = ThreadIOStream()
