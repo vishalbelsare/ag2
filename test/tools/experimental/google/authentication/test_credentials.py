@@ -7,10 +7,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-import os
 import tempfile
 import unittest
-from typing import Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -54,12 +52,6 @@ class TestUserCredentials:
                     f.name, ["https://www.googleapis.com/auth/spreadsheets.readonly"]
                 )
                 assert creds == user_creds
-
-    @pytest.fixture
-    def tmp_db_engine_url(self) -> Generator[str, None, None]:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            db_path = os.path.join(temp_dir, "test_database.db")
-            yield f"sqlite:///{db_path}"
 
     def test_user_credentials(self, tmp_db_engine_url: str) -> None:
         data = {"user_id": 1, "refresh_token": "refresh", "client_id": "client", "client_secret": "secret"}
