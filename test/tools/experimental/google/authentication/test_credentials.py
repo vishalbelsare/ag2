@@ -76,57 +76,27 @@ class TestUserCredentials:
         user_credentials_from_db = _get_user_credentials_from_db(2, tmp_db_engine_url)
         assert user_credentials_from_db is None
 
-    def test_get_credentials_from_db_raises_exception(self) -> None:
-        with pytest.raises(ValueError, match="Either user_id or user_creds must be provided"):
-            get_credentials_from_db(
-                client_secret_file="client_secret_test.json",
-                scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
-            )
-
-    @pytest.mark.parametrize(
-        "valid_creds",
-        [
-            True,
-            False,
-        ],
-    )
-    def test_get_credentials_from_db(self, tmp_db_engine_url: str, valid_creds: bool) -> None:
+    def test_get_credentials_from_db(self, tmp_db_engine_url: str) -> None:
         with unittest.mock.patch(
-            "autogen.tools.experimental.google.authentication.credentials.Credentials.from_authorized_user_info",
-        ) as mock_from_authorized_user_info:
+            "autogen.tools.experimental.google.authentication.credentials._refresh_or_get_new_credentials_from_localhost",
+        ) as mock_refresh_or_get_new_credentials_from_localhost:
             user_creds = MagicMock()
             user_creds.refresh_token = "refresh"
             user_creds.client_id = "client"
             user_creds.client_secret = "secret"
-            user_creds.valid = valid_creds
-            mock_from_authorized_user_info.return_value = user_creds
+            mock_refresh_or_get_new_credentials_from_localhost.return_value = user_creds
 
-            get_credentials_from_db(
+            creds = get_credentials_from_db(
                 client_secret_file="client_secret_ag2.json",
                 scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
-                user_creds=UserCredentials(
-                    user_id=1, refresh_token="refresh", client_id="client", client_secret="secret"
-                ),
+                user_id=1,
                 db_engine_url=tmp_db_engine_url,
             )
-
-            mock_from_authorized_user_info.assert_called_once_with(
-                info={
-                    "refresh_token": "refresh",
-                    "client_id": "client",
-                    "client_secret": "secret",
-                },
-                scopes=[
-                    "https://www.googleapis.com/auth/spreadsheets.readonly",
-                ],
-            )
+            mock_refresh_or_get_new_credentials_from_localhost.assert_called_once()
+            assert creds == user_creds
 
             creds_from_db = _get_user_credentials_from_db(1, tmp_db_engine_url)
-
-            if valid_creds:
-                assert creds_from_db is None, creds_from_db
-            else:
-                assert creds_from_db is not None, creds_from_db
+            assert creds_from_db is not None, creds_from_db
 
     @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
     @pytest.mark.parametrize(

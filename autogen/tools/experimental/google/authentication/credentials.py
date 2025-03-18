@@ -134,12 +134,10 @@ def _set_user_credentials_to_db(
 def get_credentials_from_db(
     client_secret_file: str,
     scopes: list[str],
-    user_id: Optional[int] = None,
-    user_creds: Optional["UserCredentials"] = None,
+    user_id: int,
     db_engine_url: str = "sqlite:///database.db",
 ) -> "Credentials":
-    if not user_id and not user_creds:
-        raise ValueError("Either user_id or user_creds must be provided")
+    user_creds = _get_user_credentials_from_db(user_id=user_id, db_engine_url=db_engine_url)
 
     if user_creds:
         creds = Credentials.from_authorized_user_info(  # type: ignore[no-untyped-call]
@@ -154,7 +152,9 @@ def get_credentials_from_db(
         creds = None
 
     if not creds or not creds.valid:
-        creds = _refresh_or_get_new_credentials_from_localhost(client_secret_file, scopes, creds)
+        creds = _refresh_or_get_new_credentials_from_localhost(
+            client_secret_file=client_secret_file, scopes=scopes, creds=creds
+        )
 
         if not user_creds:
             user_creds = UserCredentials(
