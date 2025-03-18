@@ -10,6 +10,7 @@
 from typing import Annotated, Any, Optional
 
 from .....doc_utils import export_module
+from .....import_utils import require_optional_import
 from .... import Depends, Tool
 from ....dependency_injection import on
 from ..authentication import build_service_from_db, build_service_from_json
@@ -19,6 +20,12 @@ __all__ = [
 ]
 
 
+@require_optional_import(
+    [
+        "googleapiclient",
+    ],
+    "google-api",
+)
 def _list_files(service: Any, page_size: int) -> Any:
     # Call the Drive v3 API
     results = service.files().list(pageSize=page_size, fields="nextPageToken, files(id, name)").execute()
@@ -45,11 +52,14 @@ class ListGoogleDriveFilesTool(Tool):
             users_token_file: Annotated[str, Depends(on(users_token_file))],
             page_size: Annotated[int, "The number of files to list per page."] = 10,
         ) -> Any:
+            service_name = "drive"
+            version = "v3"
             if user_id is None:
                 service = build_service_from_json(
                     client_secret_file=client_secret_file,
                     scopes=scopes,
-                    service_name="drive",
+                    service_name=service_name,
+                    version=version,
                     users_token_file=users_token_file,
                 )
             else:
@@ -57,7 +67,8 @@ class ListGoogleDriveFilesTool(Tool):
                     client_secret_file=client_secret_file,
                     scopes=scopes,
                     user_id=user_id,
-                    service_name="drive",
+                    service_name=service_name,
+                    version=version,
                     db_engine_url=db_engine_url,
                 )
 
