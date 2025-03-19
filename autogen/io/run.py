@@ -66,8 +66,8 @@ class RunResponse:
 
                 if isinstance(event, TerminationMessage):
                     chat_result_message = q.get(timeout=0.1)
-                    print("?" * 100)
-                    print(chat_result_message)
+                    # print("?" * 100)
+                    # print(chat_result_message)
                     self._summary = chat_result_message.summary
                     break
             except queue.Empty:
@@ -97,9 +97,6 @@ class RunResponse:
 def run_single_agent(agent: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
         chat_result = agent.run(message=message, user_input=False, **kwargs)  # type: ignore[attr-defined]
-        print("!" * 100)
-        print(chat_result)
-        print(chat_result.summary)
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
