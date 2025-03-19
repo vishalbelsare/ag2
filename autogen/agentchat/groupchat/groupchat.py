@@ -36,6 +36,9 @@ from ..agent import Agent, LLMMessageType
 from ..contrib.capabilities import transform_messages
 from ..conversable_agent import ConversableAgent
 
+if TYPE_CHECKING:
+    from ...chat_managers.chat_manager import ChatManagerProtocol
+
 logger = logging.getLogger(__name__)
 
 SELECT_SPEAKER_PROMPT_TEMPLATE = (
@@ -43,6 +46,7 @@ SELECT_SPEAKER_PROMPT_TEMPLATE = (
 )
 
 if TYPE_CHECKING:
+    from ... import LLMConfig
     from ..chat import ChatResult
 
 
@@ -164,7 +168,7 @@ class GroupChat:
     select_speaker_transform_messages: Optional[transform_messages.TransformMessages] = None
     select_speaker_auto_verbose: Optional[bool] = False
     select_speaker_auto_model_client_cls: Optional[Union[ModelClient, list[ModelClient]]] = None
-    select_speaker_auto_llm_config: Optional[Union[dict[str, Any], Literal[False]]] = None
+    select_speaker_auto_llm_config: Optional[Union["LLMConfig", dict[str, Any], Literal[False]]] = None
     role_for_select_speaker_messages: Optional[str] = "system"
 
     _VALID_SPEAKER_SELECTION_METHODS = ["auto", "manual", "random", "round_robin"]
@@ -1026,7 +1030,7 @@ class GroupChat:
         return mentions
 
 
-@export_module("autogen")
+@export_module("autogen.chat_managers")
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
 
@@ -1822,3 +1826,9 @@ class GroupChatManager(ConversableAgent):
         reply_content = " ".join(words[:clear_word_index] + words[clear_word_index + skip_words_number :])
 
         return reply_content
+
+
+if TYPE_CHECKING:
+
+    def check_group_chat_manager_implements_chat_manager_protocol(x: GroupChatManager) -> ChatManagerProtocol:
+        return x

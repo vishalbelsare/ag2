@@ -33,11 +33,10 @@ import copy
 import os
 import time
 import warnings
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from pydantic import Field
 
-from .. import LLMMessageType
 from ..import_utils import optional_import_block, require_optional_import
 from ..llm_config import LLMConfigEntry, register_llm_config
 from .client_utils import should_hide_tools, validate_parameter
@@ -45,6 +44,9 @@ from .oai_models import ChatCompletion, ChatCompletionMessage, ChatCompletionMes
 
 with optional_import_block():
     from together import Together
+
+if TYPE_CHECKING:
+    from .. import LLMMessageType
 
 
 @register_llm_config

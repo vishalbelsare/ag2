@@ -41,8 +41,7 @@ from .exception_utils import (
     SenderRequiredError,
     UndefinedNextAgentError,
 )
-from .io.run import a_run, run
-from .llm_config import LLMConfig, LLMConfigFilter
+from .llm_config import LLMConfig
 from .oai import (
     Cache,
     ModelClient,
@@ -55,6 +54,7 @@ from .oai import (
     filter_config,
     get_config_list,
 )
+from .run import a_run, run
 from .version import __version__
 
 # Set the root logger.
@@ -81,7 +81,6 @@ __all__ = [
     "GroupChatManager",
     "InvalidCarryOverTypeError",
     "LLMConfig",
-    "LLMConfigFilter",
     "LLMMessageType",
     "ModelClient",
     "NoEligibleSpeakerError",

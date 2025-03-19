@@ -28,11 +28,10 @@ import random
 import re
 import time
 import warnings
-from typing import Any, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
-from .. import LLMMessageType
 from ..import_utils import optional_import_block, require_optional_import
 from ..llm_config import LLMConfigEntry, register_llm_config
 from .client_utils import FormatterProtocol, should_hide_tools, validate_parameter
@@ -43,11 +42,14 @@ with optional_import_block():
     from fix_busted_json import repair_json
     from ollama import Client
 
+if TYPE_CHECKING:
+    from .. import LLMMessageType
+
 
 @register_llm_config
 class OllamaLLMConfigEntry(LLMConfigEntry):
     api_type: Literal["ollama"] = "ollama"
-    client_host: Optional[AnyUrl] = None
+    client_host: Optional[HttpUrl] = None
     stream: bool = False
     num_predict: int = Field(
         default=128,

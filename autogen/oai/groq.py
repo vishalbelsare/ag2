@@ -27,11 +27,10 @@ import copy
 import os
 import time
 import warnings
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import Field
 
-from .. import LLMMessageType
 from ..import_utils import optional_import_block, require_optional_import
 from ..llm_config import LLMConfigEntry, register_llm_config
 from .client_utils import should_hide_tools, validate_parameter
@@ -39,6 +38,9 @@ from .oai_models import ChatCompletion, ChatCompletionMessage, ChatCompletionMes
 
 with optional_import_block():
     from groq import Groq, Stream
+
+if TYPE_CHECKING:
+    from .. import LLMMessageType
 
 # Cost per thousand tokens - Input / Output (NOTE: Convert $/Million to $/K)
 GROQ_PRICING_1K = {

@@ -1,20 +1,20 @@
 # Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
-#
-# Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
-# SPDX-License-Identifier: MIT
+
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
-from autogen.agentchat.contrib.swarm_agent import AfterWorkOption, a_initiate_swarm_chat, initiate_swarm_chat
-from autogen.agentchat.conversable_agent import ConversableAgent
-from autogen.agentchat.groupchat.groupchat import GroupChat
+from ..agentchat import ConversableAgent
+from ..agentchat.contrib.swarm_agent import AfterWorkOption, a_initiate_swarm_chat, initiate_swarm_chat
+from ..agentchat.groupchat import GroupChat
+from ..doc_utils import export_module
 
 if TYPE_CHECKING:
-    from ...agent import Agent, LLMMessageType
-    from ...chat import ChatResult
+    from ..agentchat import Agent, ChatResult, LLMMessageType
+    from .chat_manager import ChatManagerProtocol
 
 
+@export_module("autogen.chat_managers")
 class SwarmChatManager:
     def __init__(
         self,
@@ -74,3 +74,9 @@ class SwarmChatManager:
         )
 
         return result
+
+
+if TYPE_CHECKING:
+
+    def check_group_chat_manager_implements_chat_manager_protocol(x: SwarmChatManager) -> ChatManagerProtocol:
+        return x

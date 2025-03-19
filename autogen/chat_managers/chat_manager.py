@@ -8,8 +8,8 @@
 from typing import TYPE_CHECKING, Iterable, Protocol
 
 if TYPE_CHECKING:
-    from ..agent import Agent, LLMMessageType
-    from ..chat import ChatResult
+    from ..agentchat.agent import Agent, LLMMessageType
+    from ..agentchat.chat import ChatResult
 
 
 class ChatManagerProtocol(Protocol):

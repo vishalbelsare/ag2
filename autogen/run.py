@@ -9,17 +9,18 @@ import threading
 from typing import Any, Callable, Iterable, Optional, Union
 from uuid import UUID, uuid4
 
-from autogen.agentchat.agent import DEFAULT_SUMMARY_METHOD
-from autogen.cache.abstract_cache_base import AbstractCache
-from autogen.messages.agent_messages import TerminationMessage
-from autogen.tools.tool import Tool
+from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
+from .cache import AbstractCache
+from .chat_managers import ChatManagerProtocol, RoundRobinChatManager
+from .doc_utils import export_module
+from .io.base import IOStream
+from .io.run_response import AsyncRunResponseProtocol, RunResponseProtocol
+from .messages.agent_messages import TerminationMessage
+from .messages.print_message import PrintMessage
+from .messages.run_events import Event, InputRequestEvent, Message, TerminationEvent
+from .tools.tool import Tool
 
-from ..agentchat import Agent, ChatManagerProtocol
-from ..agentchat.groupchat.chat_managers.round_robin import RoundRobinChatManager
-from ..messages.print_message import PrintMessage
-from ..messages.run_events import Event, InputRequestEvent, Message, TerminationEvent
-from .base import IOStream
-from .run_response import AsyncRunResponseProtocol, RunResponseProtocol
+__all__ = ["run"]
 
 
 class ThreadIOStream:
@@ -117,6 +118,7 @@ def run_group_chat(
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
+@export_module("autogen")
 def run(
     *agents: Agent,
     initial_message: Optional[str] = None,

@@ -1,18 +1,18 @@
 # Copyright (c) 2023 - 2025, AG2ai, Inc., AG2ai open-source projects maintainers and core contributors
 #
 # SPDX-License-Identifier: Apache-2.0
-#
-# Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
-# SPDX-License-Identifier: MIT
+
 from typing import TYPE_CHECKING
 
-from ..groupchat import GroupChat, GroupChatManager
+from ..agentchat.groupchat import GroupChat, GroupChatManager
+from ..doc_utils import export_module
 
 if TYPE_CHECKING:
-    from ...agent import Agent, LLMMessageType
-    from ...chat import ChatResult
+    from ..agentchat import Agent, ChatResult, LLMMessageType
+    from .chat_manager import ChatManagerProtocol
 
 
+@export_module("autogen.chat_managers")
 class RoundRobinChatManager(GroupChatManager):
     def __init__(
         self,
@@ -56,3 +56,9 @@ class RoundRobinChatManager(GroupChatManager):
             recipient=self,
             message=message,
         )
+
+
+if TYPE_CHECKING:
+
+    def check_group_chat_manager_implements_chat_manager_protocol(x: RoundRobinChatManager) -> ChatManagerProtocol:
+        return x

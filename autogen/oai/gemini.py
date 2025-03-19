@@ -51,13 +51,12 @@ import re
 import time
 import warnings
 from io import BytesIO
-from typing import Any, Literal, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, Type, Union
 
 import requests
 from packaging import version
 from pydantic import BaseModel
 
-from .. import LLMMessageType
 from ..import_utils import optional_import_block, require_optional_import
 from ..json_utils import resolve_json_references
 from ..llm_config import LLMConfigEntry, register_llm_config
@@ -96,6 +95,10 @@ with optional_import_block():
     from vertexai.generative_models import (
         Tool as vaiTool,
     )
+
+if TYPE_CHECKING:
+    from .. import LLMMessageType
+
 
 logger = logging.getLogger(__name__)
 
