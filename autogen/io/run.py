@@ -11,12 +11,13 @@ from uuid import UUID, uuid4
 
 from autogen.agentchat.agent import DEFAULT_SUMMARY_METHOD
 from autogen.cache.abstract_cache_base import AbstractCache
+from autogen.messages.agent_messages import TerminationMessage
 from autogen.tools.tool import Tool
 
 from ..agentchat import Agent, ChatManagerProtocol
 from ..agentchat.groupchat.chat_managers.round_robin import RoundRobinChatManager
 from ..messages.print_message import PrintMessage
-from ..messages.run_events import Event, InputRequestEvent, Message, TerminationEvent, get_event
+from ..messages.run_events import Event, InputRequestEvent, Message, TerminationEvent
 from .base import IOStream
 from .run_response import AsyncRunResponseProtocol, RunResponseProtocol
 
@@ -37,7 +38,7 @@ class ThreadIOStream:
         self.send(print_message)
 
     def send(self, message: Any) -> None:
-        self._input_stream.put(message.model_dump())
+        self._input_stream.put(message)
 
     @property
     def input_stream(self) -> queue.Queue:  # type: ignore[type-arg]
@@ -55,17 +56,20 @@ class RunResponse:
         while True:
             try:
                 # Get an item from the queue
-                item = q.get(timeout=0.1)  # Adjust timeout as needed
-                event = get_event(item)
-
-                if isinstance(event, TerminationEvent):
-                    self._summary = event.summary
-                    break
+                event = q.get(timeout=0.1)  # Adjust timeout as needed
+                # event = get_event(item)
 
                 if isinstance(event, InputRequestEvent):
                     event.respond = lambda response: self.iostream._output_stream.put(response)
 
                 yield event
+
+                if isinstance(event, TerminationMessage):
+                    chat_result_message = q.get(timeout=0.1)
+                    print("?" * 100)
+                    print(chat_result_message)
+                    self._summary = chat_result_message.summary
+                    break
             except queue.Empty:
                 continue  # Wait for more items in the queue
 
@@ -93,6 +97,9 @@ class RunResponse:
 def run_single_agent(agent: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
         chat_result = agent.run(message=message, user_input=False, **kwargs)  # type: ignore[attr-defined]
+        print("!" * 100)
+        print(chat_result)
+        print(chat_result.summary)
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
 
 
