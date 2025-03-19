@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from ..agentchat.groupchat import GroupChat, GroupChatManager
 from ..doc_utils import export_module
@@ -24,10 +24,13 @@ class RoundRobinChatManager(GroupChatManager):
         *agents: "Agent",
         message: str,
         messages: list["LLMMessageType"],
+        max_turns: int,
+        summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult":
         groupchat = GroupChat(
             agents=agents,
             messages=messages,
+            max_round=max_turns,
             speaker_selection_method="round_robin",
         )
 
@@ -36,6 +39,7 @@ class RoundRobinChatManager(GroupChatManager):
         return agents[0].initiate_chat(
             recipient=self,
             message=message,
+            summary_method=summary_method,
         )
 
     async def a_run(
@@ -43,10 +47,13 @@ class RoundRobinChatManager(GroupChatManager):
         *agents: "Agent",
         message: str,
         messages: list["LLMMessageType"],
+        max_turns: int,
+        summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult":
         groupchat = GroupChat(
             agents=agents,
             messages=messages,
+            max_round=max_turns,
             speaker_selection_method="round_robin",
         )
 
@@ -55,6 +62,7 @@ class RoundRobinChatManager(GroupChatManager):
         return await agents[0].a_initiate_chat(
             recipient=self,
             message=message,
+            summary_method=summary_method,
         )
 
 

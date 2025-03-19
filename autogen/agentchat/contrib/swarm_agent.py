@@ -17,7 +17,7 @@ from ...doc_utils import export_module
 from ...oai import OpenAIWrapper
 from ...tools import Depends, Tool
 from ...tools.dependency_injection import inject_params, on
-from ..agent import Agent, LLMMessageType
+from ..agent import DEFAULT_SUMMARY_METHOD, Agent, LLMMessageType
 from ..chat import ChatResult
 from ..conversable_agent import __CONTEXT_VARIABLES_PARAM_NAME__, ConversableAgent
 from ..groupchat import SELECT_SPEAKER_PROMPT_TEMPLATE, GroupChat, GroupChatManager
@@ -911,6 +911,7 @@ def initiate_swarm_chat(
         ]
     ] = AfterWorkOption.TERMINATE,
     exclude_transit_message: bool = True,
+    summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
 ) -> tuple[ChatResult, dict[str, Any], ConversableAgent]:
     """Initialize and run a swarm chat
 
@@ -935,6 +936,22 @@ def initiate_swarm_chat(
                 ```
         exclude_transit_message:  all registered handoff function call and responses messages will be removed from message list before calling an LLM.
             Note: only with transition functions added with `register_handoff` will be removed. If you pass in a function to manage workflow, it will not be removed. You may register a cumstomized hook to `process_all_messages_before_reply` to remove that.
+        summary_method (str or callable): a method to get a summary from the chat. Default is DEFAULT_SUMMARY_METHOD, i.e., "last_msg".
+                Supported strings are "last_msg" and "reflection_with_llm":
+                    - when set to "last_msg", it returns the last message of the dialog as the summary.
+                    - when set to "reflection_with_llm", it returns a summary extracted using an llm client.
+                        `llm_config` must be set in either the recipient or sender.
+
+                A callable summary_method should take the recipient and sender agent in a chat as input and return a string of summary. E.g.,
+
+                ```python
+                def my_summary_method(
+                    sender: ConversableAgent,
+                    recipient: ConversableAgent,
+                    summary_args: dict,
+                ):
+                    return recipient.last_message(sender)["content"]
+                ```
     Returns:
         ChatResult:     Conversations chat history.
         dict[str, Any]: Updated Context variables.
@@ -989,6 +1006,7 @@ def initiate_swarm_chat(
         manager,
         message=last_message,
         clear_history=clear_history,
+        summary_method=summary_method,
     )
 
     _cleanup_temp_user_messages(chat_result)

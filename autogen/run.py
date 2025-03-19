@@ -9,8 +9,9 @@ import threading
 from typing import Any, Callable, Iterable, Optional, Union
 from uuid import UUID, uuid4
 
+from autogen.agentchat.conversable_agent import ConversableAgent
+
 from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
-from .cache import AbstractCache
 from .chat_managers import ChatManagerProtocol, RoundRobinChatManager
 from .doc_utils import export_module
 from .io.base import IOStream
@@ -18,7 +19,6 @@ from .io.run_response import AsyncRunResponseProtocol, RunResponseProtocol
 from .messages.agent_messages import TerminationMessage
 from .messages.print_message import PrintMessage
 from .messages.run_events import Event, InputRequestEvent, Message, TerminationEvent
-from .tools.tool import Tool
 
 __all__ = ["run"]
 
@@ -107,12 +107,16 @@ def run_group_chat(
     message: str,
     chat_manager: ChatManagerProtocol,
     previous_run: Optional[RunResponseProtocol],
+    max_turns: Optional[int] = None,
+    summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
 ) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
         chat_result = chat_manager.run(
             *agents,
             message=message,
             messages=previous_run.messages if previous_run else [],
+            max_turns=max_turns if max_turns else 10,
+            summary_method=summary_method,
         )
 
         iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
@@ -124,17 +128,10 @@ def run(
     initial_message: Optional[str] = None,
     previous_run: Optional[RunResponseProtocol] = None,
     chat_manager: Optional[ChatManagerProtocol] = None,
-    # What to do with this? Goes to initiate_chat but not to initiate_swarm_chat
-    clear_history: bool = False,
     max_turns: Optional[int] = None,
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
-    summary_args: Optional[dict[str, Any]] = {},
-    cache: Optional[AbstractCache] = None,
-    # Single agent run specific arguments
-    tools: Optional[Union[Tool, Iterable[Tool]]] = None,
     executor_kwargs: Optional[dict[str, Any]] = None,
-    user_input: bool = True,
-    **kwargs: Any,
+    user_input: bool = False,
 ) -> RunResponseProtocol:
     """Run the agents with the given initial message.
 
@@ -156,19 +153,30 @@ def run(
     iostream = ThreadIOStream()
     response = RunResponse(iostream)
 
-    if len(agents) == 1:
-        threading.Thread(target=run_single_agent, args=(agents[0], iostream, initial_message), kwargs=kwargs).start()
-    else:
-        threading.Thread(
-            target=run_group_chat,
-            args=agents,
-            kwargs={
-                "iostream": iostream,
-                "message": initial_message,
-                "chat_manager": chat_manager if chat_manager else RoundRobinChatManager(),
-                "previous_run": previous_run,
-            },
-        ).start()
+    run_executor = ConversableAgent(
+        name="user",
+        human_input_mode="ALWAYS" if user_input else "NEVER",
+        **executor_kwargs if executor_kwargs else {},
+    )
+
+    for agent in agents:
+        for tool in agent.tools:
+            tool.register_for_execution(agent)
+
+    agents = (run_executor,) + agents
+
+    threading.Thread(
+        target=run_group_chat,
+        args=agents,
+        kwargs={
+            "iostream": iostream,
+            "message": initial_message,
+            "chat_manager": chat_manager if chat_manager else RoundRobinChatManager(),
+            "previous_run": previous_run,
+            "max_turns": max_turns,
+            "summary_method": summary_method,
+        },
+    ).start()
 
     return response
 

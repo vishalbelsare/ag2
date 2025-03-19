@@ -5,7 +5,7 @@
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
 
-from typing import TYPE_CHECKING, Iterable, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Protocol, Union
 
 if TYPE_CHECKING:
     from ..agentchat.agent import Agent, LLMMessageType
@@ -18,6 +18,8 @@ class ChatManagerProtocol(Protocol):
         *agents: "Agent",
         message: str,
         messages: Iterable["LLMMessageType"],
+        max_turns: int,
+        summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult": ...
 
     async def a_run(
@@ -25,4 +27,6 @@ class ChatManagerProtocol(Protocol):
         *agents: "Agent",
         message: str,
         messages: Iterable["LLMMessageType"],
+        max_turns: int,
+        summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult": ...
