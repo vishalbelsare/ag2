@@ -159,11 +159,12 @@ def run(
         **executor_kwargs if executor_kwargs else {},
     )
 
+    if len(agents) == 1:
+        agents = (run_executor,) + agents
+
     for agent in agents:
         for tool in agent.tools:
             tool.register_for_execution(agent)
-
-    agents = (run_executor,) + agents
 
     threading.Thread(
         target=run_group_chat,
