@@ -5,16 +5,12 @@
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
 import getpass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..doc_utils import export_module
-from ..events.agent_events import InputRequestEvent
 from ..events.base_event import BaseEvent
-from ..messages.base_message import BaseMessage
-from ..messages.print_message import PrintMessage
+from ..events.print_event import PrintEvent
 from .base import IOStream
-from .event_processor import EventProcessorProtocol
-from .run_response import RunResponseProtocol
 
 __all__ = ("IOConsole",)
 
@@ -32,11 +28,11 @@ class IOConsole(IOStream):
             end (str, optional): The end of the output. Defaults to "\n".
             flush (bool, optional): Whether to flush the output. Defaults to False.
         """
-        print_message = PrintMessage(*objects, sep=sep, end=end)
+        print_message = PrintEvent(*objects, sep=sep, end=end)
         self.send(print_message)
         # print(*objects, sep=sep, end=end, flush=flush)
 
-    def send(self, message: BaseMessage) -> None:
+    def send(self, message: BaseEvent) -> None:
         """Send a message to the output stream.
 
         Args:
@@ -58,25 +54,3 @@ class IOConsole(IOStream):
         if password:
             return getpass.getpass(prompt if prompt != "" else "Password: ")
         return input(prompt)
-
-
-class ConsoleEventProcessor:
-    def process(self, response: RunResponseProtocol) -> None:
-        for event in response.events:
-            self.process_event(event)
-
-    def process_event(self, event: BaseEvent) -> None:
-        if isinstance(event, InputRequestEvent):
-            prompt = event.content.prompt  # type: ignore[attr-defined]
-            if event.content.password:  # type: ignore[attr-defined]
-                result = getpass.getpass(prompt if prompt != "" else "Password: ")
-            result = input(prompt)
-            event.content.respond(result)  # type: ignore[attr-defined]
-        else:
-            event.print()
-
-
-if TYPE_CHECKING:
-
-    def check_group_chat_manager_implements_chat_manager_protocol(x: ConsoleEventProcessor) -> EventProcessorProtocol:
-        return x

@@ -5,12 +5,14 @@
 from typing import Any, Callable, Literal, Optional, Union
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from .base_event import BaseEvent, wrap_event
 
 __all__ = ["UsageSummaryEvent"]
 
 
-class ModelUsageSummary(BaseEvent):
+class ModelUsageSummary(BaseModel):
     """Model usage summary."""
 
     model: str
@@ -25,7 +27,7 @@ class ModelUsageSummary(BaseEvent):
     """Total number of tokens used."""
 
 
-class ActualUsageSummary(BaseEvent):
+class ActualUsageSummary(BaseModel):
     """Actual usage summary."""
 
     usages: Optional[list[ModelUsageSummary]] = None
@@ -34,7 +36,7 @@ class ActualUsageSummary(BaseEvent):
     """Total cost."""
 
 
-class TotalUsageSummary(BaseEvent):
+class TotalUsageSummary(BaseModel):
     """Total usage summary."""
 
     usages: Optional[list[ModelUsageSummary]] = None
@@ -144,11 +146,11 @@ class UsageSummaryEvent(BaseEvent):
 
 
 @wrap_event
-class StreamMessage(BaseEvent):
-    """Stream message."""
+class StreamEvent(BaseEvent):
+    """Stream event."""
 
     content: str
-    """Content of the message."""
+    """Content of the event."""
 
     def __init__(self, *, uuid: Optional[UUID] = None, content: str) -> None:
         super().__init__(uuid=uuid, content=content)

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Protocol
 
-from .run_response import RunResponseProtocol
+from ..run_response import RunResponseProtocol
 
 
 class EventProcessorProtocol(Protocol):

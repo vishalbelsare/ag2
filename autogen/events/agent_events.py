@@ -232,42 +232,42 @@ class TextEvent(BasePrintReceivedEvent):
         f("\n", "-" * 80, flush=True, sep="")
 
 
-def create_received_message_model(
-    *, uuid: Optional[UUID] = None, message: dict[str, Any], sender: "Agent", recipient: "Agent"
+def create_received_event_model(
+    *, uuid: Optional[UUID] = None, event: dict[str, Any], sender: "Agent", recipient: "Agent"
 ) -> Union[FunctionResponseEvent, ToolResponseEvent, FunctionCallEvent, ToolCallEvent, TextEvent]:
-    role = message.get("role")
+    role = event.get("role")
     if role == "function":
-        return FunctionResponseEvent(**message, sender_name=sender.name, recipient_name=recipient.name, uuid=uuid)
+        return FunctionResponseEvent(**event, sender_name=sender.name, recipient_name=recipient.name, uuid=uuid)
     if role == "tool":
-        return ToolResponseEvent(**message, sender_name=sender.name, recipient_name=recipient.name, uuid=uuid)
+        return ToolResponseEvent(**event, sender_name=sender.name, recipient_name=recipient.name, uuid=uuid)
 
     # Role is neither function nor tool
 
-    if message.get("function_call"):
+    if event.get("function_call"):
         return FunctionCallEvent(
-            **message,
+            **event,
             sender_name=sender.name,
             recipient_name=recipient.name,
             uuid=uuid,
         )
 
-    if message.get("tool_calls"):
+    if event.get("tool_calls"):
         return ToolCallEvent(
-            **message,
+            **event,
             sender_name=sender.name,
             recipient_name=recipient.name,
             uuid=uuid,
         )
 
     # Now message is a simple content message
-    content = message.get("content")
+    content = event.get("content")
     allow_format_str_template = (
         recipient.llm_config.get("allow_format_str_template", False) if recipient.llm_config else False  # type: ignore [attr-defined]
     )
-    if content is not None and "context" in message:
+    if content is not None and "context" in event:
         content = OpenAIWrapper.instantiate(
             content,  # type: ignore [arg-type]
-            message["context"],
+            event["context"],
             allow_format_str_template,
         )
 
@@ -365,35 +365,35 @@ class PostCarryoverProcessingEvent(BaseEvent):
 @wrap_event
 class ClearAgentsHistoryEvent(BaseEvent):
     agent_name: Optional[str] = None
-    nr_messages_to_preserve: Optional[int] = None
+    nr_events_to_preserve: Optional[int] = None
 
     def __init__(
         self,
         *,
         uuid: Optional[UUID] = None,
         agent: Optional["Agent"] = None,
-        nr_messages_to_preserve: Optional[int] = None,
+        nr_events_to_preserve: Optional[int] = None,
     ):
         return super().__init__(
-            uuid=uuid, agent_name=agent.name if agent else None, nr_messages_to_preserve=nr_messages_to_preserve
+            uuid=uuid, agent_name=agent.name if agent else None, nr_events_to_preserve=nr_events_to_preserve
         )
 
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
         f = f or print
 
         if self.agent_name:
-            if self.nr_messages_to_preserve:
-                f(f"Clearing history for {self.agent_name} except last {self.nr_messages_to_preserve} messages.")
+            if self.nr_events_to_preserve:
+                f(f"Clearing history for {self.agent_name} except last {self.nr_events_to_preserve} events.")
             else:
                 f(f"Clearing history for {self.agent_name}.")
         else:
-            if self.nr_messages_to_preserve:
-                f(f"Clearing history for all agents except last {self.nr_messages_to_preserve} messages.")
+            if self.nr_events_to_preserve:
+                f(f"Clearing history for all agents except last {self.nr_events_to_preserve} events.")
             else:
                 f("Clearing history for all agents.")
 
 
-# todo: break into multiple messages
+# todo: break into multiple events
 @wrap_event
 class SpeakerAttemptSuccessfulEvent(BaseEvent):
     mentions: dict[str, int]
@@ -506,7 +506,7 @@ class SpeakerAttemptFailedNoAgentsEvent(BaseEvent):
 @wrap_event
 class GroupChatResumeEvent(BaseEvent):
     last_speaker_name: str
-    messages: list[LLMMessageType]
+    events: list[LLMMessageType]
     verbose: Optional[bool] = False
 
     def __init__(
@@ -514,16 +514,16 @@ class GroupChatResumeEvent(BaseEvent):
         *,
         uuid: Optional[UUID] = None,
         last_speaker_name: str,
-        messages: list["LLMMessageType"],
+        events: list["LLMMessageType"],
         silent: Optional[bool] = False,
     ):
-        super().__init__(uuid=uuid, last_speaker_name=last_speaker_name, messages=messages, verbose=not silent)
+        super().__init__(uuid=uuid, last_speaker_name=last_speaker_name, events=events, verbose=not silent)
 
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
         f = f or print
 
         f(
-            f"Prepared group chat with {len(self.messages)} messages, the last speaker is",
+            f"Prepared group chat with {len(self.events)} events, the last speaker is",
             colored(self.last_speaker_name, "yellow"),
             flush=True,
         )
@@ -769,22 +769,22 @@ class SelectSpeakerInvalidInputEvent(BaseEvent):
 class ClearConversableAgentHistoryEvent(BaseEvent):
     agent_name: str
     recipient_name: str
-    no_messages_preserved: int
+    no_events_preserved: int
 
-    def __init__(self, *, uuid: Optional[UUID] = None, agent: "Agent", no_messages_preserved: Optional[int] = None):
+    def __init__(self, *, uuid: Optional[UUID] = None, agent: "Agent", no_events_preserved: Optional[int] = None):
         super().__init__(
             uuid=uuid,
             agent_name=agent.name,
             recipient_name=agent.name,
-            no_messages_preserved=no_messages_preserved,
+            no_events_preserved=no_events_preserved,
         )
 
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
         f = f or print
 
-        for _ in range(self.no_messages_preserved):
+        for _ in range(self.no_events_preserved):
             f(
-                f"Preserving one more message for {self.agent_name} to not divide history between tool call and "
+                f"Preserving one more event for {self.agent_name} to not divide history between tool call and "
                 f"tool response."
             )
 
@@ -804,7 +804,7 @@ class ClearConversableAgentHistoryWarningEvent(BaseEvent):
 
         f(
             colored(
-                "WARNING: `nr_preserved_messages` is ignored when clearing chat history with a specific agent.",
+                "WARNING: `nr_preserved_events` is ignored when clearing chat history with a specific agent.",
                 "yellow",
             ),
             flush=True,
