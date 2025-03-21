@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Sequence, Un
 
 from ...code_utils import content_str
 from ...doc_utils import export_module
+from ...events.agent_events import TerminationEvent
 from ...exception_utils import AgentNameConflictError, NoEligibleSpeakerError, UndefinedNextAgentError
 from ...graph_utils import check_graph_validity, invert_disallowed_to_allowed
 from ...io.base import IOStream
@@ -28,7 +29,6 @@ from ...messages.agent_messages import (
     SpeakerAttemptFailedMultipleAgentsMessage,
     SpeakerAttemptFailedNoAgentsMessage,
     SpeakerAttemptSuccessfulMessage,
-    TerminationMessage,
 )
 from ...oai.client import ModelClient
 from ...runtime_logging import log_new_agent, logging_enabled
@@ -483,19 +483,20 @@ class GroupChat:
         )
 
         agents = self.agents
-        n_agents = len(agents)
+        # TODO: Is this check necessary?
+        # n_agents = len(agents)
         # Warn if GroupChat is underpopulated
-        if n_agents < 2:
-            raise ValueError(
-                f"GroupChat is underpopulated with {n_agents} agents. "
-                "Please add more agents to the GroupChat or use direct communication instead."
-            )
-        elif n_agents == 2 and speaker_selection_method.lower() != "round_robin" and allow_repeat_speaker:
-            logger.warning(
-                f"GroupChat is underpopulated with {n_agents} agents. "
-                "Consider setting speaker_selection_method to 'round_robin' or allow_repeat_speaker to False, "
-                "or use direct communication, unless repeated speaker is desired."
-            )
+        # if n_agents < 2:
+        #     raise ValueError(
+        #         f"GroupChat is underpopulated with {n_agents} agents. "
+        #         "Please add more agents to the GroupChat or use direct communication instead."
+        #     )
+        # elif n_agents == 2 and speaker_selection_method.lower() != "round_robin" and allow_repeat_speaker:
+        #     logger.warning(
+        #         f"GroupChat is underpopulated with {n_agents} agents. "
+        #         "Consider setting speaker_selection_method to 'round_robin' or allow_repeat_speaker to False, "
+        #         "or use direct communication, unless repeated speaker is desired."
+        #     )
 
         if (
             self.func_call_filter
@@ -1406,7 +1407,7 @@ class GroupChatManager(ConversableAgent):
                 a.previous_cache = None
 
         if termination_reason:
-            iostream.send(TerminationMessage(termination_reason=termination_reason))
+            iostream.send(TerminationEvent(termination_reason=termination_reason))
 
         return True, None
 
@@ -1489,7 +1490,7 @@ class GroupChatManager(ConversableAgent):
                 a.previous_cache = None
 
         if termination_reason:
-            iostream.send(TerminationMessage(termination_reason=termination_reason))
+            iostream.send(TerminationEvent(termination_reason=termination_reason))
 
         return True, None
 

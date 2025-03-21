@@ -9,16 +9,15 @@ import threading
 from typing import Any, Callable, Iterable, Optional, Union
 from uuid import UUID, uuid4
 
-from autogen.agentchat.conversable_agent import ConversableAgent
-
 from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
+from .agentchat.conversable_agent import ConversableAgent
 from .chat_managers import ChatManagerProtocol, RoundRobinChatManager
 from .doc_utils import export_module
+from .events.agent_events import InputRequestEvent, TerminationEvent
+from .events.base_event import BaseEvent
+from .events.print_event import PrintEvent
 from .io.base import IOStream
-from .io.run_response import AsyncRunResponseProtocol, RunResponseProtocol
-from .messages.agent_messages import TerminationMessage
-from .messages.print_message import PrintMessage
-from .messages.run_events import Event, InputRequestEvent, Message, TerminationEvent
+from .io.run_response import AsyncRunResponseProtocol, Message, RunResponseProtocol
 
 __all__ = ["run"]
 
@@ -31,11 +30,11 @@ class ThreadIOStream:
     def input(self, prompt: str = "", *, password: bool = False) -> str:
         # if password:
         #     return getpass.getpass(prompt if prompt != "" else "Password: ")
-        self.send(InputRequestEvent(uuid=uuid4(), prompt=prompt))
+        self.send(InputRequestEvent(prompt=prompt, password=password))
         return self._output_stream.get()  # type: ignore[no-any-return]
 
     def print(self, *objects: Any, sep: str = " ", end: str = "\n", flush: bool = False) -> None:
-        print_message = PrintMessage(*objects, sep=sep, end=end)
+        print_message = PrintEvent(*objects, sep=sep, end=end)
         self.send(print_message)
 
     def send(self, message: Any) -> None:
@@ -52,7 +51,7 @@ class RunResponse:
         self._summary: Optional[str] = None
         self._uuid = uuid4()
 
-    def _queue_generator(self, q: queue.Queue) -> Iterable[Event]:  # type: ignore[type-arg]
+    def _queue_generator(self, q: queue.Queue) -> Iterable[BaseEvent]:  # type: ignore[type-arg]
         """A generator to yield items from the queue until the termination message is found."""
         while True:
             try:
@@ -61,21 +60,17 @@ class RunResponse:
                 # event = get_event(item)
 
                 if isinstance(event, InputRequestEvent):
-                    event.respond = lambda response: self.iostream._output_stream.put(response)
+                    event.content.respond = lambda response: self.iostream._output_stream.put(response)
 
                 yield event
 
-                if isinstance(event, TerminationMessage):
-                    chat_result_message = q.get(timeout=0.1)
-                    # print("?" * 100)
-                    # print(chat_result_message)
-                    self._summary = chat_result_message.summary
+                if isinstance(event, TerminationEvent):
                     break
             except queue.Empty:
                 continue  # Wait for more items in the queue
 
     @property
-    def events(self) -> Iterable[Event]:
+    def events(self) -> Iterable[BaseEvent]:
         return self._queue_generator(self.iostream.input_stream)
 
     @property
@@ -95,15 +90,10 @@ class RunResponse:
         return self._uuid
 
 
-def run_single_agent(agent: Agent, iostream: ThreadIOStream, message: str, **kwargs: Any) -> None:
-    with IOStream.set_default(iostream):  # type: ignore[arg-type]
-        chat_result = agent.run(message=message, user_input=False, **kwargs)  # type: ignore[attr-defined]
-        iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
-
-
 def run_group_chat(
     *agents: Agent,
     iostream: ThreadIOStream,
+    response: RunResponse,
     message: str,
     chat_manager: ChatManagerProtocol,
     previous_run: Optional[RunResponseProtocol],
@@ -119,7 +109,7 @@ def run_group_chat(
             summary_method=summary_method,
         )
 
-        iostream.send(TerminationEvent(uuid=uuid4(), summary=chat_result.summary))
+        response._summary = chat_result.summary
 
 
 @export_module("autogen")
@@ -130,7 +120,6 @@ def run(
     chat_manager: Optional[ChatManagerProtocol] = None,
     max_turns: Optional[int] = None,
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
-    executor_kwargs: Optional[dict[str, Any]] = None,
     user_input: bool = False,
 ) -> RunResponseProtocol:
     """Run the agents with the given initial message.
@@ -153,14 +142,8 @@ def run(
     iostream = ThreadIOStream()
     response = RunResponse(iostream)
 
-    run_executor = ConversableAgent(
-        name="user",
-        human_input_mode="ALWAYS" if user_input else "NEVER",
-        **executor_kwargs if executor_kwargs else {},
-    )
-
-    if len(agents) == 1:
-        agents = (run_executor,) + agents
+    if user_input:
+        agents = (ConversableAgent(name="user", human_input_mode="ALWAYS"),) + agents
 
     for agent in agents:
         for tool in agent.tools:
@@ -176,6 +159,7 @@ def run(
             "previous_run": previous_run,
             "max_turns": max_turns,
             "summary_method": summary_method,
+            "response": response,
         },
     ).start()
 

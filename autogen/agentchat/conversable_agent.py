@@ -41,6 +41,7 @@ from ..code_utils import (
 from ..coding.base import CodeExecutor
 from ..coding.factory import CodeExecutorFactory
 from ..doc_utils import export_module
+from ..events.agent_events import TerminationEvent
 from ..exception_utils import InvalidCarryOverTypeError, SenderRequiredError
 from ..io.base import IOStream
 from ..llm_config import LLMConfig
@@ -54,7 +55,6 @@ from ..messages.agent_messages import (
     ExecutedFunctionMessage,
     GenerateCodeExecutionReplyMessage,
     TerminationAndHumanReplyNoInputMessage,
-    TerminationMessage,
     UsingAutoReplyMessage,
     create_received_message_model,
 )
@@ -1499,7 +1499,7 @@ class ConversableAgent:
                 self.send(msg2send, recipient, request_reply=True, silent=silent)
 
             else:  # No breaks in the for loop, so we have reached max turns
-                iostream.send(TerminationMessage(termination_reason=f"Maximum turns ({max_turns}) reached"))
+                iostream.send(TerminationEvent(termination_reason=f"Maximum turns ({max_turns}) reached"))
         else:
             self._prepare_chat(recipient, clear_history)
             if isinstance(message, Callable):
@@ -2270,7 +2270,7 @@ class ConversableAgent:
             self._consecutive_auto_reply_counter[sender] = 0
 
             if termination_reason:
-                iostream.send(TerminationMessage(termination_reason=termination_reason))
+                iostream.send(TerminationEvent(termination_reason=termination_reason))
 
             return True, None
 
@@ -2410,7 +2410,7 @@ class ConversableAgent:
             self._consecutive_auto_reply_counter[sender] = 0
 
             if termination_reason:
-                iostream.send(TerminationMessage(termination_reason=termination_reason))
+                iostream.send(TerminationEvent(termination_reason=termination_reason))
 
             return True, None
 

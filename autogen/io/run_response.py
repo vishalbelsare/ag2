@@ -4,10 +4,12 @@
 #
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
-from typing import AsyncIterable, Iterable, Optional, Protocol
+from typing import Any, AsyncIterable, Iterable, Optional, Protocol
 from uuid import UUID
 
-from ..messages.run_events import Event, Message
+from ..events.base_event import BaseEvent
+
+Message = dict[str, Any]
 
 
 class RunInfoProtocol(Protocol):
@@ -20,7 +22,7 @@ class RunInfoProtocol(Protocol):
 
 class RunResponseProtocol(RunInfoProtocol, Protocol):
     @property
-    def events(self) -> Iterable[Event]: ...
+    def events(self) -> Iterable[BaseEvent]: ...
 
     @property
     def messages(self) -> Iterable[Message]: ...
@@ -31,7 +33,7 @@ class RunResponseProtocol(RunInfoProtocol, Protocol):
 
 class AsyncRunResponseProtocol(RunInfoProtocol, Protocol):
     @property
-    def events(self) -> AsyncIterable[Event]: ...
+    def events(self) -> AsyncIterable[BaseEvent]: ...
 
     @property
     def messages(self) -> AsyncIterable[Message]: ...
