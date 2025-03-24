@@ -10,14 +10,26 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 
-def deprecated_by(new_class: type[BaseModel]) -> Callable[[type[BaseModel]], Callable[..., BaseModel] :]:
-    def decorator(old_class: type[BaseModel]) -> Callable[..., BaseModel]:
+def deprecated_by(
+    new_class: type[BaseModel],
+    param_mapping: dict[str, str] = None,
+) -> Callable[[type[BaseModel]], Callable[..., BaseModel] :]:
+    param_mapping = param_mapping or {}
+
+    def decorator(
+        old_class: type[BaseModel],
+        param_mapping: dict[str, str] = param_mapping,
+    ) -> Callable[..., BaseModel]:
         @wraps(old_class.__init__)
         def wrapper(*args, **kwargs) -> BaseModel:
             logger.warning(
                 f"{old_class.__name__} is deprecated by {new_class.__name__}. Please import it from {new_class.__module__} and use it instead."
             )
-            return new_class(*args, **kwargs)
+            # Translate old parameters to new parameters
+            new_kwargs = {param_mapping.get(k, k): v for k, v in kwargs.items()}
+
+            # Pass the translated parameters to the new class
+            return new_class(*args, **new_kwargs)
 
         return wrapper
 

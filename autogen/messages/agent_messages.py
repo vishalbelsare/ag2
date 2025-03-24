@@ -15,11 +15,13 @@ from ..code_utils import content_str
 from ..events import deprecated_by
 from ..events.agent_events import (
     ClearAgentsHistoryEvent,
+    ClearConversableAgentHistoryEvent,
     ClearConversableAgentHistoryWarningEvent,
     ConversableAgentUsageSummaryEvent,
     ConversableAgentUsageSummaryNoCostIncurredEvent,
     ExecuteCodeBlockEvent,
     ExecuteFunctionEvent,
+    ExecutedFunctionEvent,
     FunctionCallEvent,
     FunctionResponseEvent,
     GenerateCodeExecutionReplyEvent,
@@ -398,7 +400,7 @@ class PostCarryoverProcessingMessage(BaseMessage):
         f(colored("\n" + "*" * 80, "blue"), flush=True, sep="")
 
 
-@deprecated_by(ClearAgentsHistoryEvent)
+@deprecated_by(ClearAgentsHistoryEvent, param_mapping={"nr_messages_to_preserve": "nr_events_to_preserve"})
 @wrap_message
 class ClearAgentsHistoryMessage(BaseMessage):
     agent_name: Optional[str] = None
@@ -543,7 +545,7 @@ class SpeakerAttemptFailedNoAgentsMessage(BaseMessage):
         )
 
 
-@deprecated_by(GroupChatResumeEvent)
+@deprecated_by(GroupChatResumeEvent, param_mapping={"messages": "events"})
 @wrap_message
 class GroupChatResumeMessage(BaseMessage):
     last_speaker_name: str
@@ -727,7 +729,7 @@ class ExecuteFunctionMessage(BaseMessage):
         )
 
 
-@deprecated_by(ExecuteFunctionEvent)
+@deprecated_by(ExecutedFunctionEvent)
 @wrap_message
 class ExecutedFunctionMessage(BaseMessage):
     func_name: str
@@ -816,6 +818,7 @@ class SelectSpeakerInvalidInputMessage(BaseMessage):
         f(f"Invalid input. Please enter a number between 1 and {len(self.agent_names or [])}.")
 
 
+@deprecated_by(ClearConversableAgentHistoryEvent, param_mapping={"no_messages_preserved": "no_events_preserved"})
 @wrap_message
 class ClearConversableAgentHistoryMessage(BaseMessage):
     agent_name: str
