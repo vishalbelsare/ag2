@@ -12,6 +12,33 @@ from termcolor import colored
 
 from ..agentchat.agent import LLMMessageType
 from ..code_utils import content_str
+from ..events import deprecated_by
+from ..events.agent_events import (
+    ClearAgentsHistoryEvent,
+    ClearConversableAgentHistoryWarningEvent,
+    ConversableAgentUsageSummaryEvent,
+    ConversableAgentUsageSummaryNoCostIncurredEvent,
+    ExecuteCodeBlockEvent,
+    ExecuteFunctionEvent,
+    FunctionCallEvent,
+    FunctionResponseEvent,
+    GenerateCodeExecutionReplyEvent,
+    GroupChatResumeEvent,
+    GroupChatRunChatEvent,
+    PostCarryoverProcessingEvent,
+    SelectSpeakerEvent,
+    SelectSpeakerInvalidInputEvent,
+    SelectSpeakerTryCountExceededEvent,
+    SpeakerAttemptFailedMultipleAgentsEvent,
+    SpeakerAttemptFailedNoAgentsEvent,
+    SpeakerAttemptSuccessfulEvent,
+    TerminationAndHumanReplyNoInputEvent,
+    TerminationEvent,
+    TextEvent,
+    ToolCallEvent,
+    ToolResponseEvent,
+    UsingAutoReplyEvent,
+)
 from ..import_utils import optional_import_block, require_optional_import
 from ..oai.client import OpenAIWrapper
 from .base_message import BaseMessage, wrap_message
@@ -63,6 +90,7 @@ class BasePrintReceivedMessage(BaseMessage, ABC):
         f(f"{colored(self.sender_name, 'yellow')} (to {self.recipient_name}):\n", flush=True)
 
 
+@deprecated_by(FunctionResponseEvent)
 @wrap_message
 class FunctionResponseMessage(BasePrintReceivedMessage):
     name: Optional[str] = None
@@ -96,6 +124,7 @@ class ToolResponse(BaseModel):
         f(colored("*" * len(tool_print), "green"), flush=True)
 
 
+@deprecated_by(ToolResponseEvent)
 @wrap_message
 class ToolResponseMessage(BasePrintReceivedMessage):
     role: MessageRole = "tool"
@@ -132,6 +161,7 @@ class FunctionCall(BaseModel):
         f(colored("*" * len(func_print), "green"), flush=True)
 
 
+@deprecated_by(FunctionCallEvent)
 @wrap_message
 class FunctionCallMessage(BasePrintReceivedMessage):
     content: Optional[Union[str, int, float, bool]] = None  # type: ignore [assignment]
@@ -173,6 +203,7 @@ class ToolCall(BaseModel):
         f(colored("*" * len(func_print), "green"), flush=True)
 
 
+@deprecated_by(ToolCallEvent)
 @wrap_message
 class ToolCallMessage(BasePrintReceivedMessage):
     content: Optional[Union[str, int, float, bool]] = None  # type: ignore [assignment]
@@ -195,6 +226,7 @@ class ToolCallMessage(BasePrintReceivedMessage):
         f("\n", "-" * 80, flush=True, sep="")
 
 
+@deprecated_by(TextEvent)
 @wrap_message
 class TextMessage(BasePrintReceivedMessage):
     content: Optional[Union[str, int, float, bool, list[dict[str, Union[str, dict[str, Any]]]]]] = None  # type: ignore [assignment]
@@ -282,6 +314,7 @@ def create_received_message_model(
     )
 
 
+@deprecated_by(PostCarryoverProcessingEvent)
 @wrap_message
 class PostCarryoverProcessingMessage(BaseMessage):
     carryover: Union[str, list[Union[str, dict[str, Any], Any]]]
@@ -365,6 +398,7 @@ class PostCarryoverProcessingMessage(BaseMessage):
         f(colored("\n" + "*" * 80, "blue"), flush=True, sep="")
 
 
+@deprecated_by(ClearAgentsHistoryEvent)
 @wrap_message
 class ClearAgentsHistoryMessage(BaseMessage):
     agent_name: Optional[str] = None
@@ -397,6 +431,7 @@ class ClearAgentsHistoryMessage(BaseMessage):
 
 
 # todo: break into multiple messages
+@deprecated_by(SpeakerAttemptSuccessfulEvent)
 @wrap_message
 class SpeakerAttemptSuccessfulMessage(BaseMessage):
     mentions: dict[str, int]
@@ -434,6 +469,7 @@ class SpeakerAttemptSuccessfulMessage(BaseMessage):
         )
 
 
+@deprecated_by(SpeakerAttemptFailedMultipleAgentsEvent)
 @wrap_message
 class SpeakerAttemptFailedMultipleAgentsMessage(BaseMessage):
     mentions: dict[str, int]
@@ -470,6 +506,7 @@ class SpeakerAttemptFailedMultipleAgentsMessage(BaseMessage):
         )
 
 
+@deprecated_by(SpeakerAttemptFailedNoAgentsEvent)
 @wrap_message
 class SpeakerAttemptFailedNoAgentsMessage(BaseMessage):
     mentions: dict[str, int]
@@ -506,6 +543,7 @@ class SpeakerAttemptFailedNoAgentsMessage(BaseMessage):
         )
 
 
+@deprecated_by(GroupChatResumeEvent)
 @wrap_message
 class GroupChatResumeMessage(BaseMessage):
     last_speaker_name: str
@@ -532,6 +570,7 @@ class GroupChatResumeMessage(BaseMessage):
         )
 
 
+@deprecated_by(GroupChatRunChatEvent)
 @wrap_message
 class GroupChatRunChatMessage(BaseMessage):
     speaker_name: str
@@ -546,6 +585,7 @@ class GroupChatRunChatMessage(BaseMessage):
         f(colored(f"\nNext speaker: {self.speaker_name}\n", "green"), flush=True)
 
 
+@deprecated_by(TerminationAndHumanReplyNoInputEvent)
 @wrap_message
 class TerminationAndHumanReplyNoInputMessage(BaseMessage):
     """When the human-in-the-loop is prompted but provides no input."""
@@ -575,6 +615,7 @@ class TerminationAndHumanReplyNoInputMessage(BaseMessage):
         f(colored(f"\n>>>>>>>> {self.no_human_input_msg}", "red"), flush=True)
 
 
+@deprecated_by(UsingAutoReplyEvent)
 @wrap_message
 class UsingAutoReplyMessage(BaseMessage):
     human_input_mode: str
@@ -602,6 +643,7 @@ class UsingAutoReplyMessage(BaseMessage):
         f(colored("\n>>>>>>>> USING AUTO REPLY...", "red"), flush=True)
 
 
+@deprecated_by(TerminationEvent)
 @wrap_message
 class TerminationMessage(BaseMessage):
     """When a workflow termination condition is met"""
@@ -625,6 +667,7 @@ class TerminationMessage(BaseMessage):
         f(colored(f"\n>>>>>>>> TERMINATING RUN ({str(self.uuid)}): {self.termination_reason}", "red"), flush=True)
 
 
+@deprecated_by(ExecuteCodeBlockEvent)
 @wrap_message
 class ExecuteCodeBlockMessage(BaseMessage):
     code: str
@@ -651,6 +694,7 @@ class ExecuteCodeBlockMessage(BaseMessage):
         )
 
 
+@deprecated_by(ExecuteFunctionEvent)
 @wrap_message
 class ExecuteFunctionMessage(BaseMessage):
     func_name: str
@@ -683,6 +727,7 @@ class ExecuteFunctionMessage(BaseMessage):
         )
 
 
+@deprecated_by(ExecuteFunctionEvent)
 @wrap_message
 class ExecutedFunctionMessage(BaseMessage):
     func_name: str
@@ -722,6 +767,7 @@ class ExecutedFunctionMessage(BaseMessage):
         )
 
 
+@deprecated_by(SelectSpeakerEvent)
 @wrap_message
 class SelectSpeakerMessage(BaseMessage):
     agent_names: Optional[list[str]] = None
@@ -739,6 +785,7 @@ class SelectSpeakerMessage(BaseMessage):
             f(f"{i + 1}: {agent_name}")
 
 
+@deprecated_by(SelectSpeakerTryCountExceededEvent)
 @wrap_message
 class SelectSpeakerTryCountExceededMessage(BaseMessage):
     try_count: int
@@ -754,6 +801,7 @@ class SelectSpeakerTryCountExceededMessage(BaseMessage):
         f(f"You have tried {self.try_count} times. The next speaker will be selected automatically.")
 
 
+@deprecated_by(SelectSpeakerInvalidInputEvent)
 @wrap_message
 class SelectSpeakerInvalidInputMessage(BaseMessage):
     agent_names: Optional[list[str]] = None
@@ -792,6 +840,7 @@ class ClearConversableAgentHistoryMessage(BaseMessage):
             )
 
 
+@deprecated_by(ClearConversableAgentHistoryWarningEvent)
 @wrap_message
 class ClearConversableAgentHistoryWarningMessage(BaseMessage):
     recipient_name: str
@@ -814,6 +863,7 @@ class ClearConversableAgentHistoryWarningMessage(BaseMessage):
         )
 
 
+@deprecated_by(GenerateCodeExecutionReplyEvent)
 @wrap_message
 class GenerateCodeExecutionReplyMessage(BaseMessage):
     code_block_languages: list[str]
@@ -859,6 +909,7 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
             )
 
 
+@deprecated_by(ConversableAgentUsageSummaryNoCostIncurredEvent)
 @wrap_message
 class ConversableAgentUsageSummaryNoCostIncurredMessage(BaseMessage):
     recipient_name: str
@@ -872,6 +923,7 @@ class ConversableAgentUsageSummaryNoCostIncurredMessage(BaseMessage):
         f(f"No cost incurred from agent '{self.recipient_name}'.")
 
 
+@deprecated_by(ConversableAgentUsageSummaryEvent)
 @wrap_message
 class ConversableAgentUsageSummaryMessage(BaseMessage):
     recipient_name: str
