@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import pytest
+
 from autogen.import_utils import skip_on_missing_imports
 from autogen.tools.experimental.google import ListGoogleDriveFilesTool
 
@@ -18,7 +20,7 @@ class TestListGoogleDriveFilesTool:
         assert google_drive_tool.name == "list_google_drive_files"
         assert google_drive_tool.description == "List files in a user's Google Drive."
 
-    # @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
+    @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
     @skip_on_missing_imports(
         [
             "googleapiclient",
