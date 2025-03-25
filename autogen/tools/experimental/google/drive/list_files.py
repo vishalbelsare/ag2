@@ -7,13 +7,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from .....doc_utils import export_module
-from .....import_utils import require_optional_import
-from .... import Depends, Tool
-from ....dependency_injection import on
-from ..service import build_service_from_db, build_service_from_json
+from .....import_utils import optional_import_block, require_optional_import
+from .... import Tool
+from ..service import build_service
+
+with optional_import_block():
+    from google.oauth2.credentials import Credentials
 
 __all__ = [
     "ListGoogleDriveFilesTool",
@@ -32,45 +34,34 @@ def _list_files(service: Any, page_size: int) -> Any:
     return results.get("files", [])
 
 
+@require_optional_import(
+    [
+        "googleapiclient",
+        "google_auth_httplib2",
+        "google_auth_oauthlib",
+    ],
+    "google-api",
+)
 @export_module("autogen.tools.experimental")
 class ListGoogleDriveFilesTool(Tool):
     """ListGoogleDriveFilesTool is a tool that uses the Google Drive API to list files in a user's Google Drive."""
 
     def __init__(
         self,
-        client_secret_file: str,
-        scopes: list[str],
-        user_id: Optional[int] = None,
-        db_engine_url: str = "sqlite:///database.db",
-        users_token_file: str = "token.json",
+        credentials: "Credentials",
+        api_version: str = "v3",
     ):
+        self.credentials = credentials
+        self.api_version = api_version
+
         def list_google_drive_files(
-            client_secret_file: Annotated[str, Depends(on(client_secret_file))],
-            scopes: Annotated[list[str], Depends(on(scopes))],
-            user_id: Annotated[Optional[int], Depends(on(user_id))],
-            db_engine_url: Annotated[str, Depends(on(db_engine_url))],
-            users_token_file: Annotated[str, Depends(on(users_token_file))],
             page_size: Annotated[int, "The number of files to list per page."] = 10,
         ) -> Any:
-            service_name = "drive"
-            version = "v3"
-            if user_id is None:
-                service = build_service_from_json(
-                    client_secret_file=client_secret_file,
-                    scopes=scopes,
-                    service_name=service_name,
-                    version=version,
-                    users_token_file=users_token_file,
-                )
-            else:
-                service = build_service_from_db(
-                    client_secret_file=client_secret_file,
-                    scopes=scopes,
-                    user_id=user_id,
-                    service_name=service_name,
-                    version=version,
-                    db_engine_url=db_engine_url,
-                )
+            service = build_service(
+                credentials=self.credentials,
+                service_name="drive",
+                version=self.api_version,
+            )
 
             return _list_files(service=service, page_size=page_size)
 

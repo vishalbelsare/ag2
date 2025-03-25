@@ -66,7 +66,7 @@ class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
         ],
         "google-api",
     )
-    def get_credentials(self) -> Optional["Credentials"]:
+    def get_credentials(self) -> "Credentials":
         creds = None
         if self.users_token_file and os.path.exists(self.users_token_file):
             creds = Credentials.from_authorized_user_file(self.users_token_file)  # type: ignore[no-untyped-call]
