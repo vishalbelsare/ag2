@@ -903,3 +903,8 @@ class AsyncInputRequestEvent(BaseEvent):
 @wrap_event
 class InputResponseEvent(BaseEvent):
     value: str
+
+
+@wrap_event
+class ErrorEvent(BaseEvent):
+    error: Any

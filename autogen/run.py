@@ -10,7 +10,7 @@ from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
 from .agentchat.conversable_agent import ConversableAgent
 from .chat_managers import ChatManagerProtocol, RoundRobinChatManager
 from .doc_utils import export_module
-from .events.agent_events import InputRequestEvent, TerminationEvent
+from .events.agent_events import ErrorEvent, InputRequestEvent, TerminationEvent
 from .events.base_event import BaseEvent
 from .events.print_event import PrintEvent
 from .io.base import IOStream
@@ -63,6 +63,9 @@ class RunResponse:
 
                 if isinstance(event, TerminationEvent):
                     break
+
+                if isinstance(event, ErrorEvent):
+                    raise event.content.error
             except queue.Empty:
                 continue  # Wait for more items in the queue
 
@@ -98,15 +101,18 @@ def run_group_chat(
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
 ) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
-        chat_result = chat_manager.run(
-            *agents,
-            message=message,
-            messages=previous_run.messages if previous_run else [],
-            max_turns=max_turns if max_turns else 10,
-            summary_method=summary_method,
-        )
+        try:
+            chat_result = chat_manager.run(
+                *agents,
+                message=message,
+                messages=previous_run.messages if previous_run else [],
+                max_turns=max_turns if max_turns else 10,
+                summary_method=summary_method,
+            )
 
-        response._summary = chat_result.summary
+            response._summary = chat_result.summary
+        except Exception as e:
+            response.iostream.send(ErrorEvent(error=e))
 
 
 @export_module("autogen")

@@ -1243,7 +1243,7 @@ class ConversableAgent:
 
     def _print_received_message(self, message: Union["LLMMessageType", str], sender: Agent, skip_head: bool = False):
         message = self._message_to_dict(message)
-        message_model = create_received_event_model(message=message, sender=sender, recipient=self)
+        message_model = create_received_event_model(event=message, sender=sender, recipient=self)
         iostream = IOStream.get_default()
         # message_model.print(iostream.print)
         iostream.send(message_model)
