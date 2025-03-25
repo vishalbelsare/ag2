@@ -7,12 +7,15 @@
 
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Protocol, Union
 
+from ..doc_utils import export_module
+
 if TYPE_CHECKING:
     from ..agentchat.agent import Agent, LLMMessageType
     from ..agentchat.chat import ChatResult
 
 
-class ChatManagerProtocol(Protocol):
+@export_module("autogen.run_patterns")
+class RunPatternProtocol(Protocol):
     def run(
         self,
         *agents: "Agent",

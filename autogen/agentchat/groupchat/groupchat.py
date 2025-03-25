@@ -37,7 +37,7 @@ from ..contrib.capabilities import transform_messages
 from ..conversable_agent import ConversableAgent
 
 if TYPE_CHECKING:
-    from ...chat_managers.chat_manager import ChatManagerProtocol
+    from ...run_patterns.run_pattern import RunPatternProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -1031,7 +1031,7 @@ class GroupChat:
         return mentions
 
 
-@export_module("autogen.chat_managers")
+@export_module("autogen.run_patterns")
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
 
@@ -1869,5 +1869,5 @@ class GroupChatManager(ConversableAgent):
 
 if TYPE_CHECKING:
 
-    def check_group_chat_manager_implements_chat_manager_protocol(x: GroupChatManager) -> ChatManagerProtocol:
+    def check_group_chat_manager_implements_chat_manager_protocol(x: GroupChatManager) -> RunPatternProtocol:
         return x

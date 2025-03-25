@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
 from .agentchat.conversable_agent import ConversableAgent
-from .chat_managers import ChatManagerProtocol, RoundRobinChatManager
+from .run_patterns import RunPatternProtocol, RoundRobinRunPattern
 from .doc_utils import export_module
 from .events.agent_events import ErrorEvent, InputRequestEvent, TerminationEvent
 from .events.base_event import BaseEvent
@@ -95,7 +95,7 @@ def run_group_chat(
     iostream: ThreadIOStream,
     response: RunResponse,
     message: str,
-    chat_manager: ChatManagerProtocol,
+    chat_manager: RunPatternProtocol,
     previous_run: Optional[RunResponseProtocol],
     max_turns: Optional[int] = None,
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
@@ -118,9 +118,9 @@ def run_group_chat(
 @export_module("autogen")
 def run(
     *agents: Agent,
-    initial_message: Optional[str] = None,
+    message: Optional[str] = None,
     previous_run: Optional[RunResponseProtocol] = None,
-    chat_manager: Optional[ChatManagerProtocol] = None,
+    run_pattern: Optional[RunPatternProtocol] = None,
     max_turns: Optional[int] = None,
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
     user_input: bool = False,
@@ -152,13 +152,14 @@ def run(
         for tool in agent.tools:
             tool.register_for_execution(agent)
 
+    run_pattern = run_pattern or RoundRobinRunPattern()
     threading.Thread(
         target=run_group_chat,
         args=agents,
         kwargs={
             "iostream": iostream,
-            "message": initial_message,
-            "chat_manager": chat_manager if chat_manager else RoundRobinChatManager(),
+            "message": message,
+            "chat_manager": run_pattern if run_pattern else RoundRobinRunPattern(),
             "previous_run": previous_run,
             "max_turns": max_turns,
             "summary_method": summary_method,

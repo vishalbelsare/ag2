@@ -9,11 +9,11 @@ from ..doc_utils import export_module
 
 if TYPE_CHECKING:
     from ..agentchat import Agent, ChatResult, LLMMessageType
-    from .chat_manager import ChatManagerProtocol
+    from .run_pattern import RunPatternProtocol
 
 
-@export_module("autogen.chat_managers")
-class RoundRobinChatManager(GroupChatManager):
+@export_module("autogen.run_patterns")
+class RoundRobinRunPattern(GroupChatManager):
     def __init__(
         self,
     ) -> None:
@@ -68,5 +68,5 @@ class RoundRobinChatManager(GroupChatManager):
 
 if TYPE_CHECKING:
 
-    def check_group_chat_manager_implements_chat_manager_protocol(x: RoundRobinChatManager) -> ChatManagerProtocol:
+    def check_group_run_pattern_implements_run_pattern_protocol(x: RoundRobinRunPattern) -> RunPatternProtocol:
         return x

@@ -12,11 +12,11 @@ from ..llm_config import LLMConfig
 
 if TYPE_CHECKING:
     from ..agentchat import Agent, ChatResult, LLMMessageType
-    from .chat_manager import ChatManagerProtocol
+    from .run_pattern import RunPatternProtocol
 
 
-@export_module("autogen.chat_managers")
-class SwarmChatManager:
+@export_module("autogen.run_patterns")
+class SwarmRunPattern:
     def __init__(
         self,
         llm_config: Optional[Union[LLMConfig, dict[str, str]]] = None,
@@ -86,5 +86,5 @@ class SwarmChatManager:
 
 if TYPE_CHECKING:
 
-    def check_group_chat_manager_implements_chat_manager_protocol(x: SwarmChatManager) -> ChatManagerProtocol:
+    def check_run_pattern_manager_implements_run_pattern_protocol(x: SwarmRunPattern) -> RunPatternProtocol:
         return x
