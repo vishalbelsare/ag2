@@ -7,13 +7,12 @@ import os
 from typing import Optional
 
 from .....import_utils import optional_import_block, require_optional_import
+from .credentials_provider import GoogleCredentialsProvider
 
 with optional_import_block():
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
-
-    from .credentials_provider import GoogleCredentialsProvider
 
 
 __all__ = ["GoogleCredentialsLocalProvider"]
@@ -24,15 +23,11 @@ class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
         self,
         client_secret_file: str,
         scopes: list[str],  # e.g. ['https://www.googleapis.com/auth/drive/readonly']
-        service_name: str,  # e.g. 'sheets', 'drive', etc.
-        version: str,  # e.g. 'v4'
         users_token_file: Optional[str] = None,
         port: int = 8080,
     ) -> None:
         self.client_secret_file = client_secret_file
         self.scopes = scopes
-        self.service_name = service_name  # TODO: maybe not needed
-        self.version = version  # TODO: maybe not needed
         self.users_token_file = users_token_file
         self._port = port
 

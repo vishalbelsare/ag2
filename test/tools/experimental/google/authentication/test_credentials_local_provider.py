@@ -31,8 +31,6 @@ class TestGoogleCredentialsLocalProvider:
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=tmp_client_secret_json_file_name,
             scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
-            service_name="sheets",
-            version="v4",
         )
         assert isinstance(provider, GoogleCredentialsProvider)
         assert provider.host == "localhost"
@@ -42,8 +40,6 @@ class TestGoogleCredentialsLocalProvider:
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=tmp_client_secret_json_file_name,
             scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
-            service_name="sheets",
-            version="v4",
         )
 
         with unittest.mock.patch(
@@ -73,8 +69,6 @@ class TestGoogleCredentialsLocalProvider:
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=client_secret_file,
             scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
-            service_name="sheets",
-            version="v4",
         )
         creds = provider.get_credentials()
 

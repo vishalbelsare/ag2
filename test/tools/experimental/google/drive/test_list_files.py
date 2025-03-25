@@ -46,8 +46,6 @@ class TestListGoogleDriveFilesTool:
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=client_secret_file,
             scopes=["https://www.googleapis.com/auth/drive.metadata.readonly"],
-            service_name="drive",
-            version="v4",
         )
         creds = provider.get_credentials()
 

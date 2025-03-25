@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .credentials import get_credentials_from_db, get_credentials_from_json
+from .credentials_local_provider import GoogleCredentialsLocalProvider
+from .credentials_provider import GoogleCredentialsProvider
 
 __all__ = [
-    "get_credentials_from_db",
-    "get_credentials_from_json",
+    "GoogleCredentialsLocalProvider",
+    "GoogleCredentialsProvider",
 ]
