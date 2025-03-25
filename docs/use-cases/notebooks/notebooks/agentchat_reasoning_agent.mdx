@@ -75,8 +75,8 @@ the reasoning space:
 import os
 import random
 
-from autogen import AssistantAgent, LLMConfig, ThinkNode, UserProxyAgent
-from autogen.agents.experimental import ReasoningAgent
+from autogen import AssistantAgent, LLMConfig, UserProxyAgent
+from autogen.agents.experimental import ReasoningAgent, ThinkNode
 
 api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -369,7 +369,7 @@ lats_agent = ReasoningAgent(
     name="mcts_agent",
     system_message="answer math questions",
     llm_config=llm_config,
-    reason_config={"method": "lats", "nsim": 5, "max_depth": 4},
+    reason_config={"method": "lats", "nsim": 5, "max_depth": 4, "interim_execution": True},
     code_execution_config={"use_docker": False, "work_dir": "mypy_cache"},
     # Enable Code execution. We skip docker here for simplicity
 )
