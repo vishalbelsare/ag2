@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .group_run_manager import GroupRunPattern
-from .run_pattern import RunPatternProtocol
 from .round_robin import RoundRobinRunPattern
+from .run_pattern import RunPatternProtocol
 from .swarm import SwarmRunPattern
 
-__all__ = ["RunPatternProtocol", "GroupRunPattern", "RoundRobinRunPattern", "SwarmRunPattern"]
+__all__ = ["GroupRunPattern", "RoundRobinRunPattern", "RunPatternProtocol", "SwarmRunPattern"]

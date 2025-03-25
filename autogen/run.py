@@ -8,13 +8,13 @@ from uuid import UUID, uuid4
 
 from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
 from .agentchat.conversable_agent import ConversableAgent
-from .run_patterns import RunPatternProtocol, RoundRobinRunPattern
 from .doc_utils import export_module
 from .events.agent_events import ErrorEvent, InputRequestEvent, TerminationEvent
 from .events.base_event import BaseEvent
 from .events.print_event import PrintEvent
 from .io.base import IOStream
 from .io.run_response import AsyncRunResponseProtocol, Message, RunResponseProtocol
+from .run_patterns import RoundRobinRunPattern, RunPatternProtocol
 
 __all__ = ["run"]
 
