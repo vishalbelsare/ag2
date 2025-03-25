@@ -44,7 +44,7 @@ def _refresh_or_get_new_credentials_from_localhost(
         creds.refresh(Request())  # type: ignore[no-untyped-call]
     else:
         flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, scopes)
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_local_server(port=8080)
     return creds  # type: ignore[return-value]
 
 

@@ -10,7 +10,7 @@ from .....import_utils import optional_import_block, require_optional_import
 with optional_import_block():
     from googleapiclient.discovery import build
 
-from .credentials import get_credentials_from_db, get_credentials_from_json
+from ..authentication.credentials import get_credentials_from_db, get_credentials_from_json
 
 __all__ = [
     "build_service_from_db",

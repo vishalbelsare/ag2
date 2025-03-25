@@ -13,7 +13,7 @@ from .....doc_utils import export_module
 from .....import_utils import require_optional_import
 from .... import Depends, Tool
 from ....dependency_injection import on
-from ..authentication import build_service_from_db, build_service_from_json
+from ..service import build_service_from_db, build_service_from_json
 
 __all__ = [
     "ListGoogleDriveFilesTool",
