@@ -5,6 +5,8 @@
 from pathlib import Path
 from typing import Annotated, Any, Literal, Optional, Union
 
+from pydantic import BaseModel
+
 from .....import_utils import optional_import_block, require_optional_import
 from .....tools import ToolSet, tool
 
@@ -17,16 +19,25 @@ __all__ = [
 ]
 
 
+class GoogleDriveFileInfo(BaseModel):
+    name: str
+    id: str
+
+
 @require_optional_import(
     [
         "googleapiclient",
     ],
     "google-api",
 )
-def _list_files(service: Any, page_size: int) -> Any:
+def _list_files(service: Any, page_size: int) -> list[GoogleDriveFileInfo]:
     # Call the Drive v3 API
-    results = service.files().list(pageSize=page_size, fields="nextPageToken, files(id, name)").execute()
-    return results.get("files", [])
+    response = service.files().list(pageSize=page_size, fields="nextPageToken, files(id, name)").execute()
+    result = response.get("files", [])
+    if not isinstance(result, list):
+        raise ValueError(f"Expected a list of files, but got {result}")
+    result = [GoogleDriveFileInfo(**file_info) for file_info in result]
+    return result
 
 
 class GoogleDriveToolSet(ToolSet):
@@ -51,7 +62,7 @@ class GoogleDriveToolSet(ToolSet):
                 Optional[str],
                 "The path of the folder to list files in. If not provided, lists files in the root folder.",
             ] = None,
-        ) -> Any:
+        ) -> list[GoogleDriveFileInfo]:
             return _list_files(service=self.service, page_size=page_size)
 
         if exclude is None:
