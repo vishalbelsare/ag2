@@ -12,10 +12,11 @@ from typing import Annotated, Any
 from .....doc_utils import export_module
 from .....import_utils import optional_import_block, require_optional_import
 from .... import Tool
-from ..service import build_service
 
 with optional_import_block():
     from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
 
 __all__ = [
     "ListGoogleDriveFilesTool",
@@ -38,7 +39,6 @@ def _list_files(service: Any, page_size: int) -> Any:
     [
         "googleapiclient",
         "google_auth_httplib2",
-        "google_auth_oauthlib",
     ],
     "google-api",
 )
@@ -53,17 +53,12 @@ class ListGoogleDriveFilesTool(Tool):
     ):
         self.credentials = credentials
         self.api_version = api_version
+        self.service = build(serviceName="drive", version=api_version, credentials=credentials)
 
         def list_google_drive_files(
             page_size: Annotated[int, "The number of files to list per page."] = 10,
         ) -> Any:
-            service = build_service(
-                credentials=self.credentials,
-                service_name="drive",
-                version=self.api_version,
-            )
-
-            return _list_files(service=service, page_size=page_size)
+            return _list_files(service=self.service, page_size=page_size)
 
         super().__init__(
             name="list_google_drive_files",

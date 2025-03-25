@@ -3,7 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import unittest
 from unittest.mock import MagicMock
+
+import pytest
 
 from autogen.import_utils import optional_import_block, skip_on_missing_imports
 
@@ -24,14 +27,19 @@ with optional_import_block():
 )
 class TestListGoogleDriveFilesTool:
     def test_init(self) -> None:
-        google_drive_tool = ListGoogleDriveFilesTool(
-            credentials=MagicMock(),
-        )
+        with unittest.mock.patch(
+            "autogen.tools.experimental.google.drive.list_files.build",
+            return_value=MagicMock(),
+        ) as mock_build:
+            google_drive_tool = ListGoogleDriveFilesTool(
+                credentials=MagicMock(),
+            )
 
-        assert google_drive_tool.name == "list_google_drive_files"
-        assert google_drive_tool.description == "List files in a user's Google Drive."
+            assert google_drive_tool.name == "list_google_drive_files"
+            assert google_drive_tool.description == "List files in a user's Google Drive."
+            mock_build.assert_called_once()
 
-    # @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
+    @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
     def test_end2end(self) -> None:
         client_secret_file = "client_secret_ag2.json"
 
