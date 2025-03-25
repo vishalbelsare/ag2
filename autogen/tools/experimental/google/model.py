@@ -10,3 +10,4 @@ from pydantic import BaseModel, Field
 class GoogleFileInfo(BaseModel):
     name: Annotated[str, Field(description="The name of the file.")]
     id: Annotated[str, Field(description="The ID of the file.")]
+    mime_type: Annotated[str, Field(alias="mimeType", description="The MIME type of the file.")]

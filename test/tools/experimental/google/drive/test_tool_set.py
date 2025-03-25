@@ -42,7 +42,7 @@ class TestGoogleDriveToolSet:
             mock_build.assert_called_once()
             assert isinstance(tool_set, ToolSet)
 
-            assert len(tool_set.tools) == 1
+            assert len(tool_set.tools) == 2
 
     @run_for_optional_imports("openai", "openai")
     def test_end2end(self, credentials_gpt_4o_mini: Credentials) -> None:
@@ -50,9 +50,14 @@ class TestGoogleDriveToolSet:
         assistant = AssistantAgent(name="assistant", llm_config=credentials_gpt_4o_mini.llm_config)
 
         client_secret_file = "client_secret_ag2.json"
+        scopes = [
+            "https://www.googleapis.com/auth/drive.metadata.readonly",
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.file",
+        ]
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=client_secret_file,
-            scopes=["https://www.googleapis.com/auth/drive.metadata.readonly"],
+            scopes=scopes,
             users_token_file="token.json",
         )
         tool_set = GoogleDriveToolSet(
@@ -64,6 +69,7 @@ class TestGoogleDriveToolSet:
 
         user_proxy.initiate_chat(
             recipient=assistant,
-            message="Get last 3 files from Google Drive",
-            max_turns=2,
+            # message="Get last 3 files from Google Drive",
+            message="Download second file from Google Drive",
+            max_turns=3,
         )
