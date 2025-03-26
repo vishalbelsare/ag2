@@ -25,6 +25,11 @@ class ToolMap:
         """
         self.tools_map = tools
 
+    @property
+    def tools_list(self) -> list[Tool]:
+        """Get the list of tools in the set."""
+        return list(self.tools_map.values())
+
     def register_for_llm(self, agent: "ConversableAgent") -> None:
         """Register the tools in the set with an LLM agent.
 

@@ -48,18 +48,13 @@ class GoogleDriveToolMap(ToolMap):
 
         @tool(description="download a file from Google Drive")
         def download_file_from_drive(
-            file_id: Annotated[str, "The ID of the file to download."],
-            file_name: Annotated[str, "The name of the file to download. Folders are NOT supported."],
-            mime_type: Annotated[
-                str,
-                "The MIME type of the file to download.",
-            ],
+            file_info: Annotated[GoogleFileInfo, "The file info to download."],
         ) -> str:
             return download_file(
                 service=self.service,
-                file_id=file_id,
-                file_name=file_name,
-                mime_type=mime_type,
+                file_id=file_info.id,
+                file_name=file_info.name,
+                mime_type=file_info.mime_type,
                 download_folder=download_folder,
             )
 

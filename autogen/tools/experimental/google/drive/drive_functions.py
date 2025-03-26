@@ -92,7 +92,6 @@ def download_file(service: Any, file_id: str, file_name: str, mime_type: str, do
             _, done = downloader.next_chunk()
 
         file_path = download_folder / file_name
-        print(f"Downloading file to: {file_path}")
         with open(file_path, "wb") as f:
             f.write(buffer.getvalue())
 
