@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock
 
+import pytest
+
 from autogen import AssistantAgent, UserProxyAgent
 from autogen.import_utils import optional_import_block, run_for_optional_imports, skip_on_missing_imports
 from autogen.tools import ToolMap
@@ -45,6 +47,7 @@ class TestGoogleDriveToolMap:
 
             assert len(tool_map) == 2
 
+    @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
     @run_for_optional_imports("openai", "openai")
     def test_end2end(self, credentials_gpt_4o_mini: Credentials) -> None:
         user_proxy = UserProxyAgent(name="user_proxy", human_input_mode="NEVER")
@@ -59,7 +62,7 @@ class TestGoogleDriveToolMap:
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=client_secret_file,
             scopes=scopes,
-            users_token_file="token.json",
+            token_file="token.json",
         )
 
         with tempfile.TemporaryDirectory() as tempdir:

@@ -165,7 +165,6 @@ google-api = [
     "pyautogen[google-client]",
     "google-auth-httplib2>=0.2.0,<0.3",
     "google-auth-oauthlib>=1.2.1,<2.0",
-    "sqlmodel>=0.0.24,<0.1",
 ]
 
 google-search = [

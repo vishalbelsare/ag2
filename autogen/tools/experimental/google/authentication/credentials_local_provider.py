@@ -6,6 +6,7 @@
 import os
 from typing import Optional
 
+from .....doc_utils import export_module
 from .....import_utils import optional_import_block, require_optional_import
 from .credentials_provider import GoogleCredentialsProvider
 
@@ -18,25 +19,36 @@ with optional_import_block():
 __all__ = ["GoogleCredentialsLocalProvider"]
 
 
+@export_module("autogen.tools.experimental.google.authentication")
 class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
     def __init__(
         self,
         client_secret_file: str,
         scopes: list[str],  # e.g. ['https://www.googleapis.com/auth/drive/readonly']
-        users_token_file: Optional[str] = None,
+        token_file: Optional[str] = None,
         port: int = 8080,
     ) -> None:
+        """A Google credentials provider that gets the credentials locally.
+
+        Args:
+            client_secret_file (str): The path to the client secret file.
+            scopes (list[str]): The scopes to request.
+            token_file (str): The path to the token file.
+            port (int): The port from which to get the credentials.
+        """
         self.client_secret_file = client_secret_file
         self.scopes = scopes
-        self.users_token_file = users_token_file
+        self.token_file = token_file
         self._port = port
 
     @property
     def host(self) -> str:
+        """Localhost is the default host."""
         return "localhost"
 
     @property
     def port(self) -> int:
+        """The port from which to get the credentials."""
         return self._port
 
     @require_optional_import(
@@ -62,17 +74,18 @@ class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
         "google-api",
     )
     def get_credentials(self) -> "Credentials":
+        """Get the Google credentials."""
         creds = None
-        if self.users_token_file and os.path.exists(self.users_token_file):
-            creds = Credentials.from_authorized_user_file(self.users_token_file)  # type: ignore[no-untyped-call]
+        if self.token_file and os.path.exists(self.token_file):
+            creds = Credentials.from_authorized_user_file(self.token_file)  # type: ignore[no-untyped-call]
 
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
             creds = self._refresh_or_get_new_credentials(creds)
 
-            if self.users_token_file:
+            if self.token_file:
                 # Save the credentials for the next run
-                with open(self.users_token_file, "w") as token:
+                with open(self.token_file, "w") as token:
                     token.write(creds.to_json())  # type: ignore[no-untyped-call]
 
         return creds  # type: ignore[no-any-return]
