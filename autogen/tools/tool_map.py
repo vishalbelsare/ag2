@@ -23,7 +23,7 @@ class ToolMap:
         Args:
             tools (dict[str, Tool]): A dictionary of tools to include in the set.
         """
-        self.tools = tools
+        self.tools_map = tools
 
     def register_for_llm(self, agent: "ConversableAgent") -> None:
         """Register the tools in the set with an LLM agent.
@@ -31,7 +31,7 @@ class ToolMap:
         Args:
             agent (ConversableAgent): The LLM agent to register the tools with.
         """
-        for tool in self.tools.values():
+        for tool in self.tools_map.values():
             tool.register_for_llm(agent)
 
     def register_for_execution(self, agent: "ConversableAgent") -> None:
@@ -40,5 +40,42 @@ class ToolMap:
         Args:
             agent (ConversableAgent): The agent to register the tools with.
         """
-        for tool in self.tools.values():
+        for tool in self.tools_map.values():
             tool.register_for_execution(agent)
+
+    def get_tool(self, tool_name: str) -> Tool:
+        """Get a tool from the set by name.
+
+        Args:
+            tool_name (str): The name of the tool to get.
+
+        Returns:
+            Tool: The tool with the given name.
+        """
+        if tool_name in self.tools_map:
+            return self.tools_map[tool_name]
+
+        raise ValueError(f"Tool '{tool_name}' not found in ToolMap.")
+
+    def set_tool(self, tool: Tool) -> None:
+        """Set a tool in the set.
+
+        Args:
+            tool (Tool): The tool to set.
+        """
+        self.tools_map[tool.name] = tool
+
+    def remove_tool(self, tool_name: str) -> None:
+        """Remove a tool from the set by name.
+
+        Args:
+            tool_name (str): The name of the tool to remove.
+        """
+        if tool_name in self.tools_map:
+            del self.tools_map[tool_name]
+        else:
+            raise ValueError(f"Tool '{tool_name}' not found in ToolMap.")
+
+    def __len__(self) -> int:
+        """Get the number of tools in the map."""
+        return len(self.tools_map)

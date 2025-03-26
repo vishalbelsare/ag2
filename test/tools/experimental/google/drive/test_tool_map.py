@@ -43,7 +43,7 @@ class TestGoogleDriveToolMap:
             mock_build.assert_called_once()
             assert isinstance(tool_map, ToolMap)
 
-            assert len(tool_map.tools) == 2
+            assert len(tool_map) == 2
 
     @run_for_optional_imports("openai", "openai")
     def test_end2end(self, credentials_gpt_4o_mini: Credentials) -> None:
