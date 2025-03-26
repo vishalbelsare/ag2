@@ -7,7 +7,7 @@ from typing import Any, Callable, Iterable, Optional, Union
 from uuid import UUID, uuid4
 
 from .agentchat.agent import DEFAULT_SUMMARY_METHOD, Agent
-from .agentchat.conversable_agent import ConversableAgent
+from .agentchat.termination import MaxTurns, TerminateProtocol
 from .doc_utils import export_module
 from .events.agent_events import ErrorEvent, InputRequestEvent, TerminationEvent
 from .events.base_event import BaseEvent
@@ -91,22 +91,18 @@ class RunResponse:
 
 
 def run_group_chat(
-    *agents: Agent,
     iostream: ThreadIOStream,
     response: RunResponse,
     message: str,
     chat_manager: RunPatternProtocol,
     previous_run: Optional[RunResponseProtocol],
-    max_turns: Optional[int] = None,
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
 ) -> None:
     with IOStream.set_default(iostream):  # type: ignore[arg-type]
         try:
             chat_result = chat_manager.run(
-                *agents,
                 message=message,
                 messages=previous_run.messages if previous_run else [],
-                max_turns=max_turns if max_turns else 10,
                 summary_method=summary_method,
             )
 
@@ -117,51 +113,43 @@ def run_group_chat(
 
 @export_module("autogen")
 def run(
-    *agents: Agent,
+    receiver: Agent,
+    sender: Union[Agent, str] = "user",
     message: Optional[str] = None,
     previous_run: Optional[RunResponseProtocol] = None,
     run_pattern: Optional[RunPatternProtocol] = None,
-    max_turns: Optional[int] = None,
+    terminate_on: TerminateProtocol = MaxTurns(10),
     summary_method: Optional[Union[str, Callable[..., Any]]] = DEFAULT_SUMMARY_METHOD,
-    user_input: bool = False,
 ) -> RunResponseProtocol:
     """Run the agents with the given initial message.
 
     Args:
-        agents (Agent): The agents to run.
-        initial_message (str): The initial message to send to the first agent.
+        receiver (Agent): The agent to receive the message.
+        sender (Agent or str): The agent to send the message. Default is "user".
+        message (str): The initial message to send to the first agent.
         previous_run (RunResponseProtocol): The previous run to continue.
-        chat_manager (ChatManagerProtocol): The chat manager to use for the group chat.
-        clear_history (bool): Whether to clear the history of the agents.
-        max_turns (int): The maximum number of turns to run.
-        summary_method (Union[str, Callable[..., Any]]): The method to use to summarize the chat.
-        summary_args (dict[str, Any]): The arguments to pass to the summary method.
-        cache (AbstractCache): The cache to use.
-        tools (Union[Tool, Iterable[Tool]]): The tools to use.
-        executor_kwargs (dict[str, Any]): The arguments to pass to the executor.
-        user_input (bool): Whether to allow user input.
-        kwargs: Additional arguments to pass to the agents.
+        run_pattern (RunPatternProtocol): The run pattern to use.
+        terminate_on (TerminateProtocol): The termination condition.
+        summary_method (str or callable): a method to get a summary from the chat. Default is DEFAULT_SUMMARY_METHOD, i.e., "last_msg".
+            Supported strings are "last_msg" and "reflection_with_llm":
     """
     iostream = ThreadIOStream()
     response = RunResponse(iostream)
 
-    if user_input:
-        agents = (ConversableAgent(name="user", human_input_mode="ALWAYS"),) + agents
+    if run_pattern is None:
+        agents = [receiver]
+        if not isinstance(sender, str):
+            agents = [sender] + agents
 
-    for agent in agents:
-        for tool in agent.tools:
-            tool.register_for_execution(agent)
+        run_pattern = RoundRobinRunPattern(*agents, terminate_on=terminate_on)
 
-    run_pattern = run_pattern or RoundRobinRunPattern()
     threading.Thread(
         target=run_group_chat,
-        args=agents,
         kwargs={
             "iostream": iostream,
             "message": message,
-            "chat_manager": run_pattern if run_pattern else RoundRobinRunPattern(),
+            "chat_manager": run_pattern,
             "previous_run": previous_run,
-            "max_turns": max_turns,
             "summary_method": summary_method,
             "response": response,
         },

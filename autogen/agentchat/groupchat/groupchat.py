@@ -47,7 +47,6 @@ SELECT_SPEAKER_PROMPT_TEMPLATE = (
 
 if TYPE_CHECKING:
     from ... import LLMConfig
-    from ..chat import ChatResult
 
 
 @dataclass
@@ -1111,123 +1110,6 @@ class GroupChatManager(ConversableAgent):
 
         if groupchat is not None:
             self.initialize_groupchat(groupchat)
-
-    def run(
-        self,
-        *agents: "Agent",
-        message: str,
-        messages: list["LLMMessageType"],
-        max_turns: int,
-        summary_method: Optional[Union[str, Callable[..., Any]]],
-    ) -> "ChatResult":
-        """Run a group chat with the provided agents and messages.
-
-        Args:
-            agents: The agents participating in the group chat.
-            message: Initial message to start the group chat.
-            messages: The messages to use in the group chat.
-            max_turns: The maximum number of turns in the group chat.
-            summary_method (str or callable): a method to get a summary from the chat. Default is DEFAULT_SUMMARY_METHOD, i.e., "last_msg".
-                Supported strings are "last_msg" and "reflection_with_llm":
-                    - when set to "last_msg", it returns the last message of the dialog as the summary.
-                    - when set to "reflection_with_llm", it returns a summary extracted using an llm client.
-                        `llm_config` must be set in either the recipient or sender.
-
-                A callable summary_method should take the recipient and sender agent in a chat as input and return a string of summary. E.g.,
-
-                ```python
-                def my_summary_method(
-                    sender: ConversableAgent,
-                    recipient: ConversableAgent,
-                    summary_args: dict,
-                ):
-                    return recipient.last_message(sender)["content"]
-                ```
-
-        Returns:
-            A ChatResult object.
-        """
-        groupchat = GroupChat(
-            agents=agents,
-            messages=messages,
-            speaker_selection_method="auto",
-            max_round=max_turns,
-            select_speaker_message_template=self._select_speaker_message_template,
-            select_speaker_prompt_template=self._select_speaker_prompt_template,
-            select_speaker_auto_multiple_template=self._select_speaker_auto_multiple_template,
-            select_speaker_auto_none_template=self._select_speaker_auto_none_template,
-            func_call_filter=self._func_call_filter,
-            max_retries_for_selecting_speaker=self._max_retries_for_selecting_speaker,
-            allow_repeat_speaker=self._allow_repeat_speaker,
-            allowed_or_disallowed_speaker_transitions=self._allowed_or_disallowed_speaker_transitions,
-            speaker_transitions_type=self._speaker_transitions_type,
-            enable_clear_history=self._enable_clear_history,
-            send_introductions=self._send_introductions,
-            select_speaker_transform_messages=self._select_speaker_transforms,
-            select_speaker_auto_model_client_cls=self._select_speaker_auto_model_client_cls,
-        )
-
-        self.initialize_groupchat(groupchat)
-
-        return agents[0].initiate_chat(
-            recipient=self,
-            message=message,
-            summary_method=summary_method,
-        )
-
-    async def a_run(
-        self,
-        *agents: "Agent",
-        message: str,
-        messages: list["LLMMessageType"],
-        max_turns: int,
-        summary_method: Optional[Union[str, Callable[..., Any]]],
-    ) -> "ChatResult":
-        """Run a group chat with the provided agents and messages.
-
-        Args:
-            agents: The agents participating in the group chat.
-            message: Initial message to start the group chat.
-            messages: The messages to use in the group chat.
-            max_turns: The maximum number of turns in the group chat.
-            summary_method (str or callable): a method to get a summary from the chat. Default is DEFAULT_SUMMARY_METHOD, i.e., "last_msg".
-                Supported strings are "last_msg" and "reflection_with_llm":
-                    - when set to "last_msg", it returns the last message of the dialog as the summary.
-                    - when set to "reflection_with_llm", it returns a summary extracted using an llm client.
-                        `llm_config` must be set in either the recipient or sender.
-
-                A callable summary_method should take the recipient and sender agent in a chat as input and return a string of summary. E.g.,
-
-                ```python
-                def my_summary_method(
-                    sender: ConversableAgent,
-                    recipient: ConversableAgent,
-                    summary_args: dict,
-                ):
-                    return recipient.last_message(sender)["content"]
-                ```
-
-        Returns:
-            A ChatResult object.
-        """
-        groupchat = GroupChat(
-            agents=agents,
-            messages=messages,
-            speaker_selection_method="auto",
-            max_round=max_turns,
-            select_speaker_message_template=self._select_speaker_message_template,
-            select_speaker_prompt_template=self._select_speaker_prompt_template,
-            select_speaker_auto_multiple_template=self._select_speaker_auto_multiple_template,
-            select_speaker_auto_none_template=self._select_speaker_auto_none_template,
-        )
-
-        self.initialize_groupchat(groupchat)
-
-        return await agents[0].a_initiate_chat(
-            recipient=self,
-            message=message,
-            summary_method=summary_method,
-        )
 
     def initialize_groupchat(self, groupchat: GroupChat) -> None:
         """Initialize a group chat manager with a group chat."""

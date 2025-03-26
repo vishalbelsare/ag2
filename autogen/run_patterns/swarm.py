@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 class SwarmRunPattern:
     def __init__(
         self,
+        *agents: "Agent",
         llm_config: Optional[Union[LLMConfig, dict[str, str]]] = None,
         context_variables: Optional[dict[str, Any]] = None,
         after_work: Optional[
@@ -31,6 +32,7 @@ class SwarmRunPattern:
         ] = AfterWorkOption.TERMINATE,
         exclude_transit_message: bool = True,
     ):
+        self._agents = agents
         if llm_config is None:
             llm_config = LLMConfig.get_current_llm_config()
 
@@ -41,17 +43,14 @@ class SwarmRunPattern:
 
     def run(
         self,
-        *agents: "Agent",
         message: str,
         messages: list["LLMMessageType"],
-        max_turns: int,
         summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult":
         result, _, _ = initiate_swarm_chat(
-            initial_agent=agents[0],
-            agents=list(agents),
+            initial_agent=self._agents[0],
+            agents=list(self._agents),
             messages=message if len(messages) == 0 else [*messages, {"role": "user", "content": message}],
-            max_rounds=max_turns,
             swarm_manager_args={"llm_config": self.llm_config},
             after_work=self.after_work,
             context_variables=self.context_variables,

@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Union
 
 from ..agentchat.groupchat import GroupChat, GroupChatManager
+from ..agentchat.termination import MaxTurns, TerminateProtocol
 from ..doc_utils import export_module
 
 if TYPE_CHECKING:
@@ -16,27 +17,31 @@ if TYPE_CHECKING:
 class RoundRobinRunPattern(GroupChatManager):
     def __init__(
         self,
+        *agents: Iterable["Agent"],
+        terminate_on: TerminateProtocol = MaxTurns(10),
     ) -> None:
-        super().__init__()
+        super().__init__(is_termination_msg=terminate_on.is_termination_message)
+        self._agents = agents
 
     def run(
         self,
-        *agents: "Agent",
         message: str,
         messages: list["LLMMessageType"],
-        max_turns: int,
         summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult":
         groupchat = GroupChat(
-            agents=agents,
+            agents=self._agents,
             messages=messages,
-            max_round=max_turns,
             speaker_selection_method="round_robin",
         )
 
         self.initialize_groupchat(groupchat)
 
-        return agents[0].initiate_chat(
+        for agent in self._agents:
+            for tool in agent.tools:
+                tool.register_for_execution(agent)
+
+        return self._agents[0].initiate_chat(
             recipient=self,
             message=message,
             summary_method=summary_method,
@@ -58,6 +63,10 @@ class RoundRobinRunPattern(GroupChatManager):
         )
 
         self.initialize_groupchat(groupchat)
+
+        for agent in self._agents:
+            for tool in agent.tools:
+                tool.register_for_execution(agent)
 
         return await agents[0].a_initiate_chat(
             recipient=self,

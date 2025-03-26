@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Protocol, U
 from ..doc_utils import export_module
 
 if TYPE_CHECKING:
-    from ..agentchat.agent import Agent, LLMMessageType
+    from ..agentchat.agent import LLMMessageType
     from ..agentchat.chat import ChatResult
 
 
@@ -18,18 +18,14 @@ if TYPE_CHECKING:
 class RunPatternProtocol(Protocol):
     def run(
         self,
-        *agents: "Agent",
         message: str,
         messages: Iterable["LLMMessageType"],
-        max_turns: int,
         summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult": ...
 
     async def a_run(
         self,
-        *agents: "Agent",
         message: str,
         messages: Iterable["LLMMessageType"],
-        max_turns: int,
         summary_method: Optional[Union[str, Callable[..., Any]]],
     ) -> "ChatResult": ...
