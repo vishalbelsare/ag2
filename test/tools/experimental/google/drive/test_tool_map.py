@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import tempfile
 import unittest
 from unittest.mock import MagicMock
 
@@ -31,18 +32,18 @@ from .....conftest import Credentials
 class TestGoogleDriveToolMap:
     def test_init(self) -> None:
         with unittest.mock.patch(
-            "autogen.tools.experimental.google.drive.tool_set.build",
+            "autogen.tools.experimental.google.drive.tool_map.build",
             return_value=MagicMock(),
         ) as mock_build:
-            tool_set = GoogleDriveToolMap(
+            tool_map = GoogleDriveToolMap(
                 credentials=MagicMock(),
                 download_folder="download_folder",
             )
 
             mock_build.assert_called_once()
-            assert isinstance(tool_set, ToolMap)
+            assert isinstance(tool_map, ToolMap)
 
-            assert len(tool_set.tools) == 2
+            assert len(tool_map.tools) == 2
 
     @run_for_optional_imports("openai", "openai")
     def test_end2end(self, credentials_gpt_4o_mini: Credentials) -> None:
@@ -60,18 +61,20 @@ class TestGoogleDriveToolMap:
             scopes=scopes,
             users_token_file="token.json",
         )
-        tool_set = GoogleDriveToolMap(
-            credentials=provider.get_credentials(),
-            download_folder="my_download_folder",
-        )
-        tool_set.register_for_execution(user_proxy)
-        tool_set.register_for_llm(assistant)
 
-        user_proxy.initiate_chat(
-            recipient=assistant,
-            # message="Get last 3 files from Google Drive",
-            # message="Download second file from Google Drive",
-            # message="Download latest 5 files from Google Drive",
-            message="Download all files from Google Drive 'Test Folder'",
-            max_turns=5,
-        )
+        with tempfile.TemporaryDirectory() as tempdir:
+            tool_map = GoogleDriveToolMap(
+                credentials=provider.get_credentials(),
+                download_folder=str(tempdir),
+            )
+            tool_map.register_for_execution(user_proxy)
+            tool_map.register_for_llm(assistant)
+
+            user_proxy.initiate_chat(
+                recipient=assistant,
+                # message="Get last 3 files from Google Drive",
+                # message="Download second file from Google Drive",
+                # message="Download latest 5 files from Google Drive",
+                message="Download all files from Google Drive 'Test Folder'",
+                max_turns=5,
+            )
