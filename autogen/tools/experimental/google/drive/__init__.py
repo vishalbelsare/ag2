@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .list_files import ListGoogleDriveFilesTool
-from .tool_set import GoogleDriveToolSet
+from .tool_set import GoogleDriveToolMap
 
 __all__ = [
-    "GoogleDriveToolSet",
+    "GoogleDriveToolMap",
     "ListGoogleDriveFilesTool",
 ]

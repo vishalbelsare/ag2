@@ -10,18 +10,18 @@ from .tool import Tool
 if TYPE_CHECKING:
     from ..agentchat.conversable_agent import ConversableAgent
 
-__all__ = ["ToolSet"]
+__all__ = ["ToolMap"]
 
 
 @export_module("autogen.tools")
-class ToolSet:
+class ToolMap:
     """A class representing a set of tools that can be used by an agent for various tasks."""
 
-    def __init__(self, tools: list[Tool]):
-        """Create a new ToolSet object.
+    def __init__(self, tools: dict[str, Tool]) -> None:
+        """Create a new ToolMap object.
 
         Args:
-            tools (list[Tool]): The list of tools in the set.
+            tools (dict[str, Tool]): A dictionary of tools to include in the set.
         """
         self.tools = tools
 
@@ -31,7 +31,7 @@ class ToolSet:
         Args:
             agent (ConversableAgent): The LLM agent to register the tools with.
         """
-        for tool in self.tools:
+        for tool in self.tools.values():
             tool.register_for_llm(agent)
 
     def register_for_execution(self, agent: "ConversableAgent") -> None:
@@ -40,5 +40,5 @@ class ToolSet:
         Args:
             agent (ConversableAgent): The agent to register the tools with.
         """
-        for tool in self.tools:
+        for tool in self.tools.values():
             tool.register_for_execution(agent)

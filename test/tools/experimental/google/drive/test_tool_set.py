@@ -8,13 +8,13 @@ from unittest.mock import MagicMock
 
 from autogen import AssistantAgent, UserProxyAgent
 from autogen.import_utils import optional_import_block, run_for_optional_imports, skip_on_missing_imports
-from autogen.tools import ToolSet
+from autogen.tools import ToolMap
 
 with optional_import_block():
     from autogen.tools.experimental.google.authentication.credentials_local_provider import (
         GoogleCredentialsLocalProvider,
     )
-    from autogen.tools.experimental.google.drive import GoogleDriveToolSet
+    from autogen.tools.experimental.google.drive import GoogleDriveToolMap
 
 
 from .....conftest import Credentials
@@ -28,19 +28,19 @@ from .....conftest import Credentials
     ],
     "google-api",
 )
-class TestGoogleDriveToolSet:
+class TestGoogleDriveToolMap:
     def test_init(self) -> None:
         with unittest.mock.patch(
             "autogen.tools.experimental.google.drive.tool_set.build",
             return_value=MagicMock(),
         ) as mock_build:
-            tool_set = GoogleDriveToolSet(
+            tool_set = GoogleDriveToolMap(
                 credentials=MagicMock(),
                 download_folder="download_folder",
             )
 
             mock_build.assert_called_once()
-            assert isinstance(tool_set, ToolSet)
+            assert isinstance(tool_set, ToolMap)
 
             assert len(tool_set.tools) == 2
 
@@ -60,7 +60,7 @@ class TestGoogleDriveToolSet:
             scopes=scopes,
             users_token_file="token.json",
         )
-        tool_set = GoogleDriveToolSet(
+        tool_set = GoogleDriveToolMap(
             credentials=provider.get_credentials(),
             download_folder="my_download_folder",
         )

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Optional, Union
 
 from .....import_utils import optional_import_block
-from .....tools import ToolSet, tool
+from .....tools import ToolMap, tool
 from ..model import GoogleFileInfo
 from .drive_functions import download_file, list_files_and_folders
 
@@ -15,11 +15,11 @@ with optional_import_block():
     from googleapiclient.discovery import build
 
 __all__ = [
-    "GoogleDriveToolSet",
+    "GoogleDriveToolMap",
 ]
 
 
-class GoogleDriveToolSet(ToolSet):
+class GoogleDriveToolMap(ToolMap):
     def __init__(
         self,
         *,
@@ -66,7 +66,9 @@ class GoogleDriveToolSet(ToolSet):
         if exclude is None:
             exclude = []
 
-        tools_list = [
-            tool for tool in [list_drive_files_and_folders, download_file_from_drive] if tool.name not in exclude
-        ]
-        super().__init__(tools=tools_list)
+        tools = {
+            tool.name: tool
+            for tool in [list_drive_files_and_folders, download_file_from_drive]
+            if tool.name not in exclude
+        }
+        super().__init__(tools=tools)

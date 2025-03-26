@@ -5,14 +5,14 @@
 from .dependency_injection import BaseContext, ChatContext, Depends
 from .function_utils import get_function_schema, load_basemodels_if_needed, serialize_to_str
 from .tool import Tool, tool
-from .tool_set import ToolSet
+from .tool_set import ToolMap
 
 __all__ = [
     "BaseContext",
     "ChatContext",
     "Depends",
     "Tool",
-    "ToolSet",
+    "ToolMap",
     "get_function_schema",
     "load_basemodels_if_needed",
     "serialize_to_str",
