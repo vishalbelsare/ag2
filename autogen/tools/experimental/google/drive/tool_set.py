@@ -8,7 +8,7 @@ from typing import Annotated, Literal, Optional, Union
 from .....import_utils import optional_import_block
 from .....tools import ToolSet, tool
 from ..model import GoogleFileInfo
-from .drive_functions import download_file, list_files
+from .drive_functions import download_file, list_files_and_folders
 
 with optional_import_block():
     from google.oauth2.credentials import Credentials
@@ -25,7 +25,7 @@ class GoogleDriveToolSet(ToolSet):
         *,
         credentials: "Credentials",
         download_folder: Union[Path, str],
-        exclude: Optional[list[Literal["list_files_in_folder", "download_file", "upload_file"]]] = None,
+        exclude: Optional[list[Literal["list_drive_files_and_folders", "download_file_from_drive"]]] = None,
         api_version: str = "v3",
     ) -> None:
         self.credentials = credentials
@@ -34,24 +34,22 @@ class GoogleDriveToolSet(ToolSet):
 
         if isinstance(download_folder, str):
             download_folder = Path(download_folder)
-        download_folder.parent.mkdir(parents=True, exist_ok=True)
+        download_folder.mkdir(parents=True, exist_ok=True)
 
-        tools_list = []
-
-        @tool(description="list all files in a Google Drive folder")
-        def list_files_in_folder(
+        @tool(description="List files and folders in a Google Drive")
+        def list_drive_files_and_folders(
             page_size: Annotated[int, "The number of files to list per page."] = 10,
-            folder_path: Annotated[
+            folder_id: Annotated[
                 Optional[str],
-                "The path of the folder to list files in. If not provided, lists files in the root folder.",
+                "The ID of the folder to list files from. If not provided, lists all files in the root folder.",
             ] = None,
         ) -> list[GoogleFileInfo]:
-            return list_files(service=self.service, page_size=page_size)
+            return list_files_and_folders(service=self.service, page_size=page_size, folder_id=folder_id)
 
         @tool(description="download a file from Google Drive")
         def download_file_from_drive(
             file_id: Annotated[str, "The ID of the file to download."],
-            file_name: Annotated[str, "The name of the file to download."],
+            file_name: Annotated[str, "The name of the file to download. Folders are NOT supported."],
             mime_type: Annotated[
                 str,
                 "The MIME type of the file to download.",
@@ -68,5 +66,7 @@ class GoogleDriveToolSet(ToolSet):
         if exclude is None:
             exclude = []
 
-        tools_list = [tool for tool in [list_files_in_folder, download_file_from_drive] if tool.name not in exclude]
+        tools_list = [
+            tool for tool in [list_drive_files_and_folders, download_file_from_drive] if tool.name not in exclude
+        ]
         super().__init__(tools=tools_list)

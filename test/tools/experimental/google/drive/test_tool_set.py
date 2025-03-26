@@ -62,7 +62,7 @@ class TestGoogleDriveToolSet:
         )
         tool_set = GoogleDriveToolSet(
             credentials=provider.get_credentials(),
-            download_folder="download_folder",
+            download_folder="my_download_folder",
         )
         tool_set.register_for_execution(user_proxy)
         tool_set.register_for_llm(assistant)
@@ -71,6 +71,7 @@ class TestGoogleDriveToolSet:
             recipient=assistant,
             # message="Get last 3 files from Google Drive",
             # message="Download second file from Google Drive",
-            message="Download latest 5 files from Google Drive",
+            # message="Download latest 5 files from Google Drive",
+            message="Download all files from Google Drive 'Test Folder'",
             max_turns=5,
         )

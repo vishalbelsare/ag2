@@ -4,7 +4,7 @@
 
 import io
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from .....import_utils import optional_import_block, require_optional_import
 from ..model import GoogleFileInfo
@@ -15,7 +15,7 @@ with optional_import_block():
 
 __all__ = [
     "download_file",
-    "list_files",
+    "list_files_and_folders",
 ]
 
 
@@ -25,8 +25,14 @@ __all__ = [
     ],
     "google-api",
 )
-def list_files(service: Any, page_size: int) -> list[GoogleFileInfo]:
-    response = service.files().list(pageSize=page_size, fields="nextPageToken, files(id, name, mimeType)").execute()
+def list_files_and_folders(service: Any, page_size: int, folder_id: Optional[str]) -> list[GoogleFileInfo]:
+    kwargs = {
+        "pageSize": page_size,
+        "fields": "nextPageToken, files(id, name, mimeType)",
+    }
+    if folder_id:
+        kwargs["q"] = f"'{folder_id}' in parents and trashed=false"  # Search for files in the folder
+    response = service.files().list(**kwargs).execute()
     result = response.get("files", [])
     if not isinstance(result, list):
         raise ValueError(f"Expected a list of files, but got {result}")
@@ -34,22 +40,22 @@ def list_files(service: Any, page_size: int) -> list[GoogleFileInfo]:
     return result
 
 
-def _get_file_extension(mime_type: str) -> str:
+def _get_file_extension(mime_type: str) -> Optional[str]:
     """Returns the correct file extension for a given MIME type."""
     mime_extensions = {
-        "application/vnd.google-apps.document": "pdf",  # Google Docs → PDF
-        "application/vnd.google-apps.spreadsheet": "xlsx",  # Google Sheets → Excel
-        "application/vnd.google-apps.presentation": "pdf",  # Google Slides → PDF
-        "video/quicktime": "mov",  # QuickTime Video
-        "application/vnd.google.colaboratory": "ipynb",  # Jupyter Notebook
+        "application/vnd.google-apps.document": "docx",  # Google Docs → Word
+        "application/vnd.google-apps.spreadsheet": "csv",  # Google Sheets → CSV
+        "application/vnd.google-apps.presentation": "pptx",  # Google Slides → PowerPoint
+        "video/quicktime": "mov",
+        "application/vnd.google.colaboratory": "ipynb",
         "application/pdf": "pdf",
         "image/jpeg": "jpg",
         "image/png": "png",
-        "image/gif": "gif",
         "text/plain": "txt",
         "application/zip": "zip",
     }
-    return mime_extensions.get(mime_type, "")
+
+    return mime_extensions.get(mime_type)
 
 
 @require_optional_import(
@@ -61,23 +67,21 @@ def _get_file_extension(mime_type: str) -> str:
 def download_file(service: Any, file_id: str, file_name: str, mime_type: str, download_folder: Path) -> str:
     """Download or export file based on its MIME type."""
     file_extension = _get_file_extension(mime_type)
-    if not file_name.endswith(file_extension):
+    if file_extension and (not file_name.endswith(file_extension)):
         file_name = f"{file_name}.{file_extension}"
 
-    if mime_type.startswith("application/vnd.google-apps."):
-        # Handle Google Docs, Sheets, Slides
-        export_mime_types = {
-            "application/vnd.google-apps.document": "application/pdf",  # Google Docs → PDF
-            "application/vnd.google-apps.spreadsheet": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # Google Sheets → Excel
-            "application/vnd.google-apps.presentation": "application/pdf",  # Google Slides → PDF
-        }
+    # Define export formats for Google Docs, Sheets, and Slides
+    export_mime_types = {
+        "application/vnd.google-apps.document": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # Google Docs → Word
+        "application/vnd.google-apps.spreadsheet": "text/csv",  # Google Sheets → CSV
+        "application/vnd.google-apps.presentation": "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # Google Slides → PowerPoint
+    }
 
-        if mime_type in export_mime_types:
-            request = service.files().export(fileId=file_id, mimeType=export_mime_types[mime_type])
-        else:
-            return f"❌ Cannot export this file type: {mime_type}"
+    # Google Docs, Sheets, and Slides cannot be downloaded directly using service.files().get_media() because they are Google-native files
+    if mime_type in export_mime_types:
+        request = service.files().export(fileId=file_id, mimeType=export_mime_types[mime_type])
     else:
-        # Handle regular files (videos, images, PDFs, etc.)
+        # Download normal files (videos, images, etc.)
         request = service.files().get_media(fileId=file_id)
 
     # Save file
@@ -88,6 +92,7 @@ def download_file(service: Any, file_id: str, file_name: str, mime_type: str, do
             _, done = downloader.next_chunk()
 
         file_path = download_folder / file_name
+        print(f"Downloading file to: {file_path}")
         with open(file_path, "wb") as f:
             f.write(buffer.getvalue())
 
