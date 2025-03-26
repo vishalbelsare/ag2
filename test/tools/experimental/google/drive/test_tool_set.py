@@ -70,6 +70,7 @@ class TestGoogleDriveToolSet:
         user_proxy.initiate_chat(
             recipient=assistant,
             # message="Get last 3 files from Google Drive",
-            message="Download second file from Google Drive",
-            max_turns=3,
+            # message="Download second file from Google Drive",
+            message="Download latest 5 files from Google Drive",
+            max_turns=5,
         )
