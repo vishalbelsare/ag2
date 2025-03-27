@@ -195,3 +195,4 @@ chroma
 notebook/reasoning_tree.json
 client_secret*.json
 *token*.json
+*credentials.json
