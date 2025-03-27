@@ -250,7 +250,8 @@
             {
               "group": "Google APIs",
               "pages": [
-                "docs/user-guide/reference-tools/google-api/google-search"
+                "docs/user-guide/reference-tools/google-api/google-search",
+                "docs/user-guide/reference-tools/google-api/youtube-search"
               ]
             },
             "docs/user-guide/reference-tools/perplexity-search",
@@ -319,6 +320,7 @@
             "docs/use-cases/notebooks/notebooks/agentchat_multi_task_async_chats",
             "docs/use-cases/notebooks/notebooks/agentchat_groupchat_tools",
             "docs/use-cases/notebooks/notebooks/agentchat_memory_using_mem0",
+            "docs/use-cases/notebooks/notebooks/tools_youtube_search",
             "docs/use-cases/notebooks/notebooks/agentchat_oai_assistant_twoagents_basic",
             "docs/use-cases/notebooks/notebooks/agenteval_cq_math",
             "docs/use-cases/notebooks/notebooks/tools_browser_use",
