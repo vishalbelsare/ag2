@@ -355,6 +355,7 @@ markers = [
     "interop",
     "browser_use",
     "crawl4ai",
+    "google_api",
     "google_search",
     "websockets",
     "commsagent_discord",
