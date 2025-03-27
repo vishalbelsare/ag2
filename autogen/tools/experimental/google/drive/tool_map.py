@@ -41,7 +41,7 @@ class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
             exclude: The tool names to exclude.
             api_version: The Google Drive API version to use."
         """
-        service = build(serviceName="drive", version=api_version, credentials=credentials)
+        self.service = build(serviceName="drive", version=api_version, credentials=credentials)
 
         if isinstance(download_folder, str):
             download_folder = Path(download_folder)
@@ -55,14 +55,14 @@ class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
                 "The ID of the folder to list files from. If not provided, lists all files in the root folder.",
             ] = None,
         ) -> list[GoogleFileInfo]:
-            return list_files_and_folders(service=service, page_size=page_size, folder_id=folder_id)
+            return list_files_and_folders(service=self.service, page_size=page_size, folder_id=folder_id)
 
         @tool(description="download a file from Google Drive")
         def download_file_from_drive(
             file_info: Annotated[GoogleFileInfo, "The file info to download."],
         ) -> str:
             return download_file(
-                service=service,
+                service=self.service,
                 file_id=file_info.id,
                 file_name=file_info.name,
                 mime_type=file_info.mime_type,
