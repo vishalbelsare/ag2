@@ -130,6 +130,7 @@
               "pages": [
                 "docs/user-guide/basic-concepts/tools/index",
                 "docs/user-guide/basic-concepts/tools/basics",
+                "docs/user-guide/basic-concepts/tools/controlling-use",
                 "docs/user-guide/basic-concepts/tools/tools-with-secrets",
                 {
                   "group": "Interoperability",
@@ -1858,6 +1859,19 @@
                     "docs/api-reference/autogen/oai/gemini/GeminiLLMConfigEntry",
                     "docs/api-reference/autogen/oai/gemini/calculate_gemini_cost",
                     "docs/api-reference/autogen/oai/gemini/get_image_data"
+                  ]
+                },
+                {
+                  "group": "gemini_types",
+                  "pages": [
+                    "docs/api-reference/autogen/oai/gemini_types/overview",
+                    "docs/api-reference/autogen/oai/gemini_types/CaseInSensitiveEnum",
+                    "docs/api-reference/autogen/oai/gemini_types/CommonBaseModel",
+                    "docs/api-reference/autogen/oai/gemini_types/FunctionCallingConfig",
+                    "docs/api-reference/autogen/oai/gemini_types/FunctionCallingConfigDict",
+                    "docs/api-reference/autogen/oai/gemini_types/FunctionCallingConfigMode",
+                    "docs/api-reference/autogen/oai/gemini_types/ToolConfig",
+                    "docs/api-reference/autogen/oai/gemini_types/ToolConfigDict"
                   ]
                 },
                 {
