@@ -60,12 +60,8 @@ class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
         if exclude is None:
             exclude = []
 
-        tool_map = {
-            tool.name: tool
-            for tool in [list_drive_files_and_folders, download_file_from_drive]
-            if tool.name not in exclude
-        }
-        super().__init__(tool_map=tool_map)
+        tools = [tool for tool in [list_drive_files_and_folders, download_file_from_drive] if tool.name not in exclude]
+        super().__init__(tools=tools)
 
     @classmethod
     def recommended_scopes(cls) -> list[str]:

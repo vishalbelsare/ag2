@@ -33,7 +33,7 @@ class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
         Args:
             client_secret_file (str): The path to the client secret file.
             scopes (list[str]): The scopes to request.
-            token_file (str): The path to the token file.
+            token_file (str): Optional path to the token file. If not provided, the token will not be saved.
             port (int): The port from which to get the credentials.
         """
         self.client_secret_file = client_secret_file

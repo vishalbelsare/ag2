@@ -21,7 +21,7 @@ class TestToolMap:
         def f2() -> None:
             pass
 
-        return ToolMap({"f1": f1, "f2": f2})
+        return ToolMap([f1, f2])
 
     def test_len(self, tool_map: ToolMap) -> None:
         assert len(tool_map) == 2
