@@ -2,18 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import tempfile
 from typing import Generator
 
 import pytest
-
-
-@pytest.fixture
-def tmp_db_engine_url() -> Generator[str, None, None]:
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = os.path.join(temp_dir, "test_database.db")
-        yield f"sqlite:///{db_path}"
 
 
 @pytest.fixture

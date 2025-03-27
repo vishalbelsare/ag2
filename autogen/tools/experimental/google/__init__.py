@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from .authentication import GoogleCredentialsLocalProvider, GoogleCredentialsProvider
 from .drive import GoogleDriveToolMap
 from .tool_map_protocol import GoogleToolMapProtocol
 
 __all__ = [
+    "GoogleCredentialsLocalProvider",
+    "GoogleCredentialsProvider",
     "GoogleDriveToolMap",
     "GoogleToolMapProtocol",
 ]
