@@ -11,6 +11,8 @@ __all__ = [
 
 @runtime_checkable
 class GoogleToolMapProtocol(Protocol):
+    """A protocol for Google tool maps."""
+
     @classmethod
     def recommended_scopes(cls) -> list[str]:
         """Defines a required static method without implementation."""

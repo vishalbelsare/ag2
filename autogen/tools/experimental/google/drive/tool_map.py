@@ -5,10 +5,11 @@
 from pathlib import Path
 from typing import Annotated, Literal, Optional, Union
 
+from .....doc_utils import export_module
 from .....import_utils import optional_import_block
 from .... import ToolMap, tool
 from ..model import GoogleFileInfo
-from ..tool_map import GoogleToolMapProtocol
+from ..tool_map_protocol import GoogleToolMapProtocol
 from .drive_functions import download_file, list_files_and_folders
 
 with optional_import_block():
@@ -20,7 +21,10 @@ __all__ = [
 ]
 
 
+@export_module("autogen.tools.experimental.google.drive")
 class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
+    """A tool map for Google Drive."""
+
     def __init__(
         self,
         *,
@@ -29,6 +33,14 @@ class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
         exclude: Optional[list[Literal["list_drive_files_and_folders", "download_file_from_drive"]]] = None,
         api_version: str = "v3",
     ) -> None:
+        """Initialize the Google Drive tool map.
+
+        Args:
+            credentials: The Google OAuth2 credentials.
+            download_folder: The folder to download files to.
+            exclude: The tool names to exclude.
+            api_version: The Google Drive API version to use."
+        """
         service = build(serviceName="drive", version=api_version, credentials=credentials)
 
         if isinstance(download_folder, str):
@@ -65,6 +77,7 @@ class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
 
     @classmethod
     def recommended_scopes(cls) -> list[str]:
+        """Return the recommended scopes manatory for using tools from this tool map."""
         return [
             "https://www.googleapis.com/auth/drive.readonly",
         ]
