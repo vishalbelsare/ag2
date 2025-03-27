@@ -6,6 +6,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+__all__ = [
+    "GoogleFileInfo",
+]
+
 
 class GoogleFileInfo(BaseModel):
     name: Annotated[str, Field(description="The name of the file.")]
