@@ -17,16 +17,16 @@ __all__ = ["ToolMap"]
 class ToolMap:
     """A class representing a set of tools that can be used by an agent for various tasks."""
 
-    def __init__(self, tools: dict[str, Tool]) -> None:
+    def __init__(self, tool_map: dict[str, Tool]) -> None:
         """Create a new ToolMap object.
 
         Args:
-            tools (dict[str, Tool]): A dictionary of tools to include in the set.
+            tool_map (dict[str, Tool]): A dictionary of tools in the set.
         """
-        self.tools_map = tools
+        self.tools_map = tool_map
 
     @property
-    def tools_list(self) -> list[Tool]:
+    def tools(self) -> list[Tool]:
         """Get the list of tools in the set."""
         return list(self.tools_map.values())
 

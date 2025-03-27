@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .drive import GoogleDriveToolMap
+from .tool_map import GoogleToolMapProtocol
 
 __all__ = [
     "GoogleDriveToolMap",
+    "GoogleToolMapProtocol",
 ]

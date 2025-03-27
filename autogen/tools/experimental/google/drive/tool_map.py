@@ -8,6 +8,7 @@ from typing import Annotated, Literal, Optional, Union
 from .....import_utils import optional_import_block
 from .... import ToolMap, tool
 from ..model import GoogleFileInfo
+from ..tool_map import GoogleToolMapProtocol
 from .drive_functions import download_file, list_files_and_folders
 
 with optional_import_block():
@@ -19,7 +20,7 @@ __all__ = [
 ]
 
 
-class GoogleDriveToolMap(ToolMap):
+class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
     def __init__(
         self,
         *,
@@ -28,9 +29,7 @@ class GoogleDriveToolMap(ToolMap):
         exclude: Optional[list[Literal["list_drive_files_and_folders", "download_file_from_drive"]]] = None,
         api_version: str = "v3",
     ) -> None:
-        self.credentials = credentials
-        self.api_version = api_version
-        self.service = build(serviceName="drive", version=api_version, credentials=credentials)
+        service = build(serviceName="drive", version=api_version, credentials=credentials)
 
         if isinstance(download_folder, str):
             download_folder = Path(download_folder)
@@ -44,14 +43,14 @@ class GoogleDriveToolMap(ToolMap):
                 "The ID of the folder to list files from. If not provided, lists all files in the root folder.",
             ] = None,
         ) -> list[GoogleFileInfo]:
-            return list_files_and_folders(service=self.service, page_size=page_size, folder_id=folder_id)
+            return list_files_and_folders(service=service, page_size=page_size, folder_id=folder_id)
 
         @tool(description="download a file from Google Drive")
         def download_file_from_drive(
             file_info: Annotated[GoogleFileInfo, "The file info to download."],
         ) -> str:
             return download_file(
-                service=self.service,
+                service=service,
                 file_id=file_info.id,
                 file_name=file_info.name,
                 mime_type=file_info.mime_type,
@@ -61,9 +60,15 @@ class GoogleDriveToolMap(ToolMap):
         if exclude is None:
             exclude = []
 
-        tools = {
+        tool_map = {
             tool.name: tool
             for tool in [list_drive_files_and_folders, download_file_from_drive]
             if tool.name not in exclude
         }
-        super().__init__(tools=tools)
+        super().__init__(tool_map=tool_map)
+
+    @classmethod
+    def recommended_scopes(cls) -> list[str]:
+        return [
+            "https://www.googleapis.com/auth/drive.readonly",
+        ]

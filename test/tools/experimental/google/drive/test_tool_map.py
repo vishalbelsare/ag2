@@ -54,14 +54,9 @@ class TestGoogleDriveToolMap:
         assistant = AssistantAgent(name="assistant", llm_config=credentials_gpt_4o_mini.llm_config)
 
         client_secret_file = "client_secret_ag2.json"
-        scopes = [
-            "https://www.googleapis.com/auth/drive.metadata.readonly",
-            "https://www.googleapis.com/auth/drive.readonly",
-            "https://www.googleapis.com/auth/drive.file",
-        ]
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=client_secret_file,
-            scopes=scopes,
+            scopes=GoogleDriveToolMap.recommended_scopes(),
             token_file="token.json",
         )
 
