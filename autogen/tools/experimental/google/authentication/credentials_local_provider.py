@@ -58,7 +58,7 @@ class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
         ],
         "google-api",
     )
-    def _refresh_or_get_new_credentials(self, creds: Optional["Credentials"]) -> "Credentials":
+    def _refresh_or_get_new_credentials(self, creds: Optional["Credentials"]) -> "Credentials":  # type: ignore[no-any-unimported]
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())  # type: ignore[no-untyped-call]
         else:
@@ -73,7 +73,7 @@ class GoogleCredentialsLocalProvider(GoogleCredentialsProvider):
         ],
         "google-api",
     )
-    def get_credentials(self) -> "Credentials":
+    def get_credentials(self) -> "Credentials":  # type: ignore[no-any-unimported]
         """Get the Google credentials."""
         creds = None
         if self.token_file and os.path.exists(self.token_file):

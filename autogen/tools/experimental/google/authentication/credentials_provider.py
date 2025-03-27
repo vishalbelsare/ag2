@@ -20,7 +20,7 @@ __all__ = ["GoogleCredentialsProvider"]
 class GoogleCredentialsProvider(Protocol):
     """A protocol for Google credentials provider."""
 
-    def get_credentials(self) -> Optional["Credentials"]:
+    def get_credentials(self) -> Optional["Credentials"]:  # type: ignore[no-any-unimported]
         """Get the Google credentials."""
         ...
 

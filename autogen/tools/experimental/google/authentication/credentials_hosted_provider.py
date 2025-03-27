@@ -39,5 +39,5 @@ class GoogleCredenentialsHostedProvider(GoogleCredentialsProvider):
         """The port from which to get the credentials."""
         return self._port
 
-    def get_credentials(self) -> "Credentials":
+    def get_credentials(self) -> "Credentials":  # type: ignore[no-any-unimported]
         raise NotImplementedError("This class is not implemented yet.")

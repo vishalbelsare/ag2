@@ -25,7 +25,7 @@ __all__ = [
 class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
     """A tool map for Google Drive."""
 
-    def __init__(
+    def __init__(  # type: ignore[no-any-unimported]
         self,
         *,
         credentials: "Credentials",
