@@ -5,12 +5,12 @@
 from typing import Protocol, runtime_checkable
 
 __all__ = [
-    "GoogleToolMapProtocol",
+    "GoogleToolkitProtocol",
 ]
 
 
 @runtime_checkable
-class GoogleToolMapProtocol(Protocol):
+class GoogleToolkitProtocol(Protocol):
     """A protocol for Google tool maps."""
 
     @classmethod

@@ -7,9 +7,9 @@ from typing import Annotated, Literal, Optional, Union
 
 from .....doc_utils import export_module
 from .....import_utils import optional_import_block
-from .... import ToolMap, tool
+from .... import Toolkit, tool
 from ..model import GoogleFileInfo
-from ..toolkit_protocol import GoogleToolMapProtocol
+from ..toolkit_protocol import GoogleToolkitProtocol
 from .drive_functions import download_file, list_files_and_folders
 
 with optional_import_block():
@@ -17,12 +17,12 @@ with optional_import_block():
     from googleapiclient.discovery import build
 
 __all__ = [
-    "GoogleDriveToolMap",
+    "GoogleDriveToolkit",
 ]
 
 
 @export_module("autogen.tools.experimental.google.drive")
-class GoogleDriveToolMap(ToolMap, GoogleToolMapProtocol):
+class GoogleDriveToolkit(Toolkit, GoogleToolkitProtocol):
     """A tool map for Google Drive."""
 
     def __init__(  # type: ignore[no-any-unimported]

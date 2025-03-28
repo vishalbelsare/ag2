@@ -11,13 +11,13 @@ import pytest
 
 from autogen import AssistantAgent, UserProxyAgent
 from autogen.import_utils import optional_import_block, run_for_optional_imports, skip_on_missing_imports
-from autogen.tools import ToolMap
+from autogen.tools import Toolkit
 
 with optional_import_block():
     from autogen.tools.experimental.google.authentication.credentials_local_provider import (
         GoogleCredentialsLocalProvider,
     )
-    from autogen.tools.experimental.google.drive import GoogleDriveToolMap
+    from autogen.tools.experimental.google.drive import GoogleDriveToolkit
 
 
 from .....conftest import Credentials
@@ -31,21 +31,21 @@ from .....conftest import Credentials
     ],
     "google-api",
 )
-class TestGoogleDriveToolMap:
+class TestGoogleDriveToolkit:
     def test_init(self) -> None:
         with unittest.mock.patch(
-            "autogen.tools.experimental.google.drive.tool_map.build",
+            "autogen.tools.experimental.google.drive.toolkit.build",
             return_value=MagicMock(),
         ) as mock_build:
-            tool_map = GoogleDriveToolMap(
+            toolkit = GoogleDriveToolkit(
                 credentials=MagicMock(),
                 download_folder="download_folder",
             )
 
             mock_build.assert_called_once()
-            assert isinstance(tool_map, ToolMap)
+            assert isinstance(toolkit, Toolkit)
 
-            assert len(tool_map) == 2
+            assert len(toolkit) == 2
 
     @pytest.mark.skip(reason="This test requires real google credentials and is not suitable for CI at the moment")
     @run_for_optional_imports("openai", "openai")
@@ -56,17 +56,17 @@ class TestGoogleDriveToolMap:
         client_secret_file = "client_secret_ag2.json"
         provider = GoogleCredentialsLocalProvider(
             client_secret_file=client_secret_file,
-            scopes=GoogleDriveToolMap.recommended_scopes(),
+            scopes=GoogleDriveToolkit.recommended_scopes(),
             token_file="token.json",
         )
 
         with tempfile.TemporaryDirectory() as tempdir:
-            tool_map = GoogleDriveToolMap(
+            toolkit = GoogleDriveToolkit(
                 credentials=provider.get_credentials(),
                 download_folder=str(tempdir),
             )
-            tool_map.register_for_execution(user_proxy)
-            tool_map.register_for_llm(assistant)
+            toolkit.register_for_execution(user_proxy)
+            toolkit.register_for_llm(assistant)
 
             user_proxy.initiate_chat(
                 recipient=assistant,

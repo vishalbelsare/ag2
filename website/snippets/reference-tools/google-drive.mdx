@@ -27,7 +27,7 @@ from typing import Annotated, Optional
 
 from autogen import AssistantAgent, LLMConfig
 from autogen.tools import tool
-from autogen.tools.experimental.google import GoogleCredentialsLocalProvider, GoogleDriveToolMap
+from autogen.tools.experimental.google import GoogleCredentialsLocalProvider, GoogleDriveToolkit
 from autogen.tools.experimental.google.model import GoogleFileInfo
 ```
 
@@ -47,7 +47,7 @@ token_file = "../my_token.json"
 
 provider = GoogleCredentialsLocalProvider(
     client_secret_file=client_secret_file,
-    scopes=GoogleDriveToolMap.recommended_scopes(),
+    scopes=GoogleDriveToolkit.recommended_scopes(),
     token_file=token_file,
 )
 
@@ -72,12 +72,12 @@ AG2 provides predefined tools for interacting with Google Drive:
 Once the tool map is registered with the agent using `register_for_llm`, the agent becomes capable of suggesting these tool calls.
 
 ```python
-google_drive_tool_map = GoogleDriveToolMap(
+google_drive_toolkit = GoogleDriveToolkit(
     credentials=credentials,
     download_folder="ag2_drive_downloads",
 )
 
-google_drive_tool_map.register_for_llm(assistant)
+google_drive_toolkit.register_for_llm(assistant)
 ```
 
 ## Start the Conversation
@@ -170,15 +170,15 @@ All requested files have been downloaded successfully:
 TERMINATE
 ```
 
-## Custom GoogleDriveToolMap
-You can easily customize the predefined [`GoogleDriveToolMap`](/docs/api-reference/autogen/tools/experimental/google/drive/GoogleDriveToolMap) based on your specific requirements. By subclassing [`GoogleDriveToolMap`](/docs/api-reference/autogen/tools/experimental/google/drive/GoogleDriveToolMap), you can modify the toolset available to your agent.
+## Custom GoogleDriveToolkit
+You can easily customize the predefined [`GoogleDriveToolkit`](/docs/api-reference/autogen/tools/experimental/google/drive/GoogleDriveToolkit) based on your specific requirements. By subclassing [`GoogleDriveToolkit`](/docs/api-reference/autogen/tools/experimental/google/drive/GoogleDriveToolkit), you can modify the toolset available to your agent.
 
 For example:
 - **Add custom tools**: You can introduce new tools, like `list_docs`, to specifically retrieve document files from a folder.
 - **Remove existing tools**: You can eliminate unnecessary tools, such as `list_drive_files_and_folders`, to streamline functionality and focus on relevant features.
 
 ```python
-class MyGoogleDriveToolMap(GoogleDriveToolMap):
+class MyGoogleDriveToolkit(GoogleDriveToolkit):
     def __init__(
         self,
         *,
@@ -234,17 +234,17 @@ class MyGoogleDriveToolMap(GoogleDriveToolMap):
 ```python
 assistant = AssistantAgent(name="assistant", llm_config=llm_config)
 
-google_drive_tool_map = MyGoogleDriveToolMap(
+google_drive_toolkit = MyGoogleDriveToolkit(
     credentials=credentials,
     download_folder="ag2_drive_downloads",
 )
 
-google_drive_tool_map.register_for_llm(assistant)
+google_drive_toolkit.register_for_llm(assistant)
 
 assistant.run(
     message="List the latest 3 files and write a short summary based on the file names and meme types.",
     max_turns=4,
-    tools=google_drive_tool_map.tools,
+    tools=google_drive_toolkit.tools,
     user_input=False,
 )
 ```
