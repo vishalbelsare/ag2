@@ -9,7 +9,7 @@ from .....doc_utils import export_module
 from .....import_utils import optional_import_block
 from .... import ToolMap, tool
 from ..model import GoogleFileInfo
-from ..tool_map_protocol import GoogleToolMapProtocol
+from ..toolkit_protocol import GoogleToolMapProtocol
 from .drive_functions import download_file, list_files_and_folders
 
 with optional_import_block():

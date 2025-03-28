@@ -4,7 +4,7 @@
 
 from .authentication import GoogleCredentialsLocalProvider, GoogleCredentialsProvider
 from .drive import GoogleDriveToolMap
-from .tool_map_protocol import GoogleToolMapProtocol
+from .toolkit_protocol import GoogleToolMapProtocol
 
 __all__ = [
     "GoogleCredentialsLocalProvider",

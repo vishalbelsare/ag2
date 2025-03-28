@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .tool_map import GoogleDriveToolMap
+from .toolkit import GoogleDriveToolMap
 
 __all__ = [
     "GoogleDriveToolMap",
