@@ -989,6 +989,10 @@
          <lastmod>2025-03-31</lastmod>
     </url>
     <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/Toolkit/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/get_function_schema/</loc>
          <lastmod>2025-03-31</lastmod>
     </url>
@@ -1078,6 +1082,34 @@
     </url>
     <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/browser_use/ExtractedContent/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/authentication/GoogleCredentialsLocalProvider/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/authentication/GoogleCredentialsProvider/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/drive/GoogleDriveToolkit/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/drive/drive_functions/download_file/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/drive/drive_functions/list_files_and_folders/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/model/GoogleFileInfo/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/api-reference/autogen/tools/experimental/google/toolkit_protocol/GoogleToolkitProtocol/</loc>
          <lastmod>2025-03-31</lastmod>
     </url>
     <url>
@@ -1837,6 +1869,10 @@
          <lastmod>2025-03-31</lastmod>
     </url>
     <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/use-cases/notebooks/notebooks/tools_google_drive/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/use-cases/notebooks/notebooks/tools_google_search/</loc>
          <lastmod>2025-03-31</lastmod>
     </url>
@@ -2190,6 +2226,10 @@
     </url>
     <url>
          <loc>https://ag2ai.github.io/ag2/latest/docs/user-guide/reference-tools/communication-platforms/telegram/</loc>
+         <lastmod>2025-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://ag2ai.github.io/ag2/latest/docs/user-guide/reference-tools/google-api/google-drive/</loc>
          <lastmod>2025-03-31</lastmod>
     </url>
     <url>
