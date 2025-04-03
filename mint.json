@@ -263,6 +263,7 @@
               ]
             },
             "docs/user-guide/reference-tools/perplexity-search",
+            "docs/user-guide/reference-tools/wikipedia-search",
             "docs/user-guide/reference-tools/browser-use",
             "docs/user-guide/reference-tools/deep-research",
             {
@@ -402,6 +403,7 @@
             "docs/use-cases/notebooks/notebooks/agentchat_function_call_async",
             "docs/use-cases/notebooks/notebooks/agentchat_society_of_mind",
             "docs/use-cases/notebooks/notebooks/agentchat_microsoft_fabric",
+            "docs/use-cases/notebooks/notebooks/tools_wikipedia_search",
             "docs/use-cases/notebooks/notebooks/lats_search",
             "docs/use-cases/notebooks/notebooks/agentchat_lmm_llava",
             "docs/use-cases/notebooks/notebooks/agentchat_dalle_and_gpt4v",
@@ -2160,6 +2162,8 @@
                     "docs/api-reference/autogen/tools/experimental/SlackSendTool",
                     "docs/api-reference/autogen/tools/experimental/TelegramRetrieveTool",
                     "docs/api-reference/autogen/tools/experimental/TelegramSendTool",
+                    "docs/api-reference/autogen/tools/experimental/WikipediaPageLoadTool",
+                    "docs/api-reference/autogen/tools/experimental/WikipediaQueryRunTool",
                     "docs/api-reference/autogen/tools/experimental/YoutubeSearchTool",
                     {
                       "group": "browser_use",
@@ -2228,6 +2232,24 @@
                             "docs/api-reference/autogen/tools/experimental/perplexity/perplexity_search/PerplexitySearchTool",
                             "docs/api-reference/autogen/tools/experimental/perplexity/perplexity_search/SearchResponse",
                             "docs/api-reference/autogen/tools/experimental/perplexity/perplexity_search/Usage"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "group": "wikipedia",
+                      "pages": [
+                        "docs/api-reference/autogen/tools/experimental/wikipedia/overview",
+                        "docs/api-reference/autogen/tools/experimental/wikipedia/WikipediaPageLoadTool",
+                        "docs/api-reference/autogen/tools/experimental/wikipedia/WikipediaQueryRunTool",
+                        {
+                          "group": "wikipedia",
+                          "pages": [
+                            "docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/overview",
+                            "docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/Document",
+                            "docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/WikipediaClient",
+                            "docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/WikipediaPageLoadTool",
+                            "docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/WikipediaQueryRunTool"
                           ]
                         }
                       ]
