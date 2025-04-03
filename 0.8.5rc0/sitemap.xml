@@ -1229,6 +1229,14 @@
          <lastmod>2025-04-03</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/WikipediaPageLoadTool/</loc>
+         <lastmod>2025-04-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/api-reference/autogen/tools/experimental/wikipedia/wikipedia/WikipediaQueryRunTool/</loc>
+         <lastmod>2025-04-03</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/blog/</loc>
          <lastmod>2025-04-03</lastmod>
     </url>
@@ -2001,6 +2009,10 @@
          <lastmod>2025-04-03</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_wikipedia_search/</loc>
+         <lastmod>2025-04-03</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_youtube_search/</loc>
          <lastmod>2025-04-03</lastmod>
     </url>
@@ -2334,6 +2346,10 @@
     </url>
     <url>
          <loc>https://docs.ag2.ai/latest/docs/user-guide/reference-tools/perplexity-search/</loc>
+         <lastmod>2025-04-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/user-guide/reference-tools/wikipedia-search/</loc>
          <lastmod>2025-04-03</lastmod>
     </url>
     <url>
