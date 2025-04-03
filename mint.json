@@ -369,6 +369,7 @@
             "docs/use-cases/notebooks/notebooks/agentchat_groupchat_finite_state_machine",
             "docs/use-cases/notebooks/notebooks/agentchat_nestedchat_optiguide",
             "docs/use-cases/notebooks/notebooks/agentchat_groupchat_vis",
+            "docs/use-cases/notebooks/notebooks/run_and_event_processing",
             "docs/use-cases/notebooks/notebooks/JSON_mode_example",
             "docs/use-cases/notebooks/notebooks/agentchat_video_transcript_translate_with_whisper",
             "docs/use-cases/notebooks/notebooks/agentchat_oai_assistant_groupchat",
