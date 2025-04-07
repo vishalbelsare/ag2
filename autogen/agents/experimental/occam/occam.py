@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 from ....agentchat import Agent, ConversableAgent
 from ....doc_utils import export_module
@@ -10,7 +10,9 @@ from ....import_utils import optional_import_block, require_optional_import
 
 with optional_import_block():
     from occam_core.agents.model import AgentIOModel, OccamLLMMessage
-    from occamai.api_client import AgentInstanceParamsModel, AgentRunDetail, OccamClient
+    from occam_core.api.util import AgentResponseModel
+    from occam_core.agents.params import MultiAgentWorkspaceParamsModel
+    from occamai.api_client import AgentInstanceParamsModel, OccamClient, AgentsApi, WorkspacesApi
 
 __all__ = ["OccamAgent"]
 
@@ -45,15 +47,13 @@ class OccamAgent(ConversableAgent):
         # Convert messages to AgentIOModel
         agent_io_model = self._convert_ag_messages_to_agent_io_model(messages)
 
-        agent_run_detail: AgentRunDetail = self.occam_client.agents.run_agent(  # type: ignore[no-any-unimported]
+        agent_run_response: AgentResponseModel = self.occam_client.agents.run_agent(  # type: ignore[no-any-unimported]
             agent_instance_id=self.occam_agent_instance_id,
             sync=True,
             agent_input_model=agent_io_model,
         )  # type: ignore[no-any-unimported]
-        print(f"Agent run status: {agent_run_detail.status}")
-        print(f"Agent run result: {agent_run_detail.result}")
-
-        agent_output = agent_run_detail.result
+        print(f"Agent run status: {agent_run_response.status}")
+        print(f"Agent run result: {agent_run_response.chat_messages}")
 
         # Send a message to the user to notify them it's waiting. Create a message as needed
         # iostream = IOStream.get_default()
@@ -62,7 +62,7 @@ class OccamAgent(ConversableAgent):
         # )
 
         # True indicates final reply, string goes back into the chat's messages.
-        return True, "".join([m.content for m in agent_output.chat_messages])
+        return True, "".join([m.content for m in agent_run_response.chat_messages])
 
     def __init__(  # type: ignore[no-any-unimported]
         self,
@@ -88,12 +88,20 @@ class OccamAgent(ConversableAgent):
         if not agent_params:
             agent_params = AgentInstanceParamsModel()
 
+        if isinstance(agent_params, MultiAgentWorkspaceParamsModel):
+            client: WorkspacesApi = self.occam_client.workspaces
+        else:
+            client: AgentsApi = self.occam_client.agents
+
         # Initialise agent.
-        occam_agent_instance = self.occam_client.agents.instantiate_agent(
+        occam_agent_instance = client.instantiate_agent(
             agent_name=agent_name, agent_params=agent_params
         )
-        self.occam_agent_instance_id = occam_agent_instance.agent_instance_id
+        self.occam_agent_instance_id = occam_agent_instance.instance_id
         print(f"Created Occam Agent instance: {self.occam_agent_instance_id}")
+        if occam_agent_instance.session_id:
+            self.occam_session_id = occam_agent_instance.session_id
+            print(f"Created Occam Session with ID: {self.occam_session_id}")
 
         # POPULATE `system_message` and, optionally, `description` for use in group chat auto-speaker selection
         # This should contain a description of what the agent does.
