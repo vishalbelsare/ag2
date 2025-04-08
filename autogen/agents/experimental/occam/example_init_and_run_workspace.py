@@ -34,9 +34,19 @@ if __name__ == "__main__":
         agent_params=agent_params,
     )
 
-    other_agent = ConversableAgent(name="other-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
-    other_agent.initiate_chat(
-        recipient=occam_agent,
-        message="Hello, Start a chat about a random scientific topic.",
-        max_turns=2,
+    first_agent = ConversableAgent(name="first-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
+    third_agent = ConversableAgent(name="third-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
+    first_agent.initiate_chats(
+        [
+            {
+                "recipient": occam_agent,
+                "message": "Hello, Start a chat about a random scientific topic.",
+                "max_turns": 2,
+            },
+            {
+                "recipient": third_agent,
+                "message": "Summarise the result of the chat in no more than 100 words.",
+                "max_turns": 2,
+            },
+        ]
     )
