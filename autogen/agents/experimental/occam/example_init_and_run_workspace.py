@@ -1,6 +1,6 @@
 import os
 
-from occam_core.agents.params import MultiAgentWorkspaceParamsModel, ChatMode
+from occam_agent_params.instance_params_models import MultiAgentWorkspaceParamsModel, ChatMode
 from occamai.api_client import OccamClient
 
 from autogen.agentchat.conversable_agent import ConversableAgent
@@ -27,15 +27,19 @@ if __name__ == "__main__":
     )
     workspace_agent_key = "Multi-agent Workspaces"
 
+    # Initiator agent.
+    first_agent = ConversableAgent(name="first-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
+    # Occam workspace agent
     occam_agent = OccamAgent(
         name="occam-agent",
         occam_client=occam_client,
         agent_name=workspace_agent_key,
         agent_params=agent_params,
     )
-
-    first_agent = ConversableAgent(name="first-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
+    # Summariser agent.
     third_agent = ConversableAgent(name="third-agent", llm_config={"model": "gpt-4o-mini", "api_type": "openai"})
+
+    # Kick off a flow from first_agent -> occam_agent -> third_agent
     first_agent.initiate_chats(
         [
             {

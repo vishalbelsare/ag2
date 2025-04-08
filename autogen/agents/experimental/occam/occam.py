@@ -12,7 +12,7 @@ with optional_import_block():
     from occam_core.agents.model import AgentIOModel, OccamLLMMessage
     from occam_core.api.util import AgentResponseModel
     from occam_core.chat.model import MultiAgentWorkspaceCoreMessageModel
-    from occam_core.agents.params import MultiAgentWorkspaceParamsModel
+    from occam_agent_params.instance_params_models import MultiAgentWorkspaceParamsModel
     from occamai.api_client import AgentInstanceParamsModel, OccamClient, AgentsApi, WorkspacesApi
 
 __all__ = ["OccamAgent"]
