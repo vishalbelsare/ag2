@@ -53,7 +53,6 @@ class OccamAgent(ConversableAgent):
             agent_input_model=agent_io_model,
         )  # type: ignore[no-any-unimported]
         print(f"Agent run status: {agent_run_response.status}")
-        print(f"Agent run result: {agent_run_response.chat_messages}")
 
         # Send a message to the user to notify them it's waiting. Create a message as needed
         # iostream = IOStream.get_default()
