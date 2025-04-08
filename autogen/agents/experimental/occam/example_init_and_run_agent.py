@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     occam_agent = OccamAgent(
         name="occam-agent",
-        client=occam_client,
+        occam_client=occam_client,
         agent_name=agent_name,
         agent_params=agent_params,
     )

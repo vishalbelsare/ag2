@@ -11,6 +11,7 @@ from ....import_utils import optional_import_block, require_optional_import
 with optional_import_block():
     from occam_core.agents.model import AgentIOModel, OccamLLMMessage
     from occam_core.api.util import AgentResponseModel
+    from occam_core.chat.model import MultiAgentWorkspaceCoreMessageModel
     from occam_core.agents.params import MultiAgentWorkspaceParamsModel
     from occamai.api_client import AgentInstanceParamsModel, OccamClient, AgentsApi, WorkspacesApi
 
@@ -20,7 +21,7 @@ __all__ = ["OccamAgent"]
 @require_optional_import(["occam_core.agents.model", "occamai.api_client"], "occam")
 @export_module("autogen.agents")
 class OccamAgent(ConversableAgent):
-    client: "OccamClient"  # type: ignore[no-any-unimported]
+    _api_client: Union["WorkspacesApi", "AgentsApi"]  # type: ignore[no-any-unimported]
 
     def _convert_ag_messages_to_agent_io_model(self, messages: list[dict[str, Any]]) -> AgentIOModel:  # type: ignore[no-any-unimported]
         return AgentIOModel(
@@ -47,7 +48,7 @@ class OccamAgent(ConversableAgent):
         # Convert messages to AgentIOModel
         agent_io_model = self._convert_ag_messages_to_agent_io_model(messages)
 
-        agent_run_response: AgentResponseModel = self.occam_client.agents.run_agent(  # type: ignore[no-any-unimported]
+        agent_run_response: AgentResponseModel = self._api_client.run_agent(  # type: ignore[no-any-unimported]
             agent_instance_id=self.occam_agent_instance_id,
             sync=True,
             agent_input_model=agent_io_model,
@@ -61,11 +62,18 @@ class OccamAgent(ConversableAgent):
         # )
 
         # True indicates final reply, string goes back into the chat's messages.
-        return True, "".join([m.content for m in agent_run_response.chat_messages])
+        merged_output_message = ""
+        if isinstance(self._api_client, WorkspacesApi):
+            for msg in agent_run_response.chat_messages:
+                msg: MultiAgentWorkspaceCoreMessageModel = msg
+                merged_output_message += f"\n{msg.full_content}"
+        else:
+            merged_output_message = "\n".join([m.content for m in agent_run_response.chat_messages])
+        return True, merged_output_message
 
     def __init__(  # type: ignore[no-any-unimported]
         self,
-        client: "OccamClient",
+        occam_client: "OccamClient",
         agent_name: str,
         agent_params: Optional["AgentInstanceParamsModel"] = None,
         *args: Any,
@@ -83,17 +91,16 @@ class OccamAgent(ConversableAgent):
 
         super().__init__(*args, **kwargs)
 
-        self.occam_client = client
         if not agent_params:
             agent_params = AgentInstanceParamsModel()
 
         if isinstance(agent_params, MultiAgentWorkspaceParamsModel):
-            client: WorkspacesApi = self.occam_client.workspaces
+            self._api_client: WorkspacesApi = occam_client.workspaces
         else:
-            client: AgentsApi = self.occam_client.agents
+            self._api_client: AgentsApi = occam_client.agents
 
         # Initialise agent.
-        occam_agent_instance = client.instantiate_agent(
+        occam_agent_instance = self._api_client.instantiate_agent(
             agent_name=agent_name, agent_params=agent_params
         )
         self.occam_agent_instance_id = occam_agent_instance.instance_id
