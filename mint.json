@@ -1724,9 +1724,12 @@
                     "docs/api-reference/autogen/io/run_response/overview",
                     "docs/api-reference/autogen/io/run_response/AsyncRunResponse",
                     "docs/api-reference/autogen/io/run_response/AsyncRunResponseProtocol",
+                    "docs/api-reference/autogen/io/run_response/Cost",
+                    "docs/api-reference/autogen/io/run_response/CostBreakdown",
                     "docs/api-reference/autogen/io/run_response/RunInfoProtocol",
                     "docs/api-reference/autogen/io/run_response/RunResponse",
-                    "docs/api-reference/autogen/io/run_response/RunResponseProtocol"
+                    "docs/api-reference/autogen/io/run_response/RunResponseProtocol",
+                    "docs/api-reference/autogen/io/run_response/Usage"
                   ]
                 },
                 {
