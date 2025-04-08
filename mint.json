@@ -1796,7 +1796,14 @@
               "group": "mcp",
               "pages": [
                 "docs/api-reference/autogen/mcp/overview",
-                "docs/api-reference/autogen/mcp/create_toolkit"
+                "docs/api-reference/autogen/mcp/create_toolkit",
+                {
+                  "group": "mcp_client",
+                  "pages": [
+                    "docs/api-reference/autogen/mcp/mcp_client/overview",
+                    "docs/api-reference/autogen/mcp/mcp_client/ResultSaved"
+                  ]
+                }
               ]
             },
             {
