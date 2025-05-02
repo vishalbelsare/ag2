@@ -1301,6 +1301,10 @@
          <lastmod>2025-05-02</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/api-reference/autogen/tools/experimental/DuckDuckGoSearchTool/</loc>
+         <lastmod>2025-05-02</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/api-reference/autogen/tools/experimental/GoogleSearchTool/</loc>
          <lastmod>2025-05-02</lastmod>
     </url>
