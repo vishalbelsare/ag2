@@ -383,6 +383,7 @@
             "docs/use-cases/notebooks/notebooks/agentchat_nestedchat_optiguide",
             "docs/use-cases/notebooks/notebooks/oai_chatgpt_gpt4",
             "docs/use-cases/notebooks/notebooks/agentchat_agentoptimizer",
+            "docs/use-cases/notebooks/notebooks/tools_duckduckgo_search",
             "docs/use-cases/notebooks/notebooks/tools_browser_use",
             "docs/use-cases/notebooks/notebooks/agentchat_memory_using_mem0",
             "docs/use-cases/notebooks/notebooks/agentchat_oai_code_interpreter",
