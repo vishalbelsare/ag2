@@ -7,7 +7,7 @@ import math
 import random
 import re
 import warnings
-from typing import Any, Literal, Optional, Union
+from typing import Any, Coroutine, Literal, Optional, Union
 
 from .... import Agent, AssistantAgent, UserProxyAgent
 from ....doc_utils import export_module
@@ -470,10 +470,10 @@ class ReasoningAgent(AssistantAgent):
 
         self._root: Optional[ThinkNode] = None
         self._lats_context: str = ""
-        
+
         # Check if async mode is enabled
         self._async_mode: bool = reason_config.get("async_mode", False)
-        
+
         if self._async_mode:
             self.register_reply([Agent, None], ReasoningAgent.a_generate_forest_response)
         else:
@@ -1239,39 +1239,39 @@ Final Answer:
         while prev_leafs and len(final_answers) < self._beam_size:
             new_leafs: list[ThinkNode] = []
             new_leafs_per_beam: list[list[ThinkNode]] = []  # used for batch grading
-            
+
             # Parallel expansion of all nodes
             expansion_tasks = []
             terminal_nodes = []
-            
+
             for node in prev_leafs:
                 if self._is_terminal(node):
                     terminal_nodes.append(node)
                 else:
                     expansion_tasks.append(self.a_expand(node))
-            
+
             # Execute all expansions in parallel
             if expansion_tasks:
                 expansion_results = await asyncio.gather(*expansion_tasks)
                 for expansion_leafs in expansion_results:
                     new_leafs += expansion_leafs
                     new_leafs_per_beam.append(expansion_leafs)
-            
+
             # Handle terminal nodes
             if terminal_nodes:
                 # Rate terminal nodes in parallel if needed
-                rating_tasks = []
-                nodes_to_rate = []
+                rating_tasks: list[Coroutine[Any, Any, float]] = []
+                nodes_to_rate: list[ThinkNode] = []
                 for node in terminal_nodes:
                     if node.value is None:
                         rating_tasks.append(self.a_rate_node(node, ground_truth))
                         nodes_to_rate.append(node)
-                
+
                 if rating_tasks:
                     ratings = await asyncio.gather(*rating_tasks)
                     for node, rating in zip(nodes_to_rate, ratings):
                         node.value = rating
-                
+
                 final_answers.update(terminal_nodes)
 
             prev_leafs = new_leafs
@@ -1293,7 +1293,7 @@ Final Answer:
                     ratings = await asyncio.gather(*rating_tasks)
                     for node, rating in zip(prev_leafs, ratings):
                         node.value = rating
-                
+
                 # Beam search: keep top beam_size leaf nodes
                 prev_leafs = sorted(prev_leafs, key=lambda x: x.value if x.value else 0, reverse=True)[
                     : self._beam_size - len(final_answers)
@@ -1442,7 +1442,10 @@ Final Answer:
         for ans_node in answer_nodes:
             if ans_node:
                 all_answer_nodes.append(ans_node)
-                self._lats_context += f"### Previous Tries:\n{ans_node.parent.trajectory}\n\nRating:{ans_node.rating_details}\n\n"
+                parent_trajectory = ans_node.parent.trajectory if ans_node.parent else ""
+                self._lats_context += (
+                    f"### Previous Tries:\n{parent_trajectory}\n\nRating:{ans_node.rating_details}\n\n"
+                )
 
         if not all_answer_nodes:
             return "No valid answers found."
@@ -1450,7 +1453,9 @@ Final Answer:
         best_ans_node = max(all_answer_nodes, key=lambda node: node.value)
         return best_ans_node.content
 
-    async def _a_single_mcts_simulation(self, root: ThinkNode, prompt: str, ground_truth: Optional[str]) -> Optional[ThinkNode]:
+    async def _a_single_mcts_simulation(
+        self, root: ThinkNode, prompt: str, ground_truth: Optional[str]
+    ) -> Optional[ThinkNode]:
         """Run a single MCTS simulation asynchronously.
 
         Args:
@@ -1467,8 +1472,7 @@ Final Answer:
         while not self._is_terminal(node) and len(node.children) > 0:
             choices_weights = [
                 (child.value / (child.visits + EPSILON))
-                + self._exploration_constant
-                * math.sqrt(2 * math.log(node.visits + EPSILON) / (child.visits + EPSILON))
+                + self._exploration_constant * math.sqrt(2 * math.log(node.visits + EPSILON) / (child.visits + EPSILON))
                 for child in node.children
             ]
             node = node.children[choices_weights.index(max(choices_weights))]
