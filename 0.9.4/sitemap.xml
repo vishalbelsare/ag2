@@ -1845,6 +1845,10 @@
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/agentchat_function_call_currency_converter_tool_api/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/agentchat_graph_rag_falkordb/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
@@ -1990,6 +1994,18 @@
     </url>
     <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/agentchat_oai_code_interpreter/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/agentchat_oai_responses_api_structured_output/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/agentchat_oai_responses_api_tool_call/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/agentchat_oai_responses_image/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
@@ -2205,6 +2221,10 @@
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/throw-exception-for-specific-error-messages/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_browser_use/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
@@ -2233,6 +2253,10 @@
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_firecrawl/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_google_drive/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
@@ -2249,6 +2273,10 @@
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_searxng_search/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_tavily_search/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
@@ -2262,6 +2290,10 @@
     </url>
     <url>
          <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/tools_youtube_search/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/use-cases/notebooks/notebooks/websurfer_firecrawl_example/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
@@ -2546,6 +2578,10 @@
     </url>
     <url>
          <loc>https://docs.ag2.ai/latest/docs/user-guide/models/openai/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ag2.ai/latest/docs/user-guide/models/openai_responses/</loc>
          <lastmod>2025-07-03</lastmod>
     </url>
     <url>
