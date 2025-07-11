@@ -14,15 +14,15 @@ Since our examples also use `openai` and `gemini`, install them as well:
 ```bash
 pip install -U ag2[openai,gemini,google-search]
 ```
-> **Note:** If you have been using `autogen` or `pyautogen`, all you need to do is upgrade it using:
+> **Note:** If you have been using `autogen` or `ag2`, all you need to do is upgrade it using:
 > ```bash
 > pip install -U autogen[openai,gemini,google-search]
 > ```
 > or
 > ```bash
-> pip install -U pyautogen[openai,gemini,google-search]
+> pip install -U ag2[openai,gemini,google-search]
 > ```
-> as `pyautogen`, `autogen`, and `ag2` are aliases for the same PyPI package.
+> as `autogen` and `ag2` are aliases for the same PyPI package.
 
 You're all set! Now you can start using Google Search with AG2.
 
@@ -33,7 +33,7 @@ You're all set! Now you can start using Google Search with AG2.
 import os
 
 import autogen
-from autogen import AssistantAgent
+from autogen import AssistantAgent, LLMConfig
 from autogen.tools.experimental import GoogleSearchTool
 ```
 
@@ -44,17 +44,10 @@ The [`GoogleSearchTool`](/docs/api-reference/autogen/tools/experimental/GoogleSe
 ### Agent Configuration
 
 ```python
-config_list = autogen.config_list_from_json(
-    env_or_file="OAI_CONFIG_LIST",
-    filter_dict={
-        "model": ["gemini-2.0-flash"],
-    },
-)
+llm_config = LLMConfig(path="OAI_CONFIG_LIST").where(model="gemini-2.0-flash")
 
-assistant = AssistantAgent(
-    name="assistant",
-    llm_config={"config_list": config_list},
-)
+with llm_config:
+    assistant = AssistantAgent(name="assistant")
 ```
 
 ### GoogleSearchTool Initialization
@@ -76,12 +69,15 @@ gs_tool.register_for_llm(assistant)
 With the setup complete, you can now use the assistant to fetch live web search results.
 
 ```python
-assistant.run(
+response = assistant.run(
     message="What happened with stock prices after deepseek was launched, please search the web.",
     tools=assistant.tools,
     max_turns=2,
     user_input=False,
 )
+
+# Iterate through the chat automatically with console output
+response.process()
 ````
 
 ### Output
@@ -139,17 +135,10 @@ For all other LLM providers or if you need to combine Google Search with other t
 ### Agent Configuration
 
 ```python
-config_list = autogen.config_list_from_json(
-    env_or_file="OAI_CONFIG_LIST",
-    filter_dict={
-        "model": ["gpt-4o-mini"],
-    },
-)
+llm_config = LLMConfig(path="OAI_CONFIG_LIST").where(model="gpt-4o-mini")
 
-assistant = AssistantAgent(
-    name="assistant",
-    llm_config={"config_list": config_list},
-)
+with llm_config:
+    assistant = AssistantAgent(name="assistant")
 ```
 
 ### GoogleSearchTool Initialization
@@ -176,12 +165,15 @@ gs_tool.register_for_llm(assistant)
 With the setup complete, you can now use the assistant to fetch live web search results.
 
 ```python
-assistant.run(
+response = assistant.run(
     message="What happened with stock prices after deepseek was launched, please search the web.",
     tools=assistant.tools,
     max_turns=2,
     user_input=False,
 )
+
+# Iterate through the chat automatically with console output
+response.process()
 ```
 
 ### Output

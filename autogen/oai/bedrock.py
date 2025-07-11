@@ -39,7 +39,7 @@ import warnings
 from typing import Any, Literal, Optional
 
 import requests
-from pydantic import Field
+from pydantic import Field, SecretStr, field_serializer
 
 from ..import_utils import optional_import_block, require_optional_import
 from ..llm_config import LLMConfigEntry, register_llm_config
@@ -55,9 +55,9 @@ with optional_import_block():
 class BedrockLLMConfigEntry(LLMConfigEntry):
     api_type: Literal["bedrock"] = "bedrock"
     aws_region: str
-    aws_access_key: Optional[str] = None
-    aws_secret_key: Optional[str] = None
-    aws_session_token: Optional[str] = None
+    aws_access_key: Optional[SecretStr] = None
+    aws_secret_key: Optional[SecretStr] = None
+    aws_session_token: Optional[SecretStr] = None
     aws_profile_name: Optional[str] = None
     temperature: Optional[float] = None
     topP: Optional[float] = None  # noqa: N815
@@ -66,9 +66,15 @@ class BedrockLLMConfigEntry(LLMConfigEntry):
     top_k: Optional[int] = None
     k: Optional[int] = None
     seed: Optional[int] = None
+    cache_seed: Optional[int] = None
     supports_system_prompts: bool = True
     stream: bool = False
     price: Optional[list[float]] = Field(default=None, min_length=2, max_length=2)
+    timeout: Optional[int] = None
+
+    @field_serializer("aws_access_key", "aws_secret_key", "aws_session_token", when_used="unless-none")
+    def serialize_aws_secrets(self, v: SecretStr) -> str:
+        return v.get_secret_value()
 
     def create_client(self):
         raise NotImplementedError("BedrockLLMConfigEntry.create_client must be implemented.")
@@ -87,6 +93,7 @@ class BedrockClient:
         self._aws_session_token = kwargs.get("aws_session_token")
         self._aws_region = kwargs.get("aws_region")
         self._aws_profile_name = kwargs.get("aws_profile_name")
+        self._timeout = kwargs.get("timeout")
 
         if not self._aws_access_key:
             self._aws_access_key = os.getenv("AWS_ACCESS_KEY")
@@ -103,11 +110,15 @@ class BedrockClient:
         if self._aws_region is None:
             raise ValueError("Region is required to use the Amazon Bedrock API.")
 
+        if self._timeout is None:
+            self._timeout = 60
+
         # Initialize Bedrock client, session, and runtime
         bedrock_config = Config(
             region_name=self._aws_region,
             signature_version="v4",
             retries={"max_attempts": self._retries, "mode": "standard"},
+            read_timeout=self._timeout,
         )
 
         session = boto3.Session(

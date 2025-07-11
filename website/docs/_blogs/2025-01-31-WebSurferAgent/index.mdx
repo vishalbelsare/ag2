@@ -1,11 +1,11 @@
 ---
 title: Riding the Web with WebSurferAgent
 authors: [rjambrecic]
-tags: [tools, tool calling, web surfing, browser use, crawl4ai, WebSurferAgent]
+tags: [Tools, AG2 Agents]
 ---
 
 ## Introduction
-In our [Adding Browsing Capabilities to AG2](/blog/2025-01-31-Websurfing-Tools) guide, we explored how to build agents with basic web surfing capabilities. Now, let's take it to the next level with [`WebSurferAgent`](/docs/api-reference/autogen/agents/experimental/WebSurferAgent)—a powerful agent that comes with built-in web browsing tools right out of the box!
+In our [Adding Browsing Capabilities to AG2](/docs/blog/2025-01-31-Websurfing-Tools) guide, we explored how to build agents with basic web surfing capabilities. Now, let's take it to the next level with [`WebSurferAgent`](/docs/api-reference/autogen/agents/experimental/WebSurferAgent)—a powerful agent that comes with built-in web browsing tools right out of the box!
 
 With [`WebSurferAgent`](/docs/api-reference/autogen/agents/experimental/WebSurferAgent), your agents can seamlessly browse the web, retrieve real-time information, and interact with web pages—all with minimal setup.
 
@@ -24,15 +24,15 @@ To get started with the [`Browser Use`](https://github.com/browser-use/browser-u
     pip install -U ag2[openai,browser-use]
     ```
     <Tip>
-    If you have been using `autogen` or `pyautogen`, all you need to do is upgrade it using:
+    If you have been using `autogen` or `ag2`, all you need to do is upgrade it using:
     ```bash
     pip install -U autogen[openai,browser-use]
     ```
     or
     ```bash
-    pip install -U pyautogen[openai,browser-use]
+    pip install -U ag2[openai,browser-use]
     ```
-    as `pyautogen`, `autogen`, and `ag2` are aliases for the same PyPI package.
+    as `autogen` and `ag2` are aliases for the same PyPI package.
     </Tip>
 2. Set up Playwright:
 
@@ -57,6 +57,7 @@ import os
 
 import nest_asyncio
 
+from autogen import LLMConfig
 from autogen.agentchat import UserProxyAgent
 from autogen.agents.experimental import WebSurferAgent
 
@@ -72,11 +73,7 @@ We had great experience with `OpenAI`, `Anthropic`, and `Gemini`. However, `Deep
 </Tip>
 
 ```python
-config_list = [{"api_type": "openai", "model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}]
-
-llm_config = {
-    "config_list": config_list,
-}
+llm_config = LLMConfig(api_type="openai", model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"])
 ````
 
 [`WebSurferAgent`](/docs/api-reference/autogen/agents/experimental/WebSurferAgent) is the one responsible for browsing the web and retrieving information. The `web_tool="browser_use"` tells the agent to use the [`BrowserUseTool`](/docs/api-reference/autogen/tools/experimental/BrowserUseTool) to surf the web.
@@ -90,14 +87,18 @@ The new [`run`](/docs/api-reference/autogen/ConversableAgent#run) method simplif
 - ✅ **Easier setup** – No need to manually register tools
 
 ```python
-websurfer = WebSurferAgent(name="WebSurfer", llm_config=llm_config, web_tool="browser_use")
+with llm_config:
+    websurfer = WebSurferAgent(name="WebSurfer", web_tool="browser_use")
 
-websurfer.run(
+run_response = websurfer.run(
     message="Get info from https://docs.ag2.ai/docs/Home",
     tools=websurfer.tools,
     max_turns=2,
     user_input=False,
 )
+
+# Iterate through the chat automatically with console output
+run_response.process()
 ```
 
 #### **Manual Setup:** Using [`initiate_chat`](/docs/api-reference/autogen/ConversableAgent#initiate-chat) Method
@@ -107,7 +108,8 @@ This method requires manually creating a [`UserProxyAgent`](/docs/api-reference/
 - ⚠️ **Must manually register tools**
 
 ```python
-websurfer = WebSurferAgent(name="WebSurfer", llm_config=llm_config, web_tool="browser_use")
+with llm_config:
+    websurfer = WebSurferAgent(name="WebSurfer", web_tool="browser_use")
 user_proxy = UserProxyAgent(name="user_proxy", human_input_mode="NEVER")
 # WebSurferAgent has a list of tools which are registered for LLM
 # We need to register the tools for execution with the UserProxyAgent
@@ -347,15 +349,15 @@ To integrate [`Crawl4AI`](https://github.com/unclecode/crawl4ai) with AG2, follo
     pip install -U ag2[openai,crawl4ai]
     ```
     <Tip>
-    If you have been using `autogen` or `pyautogen`, all you need to do is upgrade it using:
+    If you have been using `autogen` or `ag2`, all you need to do is upgrade it using:
     ```bash
     pip install -U autogen[openai,crawl4ai]
     ```
     or
     ```bash
-    pip install -U pyautogen[openai,crawl4ai]
+    pip install -U ag2[openai,crawl4ai]
     ```
-    as `pyautogen`, `autogen`, and `ag2` are aliases for the same PyPI package.
+    as `autogen` and `ag2` are aliases for the same PyPI package.
     </Tip>
 2. Set up Playwright:
 
@@ -379,6 +381,7 @@ import os
 
 import nest_asyncio
 
+from autogen import LLMConfig
 from autogen.agentchat import UserProxyAgent
 from autogen.agents.experimental import WebSurferAgent
 
@@ -394,11 +397,11 @@ We had great experience with `OpenAI`, `Anthropic`, `Gemini` and `Ollama`. Howev
 </Tip>
 
 ```python
-config_list = [{"api_type": "openai", "model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}]
-
-llm_config = {
-    "config_list": config_list,
-}
+llm_config = LLMConfig(
+    api_type="openai",
+    model="gpt-4o-mini",
+    api_key=os.environ["OPENAI_API_KEY"],
+)
 ```
 
 The only difference from the previous example is that the `web_tool` parameter must be set to `crawl4ai` in order for the [`Crawl4AITool`](/docs/api-reference/autogen/tools/experimental/Crawl4AITool) to be used.
@@ -414,14 +417,18 @@ The new [`run`](/docs/api-reference/autogen/ConversableAgent#run) method simplif
 
 ```python
 # `web_tool` parameter must be set to `crawl4ai` in order for the `Crawl4AITool` to be used.
-websurfer = WebSurferAgent(name="WebSurfer", llm_config=llm_config, web_tool="crawl4ai")
+with llm_config:
+    websurfer = WebSurferAgent(name="WebSurfer", web_tool="crawl4ai")
 
-websurfer.run(
+run_response = websurfer.run(
     message="Get info from https://docs.ag2.ai/docs/Home",
     tools=websurfer.tools,
     max_turns=2,
     user_input=False,
 )
+
+# Iterate through the chat automatically with console output
+run_response.process()
 ```
 
 #### **Manual Setup:** Using [`initiate_chat`](/docs/api-reference/autogen/ConversableAgent#initiate-chat) Method
@@ -432,7 +439,8 @@ This method requires manually creating a [`UserProxyAgent`](/docs/api-reference/
 
 ```python
 user_proxy = UserProxyAgent(name="user_proxy", human_input_mode="NEVER")
-websurfer = WebSurferAgent(name="WebSurfer", llm_config=llm_config, web_tool="crawl4ai")
+with llm_config:
+    websurfer = WebSurferAgent(name="WebSurfer", web_tool="crawl4ai")
 
 websurfer_tools = websurfer.tools
 # WebSurferAgent has a list of tools which are registered for LLM
@@ -577,12 +585,12 @@ Here is the extracted information from the AG2 documentation website:
 
 ### Explore Content
 - [Quick Start: Start building your AG2 application.](https://docs.ag2.ai/docs/user-guide/quick-start)
-- [Concepts: Learn about key concepts including ConversableAgent, GroupChat, Swarm, and tools.](https://docs.ag2.ai/docs/user-guide/basic-concepts/installing-ag2)
+- [Concepts: Learn about key concepts including ConversableAgent, GroupChat, Swarm, and tools.](https://docs.ag2.ai/latest/docs/user-guide/basic-concepts/installing-ag2)
 - [Advanced Concepts: Explore topics such as RAG, Code Execution, and complex GroupChats and Swarms.](https://docs.ag2.ai/docs/user-guide/advanced-concepts)
 - [Use Cases: Experiment with workflows in areas like Customer Service, Travel Planning, and Game Design.](https://docs.ag2.ai/docs/use-cases/use-cases)
 - [Notebook Examples: Access a collection of interactive notebooks covering all AG2 topics.](https://docs.ag2.ai/docs/use-cases/notebooks/Notebooks)
-- [API Reference: Detailed exploration of the AG2 API reference.](https://docs.ag2.ai/docs/api-reference)
-- [How to Contribute: Guidelines for getting involved with AG2 and enhancing the framework.](https://docs.ag2.ai/docs/contributor-guide/contributing)
+- [API Reference: Detailed exploration of the AG2 API reference.](https://docs.ag2.ai/latest/docs/api-reference/autogen/Agent/)
+- [How to Contribute: Guidelines for getting involved with AG2 and enhancing the framework.](https://docs.ag2.ai/latest/docs/contributor-guide/contributing)
 
 ### Popular Resources
 ...

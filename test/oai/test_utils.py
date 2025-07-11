@@ -76,6 +76,21 @@ JSON_SAMPLE = """
         "model": "gpt",
         "api_key": "not-needed",
         "base_url": "http://localhost:1234/v1"
+    },
+    {
+        "model": "gpt-4o",
+        "api_type": "openai",
+        "tags": ["gpt-4o"]
+    },
+    {
+        "model": "gpt-4o-mini",
+        "api_type": "openai",
+        "tags": ["gpt-4o-mini"]
+    },
+    {
+        "model": "gpt-4o-mini",
+        "api_type": "openai",
+        "tags": ["gpt-4o-mini", "tool"]
     }
 ]
 """
@@ -92,12 +107,92 @@ FILTER_CONFIG_TEST = [
     {
         "filter_dict": {"tags": ["gpt35", "gpt4"]},
         "exclude": True,
-        "expected": JSON_SAMPLE_DICT[2:4],
+        "expected": JSON_SAMPLE_DICT[2:7],
     },
     {
         "filter_dict": {"api_type": "azure", "api_version": "2024-02-01"},
         "exclude": False,
         "expected": [JSON_SAMPLE_DICT[2]],
+    },
+    {
+        "filter_dict": {"model": "gpt-4o-mini"},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[5], JSON_SAMPLE_DICT[6]],
+    },
+    {
+        "filter_dict": {"model": "gpt-4o"},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[4]],
+    },
+    {
+        "filter_dict": {"tags": ["tool"]},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[6]],
+    },
+    {
+        "filter_dict": {"tags": ["tool"], "model": "gpt-4o"},
+        "exclude": False,
+        "expected": [],
+    },
+]
+
+# Extended comprehensive test cases for filter_config
+EXTENDED_FILTER_CONFIG_TEST = [
+    # 1. Basic single field filtering
+    {
+        "name": "single_field_match",
+        "filter_dict": {"model": ["gpt-4"]},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[1]],
+        "description": "Basic single field filtering",
+    },
+    # 2. Multiple criteria (AND logic between fields)
+    {
+        "name": "multiple_criteria_and",
+        "filter_dict": {"model": ["gpt-35-turbo-v0301"], "api_type": ["azure"]},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[2]],
+        "description": "Multiple criteria must all match (AND logic)",
+    },
+    # 3. Tag filtering (list intersection)
+    {
+        "name": "tag_intersection",
+        "filter_dict": {"tags": ["gpt35"]},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[0]],
+        "description": "List field intersection matching",
+    },
+    # 3. Tag filtering (val in list)
+    {
+        "name": "tag_intersection",
+        "filter_dict": {"tags": "gpt35"},
+        "exclude": False,
+        "expected": [JSON_SAMPLE_DICT[0]],
+        "description": "List field intersection matching",
+    },
+    # 4. Exclude functionality
+    {
+        "name": "exclude_mode",
+        "filter_dict": {"api_type": ["openai"]},
+        "exclude": True,
+        "expected": [JSON_SAMPLE_DICT[2], JSON_SAMPLE_DICT[3]],
+        "description": "Exclude matching configs",
+    },
+    # 5. Empty filter (edge case)
+    {
+        "name": "empty_filter",
+        "filter_dict": {},
+        "exclude": False,
+        "expected": JSON_SAMPLE_DICT,
+        "description": "Empty filter returns all configs",
+    },
+    # 6. No matches
+    {
+        "name": "no_matches",
+        "filter_dict": {"model": ["nonexistent-model"]},
+        "exclude": False,
+        "expected": [],
+        "description": "No matching configs",
     },
 ]
 
@@ -122,7 +217,47 @@ def test_filter_config(test_case):
 
     config_list = filter_config(JSON_SAMPLE_DICT, filter_dict, exclude)
 
+    print(f"config_list: {config_list}")
+    print(f"expected: {expected}")
+
     assert _compare_lists_of_dicts(config_list, expected)
+
+
+@pytest.mark.parametrize("test_case", EXTENDED_FILTER_CONFIG_TEST)
+def test_filter_config_comprehensive(test_case):
+    """Comprehensive test for filter_config covering all parameter combinations and edge cases."""
+    filter_dict = test_case["filter_dict"]
+    exclude = test_case["exclude"]
+    expected = test_case["expected"]
+    description = test_case["description"]
+
+    print(f"\nTest: {test_case['name']}")
+    print(f"Description: {description}")
+    print(f"Filter dict: {filter_dict}")
+    print(f"Exclude: {exclude}")
+
+    config_list = filter_config(JSON_SAMPLE_DICT, filter_dict, exclude)
+
+    print(f"Result count: {len(config_list)}")
+    print(f"Expected count: {len(expected)}")
+
+    assert _compare_lists_of_dicts(config_list, expected), (
+        f"Test '{test_case['name']}' failed.\n"
+        f"Description: {description}\n"
+        f"Filter: {filter_dict}\n"
+        f"Exclude: {exclude}\n"
+        f"Expected: {expected}\n"
+        f"Got: {config_list}"
+    )
+
+
+def test_filter_config_warning() -> None:
+    test_case = FILTER_CONFIG_TEST[0]
+    filter_dict = test_case["filter_dict"]
+    exclude = test_case["exclude"]
+
+    with pytest.warns(DeprecationWarning):
+        filter_config(JSON_SAMPLE_DICT, filter_dict, exclude)
 
 
 def test_config_list_from_json():
@@ -174,6 +309,15 @@ def test_config_list_from_json():
     # Test that an error is thrown when the config list is missing
     with pytest.raises(FileNotFoundError):
         autogen.config_list_from_json("OAI_CONFIG_LIST.missing")
+
+
+def test_config_list_from_json_warning():
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False) as tmp_file:
+        tmp_file.write(JSON_SAMPLE)
+        tmp_file.flush()
+
+        with pytest.warns(DeprecationWarning):
+            autogen.config_list_from_json(tmp_file.name)
 
 
 def test_config_list_openai_aoai():

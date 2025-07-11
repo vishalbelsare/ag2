@@ -11,15 +11,15 @@ To get started with the `Browser Use` integration in AG2, follow these steps:
     pip install ag2[openai,browser-use]
     ```
     <Tip>
-    If you have been using `autogen` or `pyautogen`, all you need to do is upgrade it using:
+    If you have been using `autogen` or `ag2`, all you need to do is upgrade it using:
     ```bash
     pip install -U autogen[openai,browser-use]
     ```
     or
     ```bash
-    pip install -U pyautogen[openai,browser-use]
+    pip install -U ag2[openai,browser-use]
     ```
-    as `pyautogen`, `autogen`, and `ag2` are aliases for the same PyPI package.
+    as `autogen` and `ag2` are aliases for the same PyPI package.
     </Tip>
 2. Set up Playwright:
 
@@ -43,7 +43,7 @@ You're all set! Now you can start using browsing features in AG2.
 import os
 import nest_asyncio
 
-from autogen import AssistantAgent, UserProxyAgent
+from autogen import AssistantAgent, UserProxyAgent, LLMConfig
 from autogen.tools.experimental import BrowserUseTool
 
 nest_asyncio.apply()
@@ -64,14 +64,11 @@ We had great experience with `OpenAI`, `Anthropic`, and `Gemini`. However, `Deep
 </Tip>
 
 ```python
-config_list = [{"api_type": "openai", "model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}]
-
-llm_config = {
-    "config_list": config_list,
-}
+llm_config = LLMConfig(api_type="openai", model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"])
 
 user_proxy = UserProxyAgent(name="user_proxy", human_input_mode="NEVER")
-assistant = AssistantAgent(name="assistant", llm_config=llm_config)
+with llm_config:
+    assistant = AssistantAgent(name="assistant")
 ```
 
 ### Web Browsing with Browser Use

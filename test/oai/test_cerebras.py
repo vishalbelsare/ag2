@@ -52,6 +52,7 @@ def test_cerebras_llm_config_entry():
         "seed": 42,
         "stream": False,
         "temperature": 1.0,
+        "hide_tools": "never",
         "tags": [],
     }
     actual = cerebras_llm_config.model_dump()
@@ -114,6 +115,7 @@ def test_parsing_params(cerebras_client):
         "stream": False,
         "temperature": 1,
         "top_p": 0.8,
+        "tool_choice": None,
     }
     result = cerebras_client.parse_params(params)
     assert result == expected_params
@@ -129,6 +131,7 @@ def test_parsing_params(cerebras_client):
         "stream": False,
         "temperature": 1,
         "top_p": None,
+        "tool_choice": None,
     }
     result = cerebras_client.parse_params(params)
     assert result == expected_params

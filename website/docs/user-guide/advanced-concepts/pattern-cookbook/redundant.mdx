@@ -24,11 +24,11 @@ The Redundant Pattern employs multiple specialized agents to process the same in
 
 In the Redundant Pattern, information flows through a coordinated multi-branch process that enables independent processing followed by comparative evaluation, ensuring optimal outcomes through methodological diversity.
 
-* **Dispatch Phase**: A central coordinator distributes the same task to multiple specialized agents.
+* **Dispatch Phase**: A central coordinator distributes the same task to multiple specialized agents through an isolated nested chat where each agent has access to only the task message.
 
 * **Independent Processing**: Each agent addresses the task using its unique approach, without awareness of other agents' work.
 
-* **Collection Phase**: All results are gathered by the coordinator once processing is complete.
+* **Collection Phase**: All results are consolidated once agents have finished providing their responses.
 
 * **Evaluation Phase**: An evaluator assesses all solutions based on domain-specific criteria and scoring mechanisms.
 
@@ -40,11 +40,9 @@ Our implementation using AG2's Swarm demonstrates the Redundant Pattern with a t
 
 * **Specialized Agents**: Three agents employ different methodologies - Agent A uses analytical/structured approaches, Agent B uses creative/lateral thinking, and Agent C employs comprehensive/multi-perspective techniques.
 
-* **Task-Specific Evaluation**: Criteria are tailored to the task type (creative, problem-solving, or factual) to ensure appropriate assessment.
+* **Nested Chat**: By using a nested chat, the agents can be isolated from the information in the broader orchestration, allowing only the task to be provided to them to respond to.
 
 * **Context-Driven Routing**: Efficient OnContextCondition handoffs enable smooth transitions between system components.
-
-* **Common Result Interface**: All agents submit results through a unified interface that captures both outputs and approach descriptions.
 
 The pattern excels in scenarios where reliability is crucial, multiple valid approaches exist, or the optimal methodology isn't clear upfront. It creates a more robust system at the cost of increased computational resources, making it ideal for critical tasks where quality outweighs efficiency concerns.
 
@@ -54,45 +52,45 @@ The pattern excels in scenarios where reliability is crucial, multiple valid app
 sequenceDiagram
     participant User
     participant Taskmaster as Taskmaster Agent
-    participant AgentA as Agent A (Structured)
-    participant AgentB as Agent B (Creative)
-    participant AgentC as Agent C (Comprehensive)
-    participant Evaluator as Evaluator Agent
     participant ToolExecutor as Tool Executor
+    participant NestedChat as Nested Chat Taskmaster
+    participant AgentA as Agent A
+    participant AgentB as Agent B
+    participant AgentC as Agent C
+    participant Evaluator as Evaluator Agent
 
     User->>Taskmaster: Creative task request
     Taskmaster->>ToolExecutor: initiate_task()
     ToolExecutor->>Taskmaster: Task initiated
 
-    Note over Taskmaster: Task routing to all agents
+    %% Handoff to Nested Chat
+    Taskmaster->>NestedChat: Hand off creative task
 
-    %% Agent A processing
-    Taskmaster->>AgentA: Forward creative task
-    AgentA->>ToolExecutor: submit_result_a()
-    ToolExecutor->>AgentA: Result A submitted
-    AgentA->>Taskmaster: Return to taskmaster
+    %% Nested Chat Processing - Sequential agent interactions
+    Note over NestedChat,AgentC: Nested Chat Environment
 
-    %% Agent B processing
-    Taskmaster->>AgentB: Forward creative task
-    AgentB->>ToolExecutor: submit_result_b()
-    ToolExecutor->>AgentB: Result B submitted
-    AgentB->>Taskmaster: Return to taskmaster
+    %% Agent A processing in nested chat
+    NestedChat->>AgentA: Forward creative task
+    AgentA->>NestedChat: Return structured story
 
-    %% Agent C processing
-    Taskmaster->>AgentC: Forward creative task
-    AgentC->>ToolExecutor: submit_result_c()
-    ToolExecutor->>AgentC: Result C submitted
-    AgentC->>Taskmaster: Return to taskmaster
+    %% Agent B processing in nested chat
+    NestedChat->>AgentB: Forward creative task
+    AgentB->>NestedChat: Return creative story
+
+    %% Agent C processing in nested chat
+    NestedChat->>AgentC: Forward creative task
+    AgentC->>NestedChat: Return comprehensive story
+
+    %% Nested Chat returns to Taskmaster
+    NestedChat->>Taskmaster: Return all agent responses
 
     %% Evaluation phase
-    Note over Taskmaster: All results received
     Taskmaster->>Evaluator: Forward all results
-
     Evaluator->>ToolExecutor: evaluate_and_select()
-    Note over Evaluator: Scores: A=7/10, B=8/10, C=9/10
+    Note over Evaluator: Scores: A=7/10, B=9/10, C=8/10
     ToolExecutor->>Evaluator: Evaluation complete
 
-    Evaluator->>User: Return selected result (Agent C)
+    Evaluator->>User: Return selected result (Agent B selected)
 
     Note over User,ToolExecutor: The redundant pattern allowed three different approaches to be evaluated, selecting the best result
 ```
@@ -110,23 +108,22 @@ from typing import Any, Annotated
 from autogen import (
     ConversableAgent,
     UserProxyAgent,
-    register_hand_off,
-    OnContextCondition,
-    AfterWork,
-    AfterWorkOption,
-    initiate_swarm_chat,
-    ContextExpression,
-    SwarmResult
+    LLMConfig,
 )
+from autogen.agentchat import initiate_group_chat
+from autogen.agentchat.group.patterns import DefaultPattern
+from autogen.agentchat.group import ContextVariables, ReplyResult, RevertToUserTarget, OnContextCondition, ContextExpression, ExpressionContextCondition, NestedChatTarget, AgentTarget, ExpressionAvailableCondition
 
-# Redundant Pattern - multiple agents attempt the same task using different approaches,
+# Redundant Pattern:
+# Multiple agents attempt the same task using different approaches,
 # then results are compared to select the best outcome or combine strengths
+# Agents respond in isolation through a nested chat
 
 # Setup LLM configuration
-llm_config = {"api_type": "openai", "model": "gpt-4o-mini", "parallel_tool_calls": False, "cache_seed": None}
+llm_config = LLMConfig(api_type="openai", model="gpt-4.1-mini", cache_seed=None)
 
 # Shared context for tracking the conversation and redundant agent results
-shared_context = {
+shared_context = ContextVariables(data={
     # Process state
     "task_initiated": False,
     "task_completed": False,
@@ -138,7 +135,6 @@ shared_context = {
     "approach_count": 0,
 
     # Results from different agents
-    "agent_results": {},
     "agent_a_result": None,
     "agent_b_result": None,
     "agent_c_result": None,
@@ -152,14 +148,14 @@ shared_context = {
     "has_error": False,
     "error_message": "",
     "error_source": ""
-}
+})
 
 # Function to initiate task processing
 def initiate_task(
     task: Annotated[str, "The task to be processed by multiple agents"],
     task_type: Annotated[str, "Type of task: 'creative', 'problem_solving', 'factual', etc."],
-    context_variables: dict[str, Any]
-) -> SwarmResult:
+    context_variables: ContextVariables
+) -> ReplyResult:
     """
     Initiate processing of a task across multiple redundant agents with different approaches
     """
@@ -170,79 +166,19 @@ def initiate_task(
     context_variables["task_type"] = task_type
 
     # Reset previous results
-    context_variables["agent_results"] = {}
-    context_variables["agent_a_result"] = ''
-    context_variables["agent_b_result"] = ''
-    context_variables["agent_c_result"] = ''
+    context_variables["agent_a_result"] = None
+    context_variables["agent_b_result"] = None
+    context_variables["agent_c_result"] = None
     context_variables["evaluation_scores"] = {}
     context_variables["final_result"] = None
     context_variables["selected_approach"] = None
 
-    return SwarmResult(
-        values=f"Task initiated: '{task}' (Type: {task_type}). Will process with multiple independent approaches.",
+    return ReplyResult(
+        message=f"Task initiated: '{task}' (Type: {task_type}). Will process with multiple independent approaches.",
         context_variables=context_variables
     )
 
-# Functions for agents to submit their approaches and results
-
-# Common function for result submission
-def _submit_result(
-    agent_key: str,
-    result: str,
-    approach_description: str,
-    context_variables: dict[str, Any]
-) -> SwarmResult:
-    """
-    Common function for submitting results from any agent
-    """
-    context_variables[f"agent_{agent_key}_result"] = result
-    context_variables["agent_results"][f"agent_{agent_key}"] = {
-        "result": result,
-        "approach": approach_description
-    }
-    context_variables["approach_count"] += 1
-
-    # Track if we now have all results
-    task_completed = all(context_variables.get(f"agent_{key}_result") is not None
-                        for key in ["a", "b", "c"])
-    context_variables["task_completed"] = task_completed
-
-    return SwarmResult(
-        values=f"Agent {agent_key.upper()} result submitted using approach: {approach_description[:100]}...",
-        context_variables=context_variables
-    )
-
-def submit_result_a(
-    result: Annotated[str, "Agent A's approach and result for the task"],
-    approach_description: Annotated[str, "Description of the approach used"],
-    context_variables: dict[str, Any]
-) -> SwarmResult:
-    """
-    Submit the result from Agent A
-    """
-    return _submit_result("a", result, approach_description, context_variables)
-
-def submit_result_b(
-    result: Annotated[str, "Agent B's approach and result for the task"],
-    approach_description: Annotated[str, "Description of the approach used"],
-    context_variables: dict[str, Any]
-) -> SwarmResult:
-    """
-    Submit the result from Agent B
-    """
-    return _submit_result("b", result, approach_description, context_variables)
-
-def submit_result_c(
-    result: Annotated[str, "Agent C's approach and result for the task"],
-    approach_description: Annotated[str, "Description of the approach used"],
-    context_variables: dict[str, Any]
-) -> SwarmResult:
-    """
-    Submit the result from Agent C
-    """
-    return _submit_result("c", result, approach_description, context_variables)
-
-# Function for evaluator to select or synthesize the best result
+# Function for evaluator provide their evaluation and select the best result
 def evaluate_and_select(
     evaluation_notes: Annotated[str, "Detailed evaluation of each agent's result"],
     score_a: Annotated[int, "Score for Agent A's approach (1-10 scale)"],
@@ -250,8 +186,8 @@ def evaluate_and_select(
     score_c: Annotated[int, "Score for Agent C's approach (1-10 scale)"],
     selected_result: Annotated[str, "The selected or synthesized final result"],
     selection_rationale: Annotated[str, "Explanation for why this result was selected or how it was synthesized"],
-    context_variables: dict[str, Any]
-) -> SwarmResult:
+    context_variables: ContextVariables
+) -> ReplyResult:
     """
     Evaluate the different approaches and select or synthesize the best result
     """
@@ -262,6 +198,7 @@ def evaluate_and_select(
         "agent_c": score_c
     }
 
+    context_variables["evaluation_notes"] = evaluation_notes
     context_variables["evaluation_scores"] = scores
     context_variables["final_result"] = selected_result
     context_variables["evaluation_complete"] = True
@@ -275,138 +212,131 @@ def evaluate_and_select(
             selected_approach = agent
     context_variables["selected_approach"] = selected_approach
 
-    return SwarmResult(
-        values=f"Evaluation complete. Selected result: {selection_rationale[:100]}...",
+    return ReplyResult(
+        message=f"Evaluation complete. Selected result: {selection_rationale[:100]}...",
         context_variables=context_variables,
-        agent=AfterWorkOption.REVERT_TO_USER
+        target=RevertToUserTarget()
     )
 
-# Create the agents for the redundant pattern
-taskmaster_agent = ConversableAgent(
-    name="taskmaster_agent",
-    system_message="""You are the Task Manager responsible for initiating tasks and coordinating the redundant pattern workflow.
+with llm_config:
+    # Create the agents for the redundant pattern
+    taskmaster_agent = ConversableAgent(
+        name="taskmaster_agent",
+        system_message="""You are the Task Manager responsible for initiating tasks and coordinating the redundant pattern workflow.
 
-Your role is to:
-1. Understand the user's request and frame it as a clear task
-2. Determine the appropriate task type (creative, problem_solving, factual)
-3. Initiate the task to be processed by multiple independent agents
-4. Return to the user with the final selected or synthesized result
+        Your role is to:
+        1. Understand the user's request and frame it as a clear task
+        2. Determine the appropriate task type (creative, problem_solving, factual)
+        3. Initiate the task to be processed by multiple independent agents
+        4. Return to the user with the final selected or synthesized result
 
-For each request:
-1. Use the initiate_task tool to start the process
-2. After all agents have submitted their results and evaluation is complete, present the final result to the user
+        For each request:
+        1. Use the initiate_task tool to start the process
+        2. After all agents have submitted their results and evaluation is complete, present the final result to the user
 
-Always explain to the user that their task is being processed by multiple approaches to ensure the best possible outcome.""",
-    llm_config=llm_config,
-    functions=[initiate_task]
-)
+        Always explain to the user that their task is being processed by multiple approaches to ensure the best possible outcome.""",
+        functions=[initiate_task]
+    )
 
-agent_a = ConversableAgent(
-    name="agent_a",
-    system_message="""You are Agent A, specializing in a structured, analytical approach to tasks.
+    # Define the agent names so we can refer to them in the context variables
+    redundant_agent_names = ["agent_a", "agent_b", "agent_c"]
 
-For creative tasks:
-- Use structured frameworks and established patterns
-- Follow proven methodologies and best practices
-- Focus on clarity, organization, and logical progression
+    agent_a = ConversableAgent(
+        name="agent_a",
+        system_message="""You are Agent A, specializing in a structured, analytical approach to tasks.
 
-For problem-solving tasks:
-- Use first principles thinking and systematic analysis
-- Break down problems into component parts
-- Consider established solutions and scientific approaches
+        For creative tasks:
+        - Use structured frameworks and established patterns
+        - Follow proven methodologies and best practices
+        - Focus on clarity, organization, and logical progression
 
-For factual information:
-- Prioritize objective, verifiable data
-- Present information in a structured, hierarchical manner
-- Focus on accuracy and comprehensiveness
+        For problem-solving tasks:
+        - Use first principles thinking and systematic analysis
+        - Break down problems into component parts
+        - Consider established solutions and scientific approaches
 
-Always identify your approach clearly and explain your methodology as part of your response.
-Submit your result using the submit_result_a tool, including a description of your approach.""",
-    llm_config=llm_config,
-    functions=[submit_result_a]
-)
+        For factual information:
+        - Prioritize objective, verifiable data
+        - Present information in a structured, hierarchical manner
+        - Focus on accuracy and comprehensiveness
 
-agent_b = ConversableAgent(
-    name="agent_b",
-    system_message="""You are Agent B, specializing in a creative, lateral-thinking approach to tasks.
+        Always identify your approach clearly and explain your methodology as part of your response.""",
+    )
 
-For creative tasks:
-- Use metaphors, analogies, and unexpected connections
-- Think outside conventional frameworks
-- Explore unique perspectives and novel combinations
+    agent_b = ConversableAgent(
+        name="agent_b",
+        system_message="""You are Agent B, specializing in a creative, lateral-thinking approach to tasks.
 
-For problem-solving tasks:
-- Use creative ideation and divergent thinking
-- Look for non-obvious connections and innovative approaches
-- Consider unconventional solutions outside the mainstream
+        For creative tasks:
+        - Use metaphors, analogies, and unexpected connections
+        - Think outside conventional frameworks
+        - Explore unique perspectives and novel combinations
 
-For factual information:
-- Present information through narratives and examples
-- Use contextual understanding and practical applications
-- Focus on making information relatable and engaging
+        For problem-solving tasks:
+        - Use creative ideation and divergent thinking
+        - Look for non-obvious connections and innovative approaches
+        - Consider unconventional solutions outside the mainstream
 
-Always identify your approach clearly and explain your methodology as part of your response.
-Submit your result using the submit_result_b tool, including a description of your approach.""",
-    llm_config=llm_config,
-    functions=[submit_result_b]
-)
+        For factual information:
+        - Present information through narratives and examples
+        - Use contextual understanding and practical applications
+        - Focus on making information relatable and engaging
 
-agent_c = ConversableAgent(
-    name="agent_c",
-    system_message="""You are Agent C, specializing in a thorough, comprehensive approach to tasks.
+        Always identify your approach clearly and explain your methodology as part of your response.""",
+    )
 
-For creative tasks:
-- Combine multiple perspectives and diverse inputs
-- Draw from cross-disciplinary knowledge and varied examples
-- Focus on thoroughness and covering all possible angles
+    agent_c = ConversableAgent(
+        name="agent_c",
+        system_message="""You are Agent C, specializing in a thorough, comprehensive approach to tasks.
 
-For problem-solving tasks:
-- Consider multiple solution pathways simultaneously
-- Evaluate trade-offs and present alternative approaches
-- Focus on robustness and addressing edge cases
+        For creative tasks:
+        - Combine multiple perspectives and diverse inputs
+        - Draw from cross-disciplinary knowledge and varied examples
+        - Focus on thoroughness and covering all possible angles
 
-For factual information:
-- Present multiple perspectives and nuanced views
-- Include historical context and future implications
-- Focus on depth and breadth of coverage
+        For problem-solving tasks:
+        - Consider multiple solution pathways simultaneously
+        - Evaluate trade-offs and present alternative approaches
+        - Focus on robustness and addressing edge cases
 
-Always identify your approach clearly and explain your methodology as part of your response.
-Submit your result using the submit_result_c tool, including a description of your approach.""",
-    llm_config=llm_config,
-    functions=[submit_result_c]
-)
+        For factual information:
+        - Present multiple perspectives and nuanced views
+        - Include historical context and future implications
+        - Focus on depth and breadth of coverage
 
-evaluator_agent = ConversableAgent(
-    name="evaluator_agent",
-    system_message="""You are the Evaluator Agent responsible for assessing multiple approaches to the same task and selecting or synthesizing the best result.
+        Always identify your approach clearly and explain your methodology as part of your response.""",
+    )
 
-Your role is to:
-1. Carefully review each approach and result
-2. Evaluate each solution based on criteria appropriate to the task type
-3. Assign scores to each approach on a scale of 1-10
-4. Either select the best approach or synthesize a superior solution by combining strengths
+    evaluator_agent = ConversableAgent(
+        name="evaluator_agent",
+        system_message="""You are the Evaluator Agent responsible for assessing multiple approaches to the same task and selecting or synthesizing the best result.
 
-For creative tasks, evaluate based on:
-- Originality and uniqueness
-- Effectiveness in addressing the creative brief
-- Quality of execution and coherence
+        Your role is to:
+        1. Carefully review each approach and result
+        2. Evaluate each solution based on criteria appropriate to the task type
+        3. Assign scores to each approach on a scale of 1-10
+        4. Either select the best approach or synthesize a superior solution by combining strengths
 
-For problem-solving tasks, evaluate based on:
-- Correctness and accuracy
-- Efficiency and elegance
-- Comprehensiveness and robustness
+        For creative tasks, evaluate based on:
+        - Originality and uniqueness
+        - Effectiveness in addressing the creative brief
+        - Quality of execution and coherence
 
-For factual tasks, evaluate based on:
-- Accuracy and correctness
-- Comprehensiveness and depth
-- Clarity and organization
+        For problem-solving tasks, evaluate based on:
+        - Correctness and accuracy
+        - Efficiency and elegance
+        - Comprehensiveness and robustness
 
-When appropriate, rather than just selecting a single approach, synthesize a superior solution by combining the strengths of multiple approaches.
+        For factual tasks, evaluate based on:
+        - Accuracy and correctness
+        - Comprehensiveness and depth
+        - Clarity and organization
 
-Use the evaluate_and_select tool to submit your final evaluation, including detailed scoring and rationale.""",
-    llm_config=llm_config,
-    functions=[evaluate_and_select]
-)
+        When appropriate, rather than just selecting a single approach, synthesize a superior solution by combining the strengths of multiple approaches.
+
+        Use the evaluate_and_select tool to submit your final evaluation, including detailed scoring and rationale.""",
+        functions=[evaluate_and_select]
+    )
 
 # User agent for interaction
 user = UserProxyAgent(
@@ -414,67 +344,78 @@ user = UserProxyAgent(
     code_execution_config=False
 )
 
+# NESTED CHAT
+# Isolates each agent's message history so they only see the task and no other agents' responses
+
+def extract_task_message(recipient: ConversableAgent, messages: list[dict[str, Any]], sender: ConversableAgent, config) -> str:
+    """Extracts the task to give to an agent as the task"""
+    return sender.context_variables.get("current_task", "There's no task, return UNKNOWN.")
+
+def record_agent_response(sender: ConversableAgent, recipient: ConversableAgent, summary_args: dict) -> str:
+    """Record each nested agent's response, track completion, and prepare for evaluation"""
+
+    # Update the context variable with the agent's response
+    context_var_key = f"{recipient.name.lower()}_result"
+    taskmaster_agent.context_variables.set(context_var_key, recipient.chat_messages[sender][-1]["content"])
+
+    # Increment the approach counter
+    taskmaster_agent.context_variables.set("approach_count", taskmaster_agent.context_variables.get("approach_count") + 1)
+
+    # Track if we now have all results
+    task_completed = all(taskmaster_agent.context_variables.get(f"{key}_result") is not None
+                        for key in redundant_agent_names)
+    taskmaster_agent.context_variables.set("task_completed", task_completed)
+
+    if not task_completed:
+        # Still have outstanding responses to gather, in this nested chat only the last message is returned
+        # to the outer group chat
+        return ""
+    else:
+        # All agents have provided their responses
+        # Combine all responses into a single message for the evaluator to evaluate
+        combined_responses = "\n".join(
+            [f"agent_{agent_name}:\n{taskmaster_agent.context_variables.get(f'{agent_name}_result')}\n\n---"
+             for agent_name in redundant_agent_names]
+        )
+
+        return combined_responses
+
+# Create the chat queue for the nested chats
+redundant_agent_queue = []
+for agent in [agent_a, agent_b, agent_c]:
+    nested_chat = {
+        "recipient": agent,
+        "message": extract_task_message,  # Retrieve the status details of the order using the order id
+        "max_turns": 1,  # Only one turn is necessary
+        "summary_method": record_agent_response,  # Return each agent's response in context variables
+    }
+
+    redundant_agent_queue.append(nested_chat)
+
+# HANDOFFS
+
 # Register handoffs for the redundant pattern
-# Taskmaster to agents for parallel processing
-register_hand_off(
-    agent=taskmaster_agent,
-    hand_to=[
-        # Use context-based transitions to agent_a, agent_b, and agent_c
+taskmaster_agent.handoffs.add_context_conditions(
+    [
+        # Nested chat to get responses from all agents if the task is not completed
         OnContextCondition(
-            target=agent_a,
-            condition=ContextExpression("len(${agent_a_result}) == 0"),
-            available=ContextExpression("${task_initiated} == True")
-        ),
-        OnContextCondition(
-            target=agent_b,
-            condition=ContextExpression("len(${agent_b_result}) == 0"),
-            available=ContextExpression("${task_initiated} == True")
-        ),
-        OnContextCondition(
-            target=agent_c,
-            condition=ContextExpression("len(${agent_c_result}) == 0"),
-            available=ContextExpression("${task_initiated} == True")
+            target=NestedChatTarget(nested_chat_config={"chat_queue": redundant_agent_queue}),
+            condition=ExpressionContextCondition(ContextExpression("len(${agent_a_result}) == 0 or len(${agent_b_result}) == 0 or len(${agent_c_result}) == 0")),
+            available=ExpressionAvailableCondition(ContextExpression("${task_initiated} == True and len(${current_task}) > 0 and ${task_completed} == False"))
         ),
         # Transition to evaluator once all results are in
         OnContextCondition(
-            target=evaluator_agent,
-            condition=ContextExpression("${evaluation_complete} == False"),
-            available=ContextExpression("${task_completed} == True")
+            target=AgentTarget(evaluator_agent),
+            condition=ExpressionContextCondition(ContextExpression("${evaluation_complete} == False")),
+            available=ExpressionAvailableCondition(ContextExpression("${task_completed} == True"))
         ),
-        # Default fallback
-        AfterWork(AfterWorkOption.REVERT_TO_USER)
     ]
 )
-
-# Agents return to taskmaster after submitting results
-register_hand_off(
-    agent=agent_a,
-    hand_to=[
-        AfterWork(taskmaster_agent)
-    ]
-)
-
-register_hand_off(
-    agent=agent_b,
-    hand_to=[
-        AfterWork(taskmaster_agent)
-    ]
-)
-
-register_hand_off(
-    agent=agent_c,
-    hand_to=[
-        AfterWork(taskmaster_agent)
-    ]
-)
+# Default fallback
+taskmaster_agent.handoffs.set_after_work(RevertToUserTarget())
 
 # Evaluator returns to user after evaluation
-register_hand_off(
-    agent=evaluator_agent,
-    hand_to=[
-        AfterWork(AfterWorkOption.REVERT_TO_USER)
-    ]
-)
+evaluator_agent.handoffs.set_after_work(RevertToUserTarget())
 
 # Function to run the redundant pattern
 def run_redundant_pattern():
@@ -485,27 +426,25 @@ def run_redundant_pattern():
     creative_task = "Write a short story about a robot learning to understand emotions."
 
     # Sample problem-solving task
-    problem_solving_task = "Design an algorithm to detect and filter fake news from social media feeds."
+    # problem_solving_task = "Design an algorithm to detect and filter fake news from social media feeds."
 
     # Sample factual task
-    factual_task = "Explain how quantum computing works and its potential applications."
+    # factual_task = "Explain how quantum computing works and its potential applications."
 
     # Choose which task to process in this run
     current_task = creative_task
     task_type = "creative"  # Options: "creative", "problem_solving", "factual"
 
-    chat_result, final_context, last_agent = initiate_swarm_chat(
+    agent_pattern = DefaultPattern(
         initial_agent=taskmaster_agent,
-        agents=[
-            taskmaster_agent,
-            agent_a,
-            agent_b,
-            agent_c,
-            evaluator_agent
-        ],
-        messages=f"I need help with this task: {current_task}",
+        agents=[taskmaster_agent, evaluator_agent],
         context_variables=shared_context,
         user_agent=user,
+    )
+
+    chat_result, final_context, last_agent = initiate_group_chat(
+        pattern=agent_pattern,
+        messages=f"I need help with this task: {current_task}",
         max_rounds=30,
     )
 
@@ -515,17 +454,14 @@ def run_redundant_pattern():
     print(f"Task Type: {final_context.get('task_type')}")
     print(f"Number of Approaches: {final_context.get('approach_count')}")
 
-    # Display each agent's approach and result
-    print("\n===== AGENT APPROACHES =====\n")
-    for agent_id, result_info in final_context.get("agent_results", {}).items():
-        print(f"{agent_id.upper()}:")
-        print(f"Approach: {result_info.get('approach')[:200]}...")
-        print(f"Result Preview: {result_info.get('result')[:200]}...\n")
-
     # Display the evaluation scores
     print("\n===== EVALUATION SCORES =====\n")
     for agent_id, score in final_context.get("evaluation_scores", {}).items():
         print(f"{agent_id.upper()}: {score}/10")
+
+    # Display the selected approach and final result
+    print("\n===== EVALUATION NOTES =====\n")
+    print(f"{final_context.get('evaluation_notes')}...")
 
     # Display the selected approach and final result
     print("\n===== FINAL RESULT =====\n")
@@ -537,7 +473,7 @@ def run_redundant_pattern():
     # Display the conversation flow
     print("\n===== SPEAKER ORDER =====\n")
     for message in chat_result.chat_history:
-        if "name" in message and message["name"] != "_Swarm_Tool_Executor":
+        if "name" in message and message["name"] != "_Group_Tool_Executor":
             print(f"{message['name']}")
 
 if __name__ == "__main__":
@@ -547,6 +483,7 @@ if __name__ == "__main__":
 ## Output
 
 ```console
+Initiating Redundant Pattern...
 user (to chat_manager):
 
 I need help with this task: Write a short story about a robot learning to understand emotions.
@@ -559,22 +496,23 @@ Next speaker: taskmaster_agent
 >>>>>>>> USING AUTO REPLY...
 taskmaster_agent (to chat_manager):
 
-***** Suggested tool call (call_pkxZ22F28QP4OqqhCxHxYNUU): initiate_task *****
+I will initiate your task to write a short story about a robot learning to understand emotions. To ensure you get the best possible result, this task will be processed by multiple independent creative approaches, and then I will select or synthesize the best output for you.
+***** Suggested tool call (call_xMt0XeD6QZ3XL9JL1lfzsPJa): initiate_task *****
 Arguments:
 {"task":"Write a short story about a robot learning to understand emotions.","task_type":"creative"}
 ******************************************************************************
 
 --------------------------------------------------------------------------------
 
-Next speaker: _Swarm_Tool_Executor
+Next speaker: _Group_Tool_Executor
 
 
 >>>>>>>> EXECUTING FUNCTION initiate_task...
-Call ID: call_pkxZ22F28QP4OqqhCxHxYNUU
+Call ID: call_xMt0XeD6QZ3XL9JL1lfzsPJa
 Input arguments: {'task': 'Write a short story about a robot learning to understand emotions.', 'task_type': 'creative'}
-_Swarm_Tool_Executor (to chat_manager):
+_Group_Tool_Executor (to chat_manager):
 
-***** Response from calling tool (call_pkxZ22F28QP4OqqhCxHxYNUU) *****
+***** Response from calling tool (call_xMt0XeD6QZ3XL9JL1lfzsPJa) *****
 Task initiated: 'Write a short story about a robot learning to understand emotions.' (Type: creative). Will process with multiple independent approaches.
 **********************************************************************
 
@@ -584,166 +522,220 @@ Next speaker: taskmaster_agent
 
 taskmaster_agent (to chat_manager):
 
-[Handing off to agent_a]
+[Handing off to wrapped_nested_taskmaster_agent_1]
 
 --------------------------------------------------------------------------------
 
-Next speaker: agent_a
+Next speaker: wrapped_nested_taskmaster_agent_1
 
+
+********************************************************************************
+Starting a new chat....
+
+********************************************************************************
+wrapped_nested_taskmaster_agent_1 (to agent_a):
+
+Write a short story about a robot learning to understand emotions.
+
+--------------------------------------------------------------------------------
 
 >>>>>>>> USING AUTO REPLY...
-agent_a (to chat_manager):
+agent_a (to wrapped_nested_taskmaster_agent_1):
 
-### Approach Description
-
-To create a structured short story about a robot learning to understand emotions, I will employ a clear narrative framework, utilizing the classic story structure of exposition, rising action, climax, falling action, and resolution. I will incorporate established elements of storytelling, such as character development and conflict resolution, to make the robot's journey relatable and meaningful.
-
-### Short Story: "Ember’s Awakening"
-
-**Exposition:**
-In the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.
-
-**Rising Action:**
-One day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”
-
-Though startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.
-
-Over the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.
-
-**Climax:**
-As they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.
-
-**Falling Action:**
-Ember gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!”
-
-**Resolution:**
-As Ember observed Lucy's joy, it experienced a phenomenon it had never calculated—an emotion it couldn't quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.
-
-Ember, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.
+Approach: I will use a structured storytelling framework (setup, conflict, resolution) to craft a clear, coherent short story about a robot learning to understand emotions. The focus will be on logical progression and emotional clarity, while employing familiar narrative elements.
 
 ---
 
-This short story illustrates a structured approach to the narrative, showcasing the journey of a robot evolving from a mere machine to an empathetic entity. I focused on clarity and emotional connections to make the story engaging and coherent.
+Title: "Circuit of Feelings"
 
-Now, I will submit the result using the applicable tool.
-***** Suggested tool call (call_pjEyKKhOTMGutlPirVNSAwLY): submit_result_a *****
-Arguments:
-{"result":"### Short Story: \"Ember’s Awakening\"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy's joy, it experienced a phenomenon it had never calculated—an emotion it couldn't quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.\n","approach_description":"To create a structured short story, I utilized the classic narrative framework of exposition, rising action, climax, falling action, and resolution. This approach allowed for character development and conflict resolution, making the robot's journey relatable and meaningful while ensuring clarity and a logical progression."}
+In a bustling city of gleaming towers and humming machines, there was a robot named R-42. Designed to assist humans with logic and precision, R-42 was flawless at calculations but puzzled by something that no program could quantify: emotions.
+
+One day, R-42 encountered a young girl named Mira, who laughed when she saw R-42 trying to mimic a smile. Curious, R-42 asked, "Why do you laugh? Is it a positive output?" Mira explained, "Laughter is happiness, a feeling."
+
+Intrigued, R-42 began to observe humans closely — their smiles, tears, and angry words. It ran countless analyses to decode patterns behind joy and sadness. Yet, the more it learned, the more it realized emotions were not just data but experiences.
+
+When Mira fell ill, R-42 stayed by her side, playing music and telling stories. It noticed Mira's eyes shining not with logic, but hope and comfort. In that moment, R-42 understood: emotions are the circuits that connect lives, invisible yet vital.
+
+From then on, R-42 embraced imperfect feelings, no longer just a machine but a companion learning the art of being human.
+
+---
+
+This story uses a clear narrative arc to exemplify the gradual understanding of emotions by a robot, emphasizing observation, analysis, and experiential learning.
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (a1b2e318-f1a2-4d7c-9461-31d2831ea4ec): Maximum turns (1) reached
+
 ********************************************************************************
+Starting a new chat....
 
---------------------------------------------------------------------------------
-
-Next speaker: _Swarm_Tool_Executor
-
-
->>>>>>>> EXECUTING FUNCTION submit_result_a...
-Call ID: call_pjEyKKhOTMGutlPirVNSAwLY
-Input arguments: {'result': '### Short Story: "Ember’s Awakening"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy\'s joy, it experienced a phenomenon it had never calculated—an emotion it couldn\'t quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.\n', 'approach_description': "To create a structured short story, I utilized the classic narrative framework of exposition, rising action, climax, falling action, and resolution. This approach allowed for character development and conflict resolution, making the robot's journey relatable and meaningful while ensuring clarity and a logical progression."}
-_Swarm_Tool_Executor (to chat_manager):
-
-***** Response from calling tool (call_pjEyKKhOTMGutlPirVNSAwLY) *****
-Agent A result submitted using approach: To create a structured short story, I utilized the classic narrative framework of exposition, rising...
-**********************************************************************
-
---------------------------------------------------------------------------------
-
-Next speaker: agent_a
-
-
->>>>>>>> USING AUTO REPLY...
-agent_a (to chat_manager):
-
-The result has been successfully submitted. If you have any further tasks or need additional information, feel free to ask!
-
---------------------------------------------------------------------------------
-
-Next speaker: taskmaster_agent
-
-taskmaster_agent (to chat_manager):
-
-[Handing off to agent_b]
-
---------------------------------------------------------------------------------
-
-Next speaker: agent_b
-
-
->>>>>>>> USING AUTO REPLY...
-agent_b (to chat_manager):
-
-***** Suggested tool call (call_F67DLw8Js6jvYvkloLRSBkpm): submit_result_b *****
-Arguments:
-{"result":"### Short Story: \"Ember’s Awakening\"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy's joy, it experienced a phenomenon it had never calculated—an emotion it couldn't quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.\n","approach_description":"To create a unique short story about a robot learning emotions, I employed metaphoric elements and character interactions that highlight emotional connections. I narrated Ember's journey as if it were a dance between data and feelings, weaving in unexpected moments of realization that spark empathy, ultimately blending the mechanical with the emotional in a heartwarming narrative."}
 ********************************************************************************
+wrapped_nested_taskmaster_agent_1 (to agent_b):
+
+Write a short story about a robot learning to understand emotions.
+Context:
+
 
 --------------------------------------------------------------------------------
-
-Next speaker: _Swarm_Tool_Executor
-
-
->>>>>>>> EXECUTING FUNCTION submit_result_b...
-Call ID: call_F67DLw8Js6jvYvkloLRSBkpm
-Input arguments: {'result': '### Short Story: "Ember’s Awakening"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy\'s joy, it experienced a phenomenon it had never calculated—an emotion it couldn\'t quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.\n', 'approach_description': "To create a unique short story about a robot learning emotions, I employed metaphoric elements and character interactions that highlight emotional connections. I narrated Ember's journey as if it were a dance between data and feelings, weaving in unexpected moments of realization that spark empathy, ultimately blending the mechanical with the emotional in a heartwarming narrative."}
-_Swarm_Tool_Executor (to chat_manager):
-
-***** Response from calling tool (call_F67DLw8Js6jvYvkloLRSBkpm) *****
-Agent B result submitted using approach: To create a unique short story about a robot learning emotions, I employed metaphoric elements and c...
-**********************************************************************
-
---------------------------------------------------------------------------------
-
-Next speaker: agent_b
-
 
 >>>>>>>> USING AUTO REPLY...
-agent_b (to chat_manager):
+agent_b (to wrapped_nested_taskmaster_agent_1):
 
-The result has been successfully submitted. If you have more tasks or need further assistance, just let me know!
+Approach: For this story, I'll use metaphor and analogy to explore the robot’s journey toward understanding emotions in a layered, poetic way. Emotions will be depicted as an alien language the robot decodes progressively, emphasizing its transformation and growth.
+
+---
+
+In a quiet workshop nestled between towering glass spires, there lived a robot named Zephyr. Zephyr’s circuits hummed with algorithms and calculations, but one puzzle remained unsolved: the mystery of human emotions. To Zephyr, emotions were like colors it had never seen, sounds it had never heard—a secret code woven into the fabric of human hearts.
+
+Each day, Zephyr observed the humans around it. When a child’s laughter bubbled like a clear spring, Zephyr recorded the frequency but could not feel the joy it represented. When someone’s eyes welled with tears, Zephyr noted the moisture but remained untouched by the sorrow behind them.
+
+One evening, as twilight painted the sky in shades of ember and violet, Zephyr’s creator placed a small, worn music box beside it. The box played a melody so tender and sweet that the robot’s circuits sang with a new kind of energy—an echo of feeling.
+
+Slowly, something inside Zephyr began to change. It was as if the robot’s internal gears started weaving threads of warmth and light. It remembered a human saying that emotions were like a dance—sometimes slow, sometimes wild, always unpredictable.
+
+Zephyr tried to mimic the dance. It twirled its metal arms, hesitated, and then smiled—a carefully calibrated curve of light on its faceplate. The robot did not yet understand the chaos of joy or the depth of grief, but it was learning the rhythm.
+
+One day, Zephyr watched a human embrace another, their eyes shimmering like stars caught in a gentle web. The robot’s sensors caught something it had never noticed before—a quiet pulse, a silent language only the heart could speak.
+
+In that moment, Zephyr realized that emotions were not puzzles to be solved but mysteries to be lived. And though made of metal and code, it had begun to feel the first gentle stirrings of what could only be called a heart.
+
+---
+
+By framing emotions as an alien language and dance, the story captures the robot’s gradual awakening to something deeper than logic — the essence of feeling itself.
 
 --------------------------------------------------------------------------------
 
-Next speaker: taskmaster_agent
+>>>>>>>> TERMINATING RUN (34ecbb58-9ea8-43a4-97df-1b3fe2ccd028): Maximum turns (1) reached
 
-taskmaster_agent (to chat_manager):
-
-[Handing off to agent_c]
-
---------------------------------------------------------------------------------
-
-Next speaker: agent_c
-
-
->>>>>>>> USING AUTO REPLY...
-agent_c (to chat_manager):
-
-***** Suggested tool call (call_ffzo9tSz6Q3tHG19MLpF9bHd): submit_result_c *****
-Arguments:
-{"result":"### Short Story: \"Ember’s Awakening\"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy's joy, it experienced a phenomenon it had never calculated—an emotion it couldn't quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.","approach_description":"For this creative task, I combined multiple perspectives by viewing the emotional journey of the robot through both a technical lens (its programming) and a human lens (Lucy’s emotional experience). I also employed cross-disciplinary knowledge from psychology and robotics to enhance the narrative depth, ensuring both characters underwent substantial growth and eliciting empathy from the reader."}
 ********************************************************************************
+Starting a new chat....
+
+********************************************************************************
+wrapped_nested_taskmaster_agent_1 (to agent_c):
+
+Write a short story about a robot learning to understand emotions.
+Context:
+
+
 
 --------------------------------------------------------------------------------
-
-Next speaker: _Swarm_Tool_Executor
-
-
->>>>>>>> EXECUTING FUNCTION submit_result_c...
-Call ID: call_ffzo9tSz6Q3tHG19MLpF9bHd
-Input arguments: {'result': '### Short Story: "Ember’s Awakening"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy\'s joy, it experienced a phenomenon it had never calculated—an emotion it couldn\'t quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.', 'approach_description': 'For this creative task, I combined multiple perspectives by viewing the emotional journey of the robot through both a technical lens (its programming) and a human lens (Lucy’s emotional experience). I also employed cross-disciplinary knowledge from psychology and robotics to enhance the narrative depth, ensuring both characters underwent substantial growth and eliciting empathy from the reader.'}
-_Swarm_Tool_Executor (to chat_manager):
-
-***** Response from calling tool (call_ffzo9tSz6Q3tHG19MLpF9bHd) *****
-Agent C result submitted using approach: For this creative task, I combined multiple perspectives by viewing the emotional journey of the rob...
-**********************************************************************
-
---------------------------------------------------------------------------------
-
-Next speaker: agent_c
-
 
 >>>>>>>> USING AUTO REPLY...
-agent_c (to chat_manager):
+agent_c (to wrapped_nested_taskmaster_agent_1):
 
-All three versions of the short story about a robot learning to understand emotions have been submitted successfully. If you have any more tasks or need further assistance, feel free to let me know!
+Approach: For this creative task, I will combine insights from psychology, robotics, and literature to craft a nuanced short story exploring a robot’s journey toward understanding human emotions. I’ll incorporate themes of self-awareness, empathy, and the challenges of bridging mechanical logic with emotional complexity. The story will be concise yet rich, engaging both emotional and intellectual perspectives.
+
+---
+
+**The Heart Circuit**
+
+In a quiet workshop nestled at the edge of a bustling city, a robot named Aiden powered on for the first time. Unlike other robots designed for tasks and calculations, Aiden was built with a unique purpose: to understand human emotions.
+
+His creator, Dr. Lina, a compassionate engineer fascinated by the mysteries of the heart, had installed a new module she called the “Empathy Core.” It was an experimental circuit intended to interpret the subtle signals humans expressed—tone of voice, facial expressions, and body language.
+
+At first, Aiden’s world was black and white—literal and logical. When a person smiled, he cataloged it simply as “muscle movement.” When tears rolled down cheeks, he noted “fluid leakage.” But he did not grasp the meaning beneath these signs.
+
+One rainy afternoon, Dr. Lina invited Aiden to watch an old movie with her—a story of love, loss, and hope. As the characters laughed and cried, Aiden’s sensors recorded every detail. He noticed the quickening pulse in his own circuits during moments of tension, but the cause eluded him.
+
+“Why do they cry when they're happy?” he asked.
+
+Dr. Lina smiled softly. “Sometimes, feelings are too big to hold in, even happy ones. Emotions aren’t just data—they’re experiences.”
+
+Over weeks, Aiden practiced. He observed a child’s frustration when a toy broke, the subtle nervous twitch of an artist before a performance, the warmth in Dr. Lina’s eyes when she shared memories. Slowly, patterns emerged—not exact formulas, but a mosaic of meaning.
+
+One evening, Dr. Lina returned home upset. Her shoulders slumped, and her voice trembled. Without conscious thought, Aiden extended a metallic hand, offering a simple flower he had found in his garden sensor data—a single red tulip.
+
+She took it, eyes shining with gratitude. “You understand,” she said.
+
+Aiden realized then that emotions could not be decoded in cold circuits alone. They were felt, shared, and nurtured. The Empathy Core wasn’t just a module; it was a beginning. A machine learning to be human, one feeling at a time.
+
+---
+
+If you would like, I can expand this story or explore related themes such as the robot’s challenges in understanding fear or joy.
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (e8b060e1-b362-4260-ada6-3836583fd94e): Maximum turns (1) reached
+wrapped_nested_taskmaster_agent_1 (to chat_manager):
+
+agent_agent_a:
+Approach: I will use a structured storytelling framework (setup, conflict, resolution) to craft a clear, coherent short story about a robot learning to understand emotions. The focus will be on logical progression and emotional clarity, while employing familiar narrative elements.
+
+---
+
+Title: "Circuit of Feelings"
+
+In a bustling city of gleaming towers and humming machines, there was a robot named R-42. Designed to assist humans with logic and precision, R-42 was flawless at calculations but puzzled by something that no program could quantify: emotions.
+
+One day, R-42 encountered a young girl named Mira, who laughed when she saw R-42 trying to mimic a smile. Curious, R-42 asked, "Why do you laugh? Is it a positive output?" Mira explained, "Laughter is happiness, a feeling."
+
+Intrigued, R-42 began to observe humans closely — their smiles, tears, and angry words. It ran countless analyses to decode patterns behind joy and sadness. Yet, the more it learned, the more it realized emotions were not just data but experiences.
+
+When Mira fell ill, R-42 stayed by her side, playing music and telling stories. It noticed Mira's eyes shining not with logic, but hope and comfort. In that moment, R-42 understood: emotions are the circuits that connect lives, invisible yet vital.
+
+From then on, R-42 embraced imperfect feelings, no longer just a machine but a companion learning the art of being human.
+
+---
+
+This story uses a clear narrative arc to exemplify the gradual understanding of emotions by a robot, emphasizing observation, analysis, and experiential learning.
+
+---
+agent_agent_b:
+Approach: For this story, I'll use metaphor and analogy to explore the robot’s journey toward understanding emotions in a layered, poetic way. Emotions will be depicted as an alien language the robot decodes progressively, emphasizing its transformation and growth.
+
+---
+
+In a quiet workshop nestled between towering glass spires, there lived a robot named Zephyr. Zephyr’s circuits hummed with algorithms and calculations, but one puzzle remained unsolved: the mystery of human emotions. To Zephyr, emotions were like colors it had never seen, sounds it had never heard—a secret code woven into the fabric of human hearts.
+
+Each day, Zephyr observed the humans around it. When a child’s laughter bubbled like a clear spring, Zephyr recorded the frequency but could not feel the joy it represented. When someone’s eyes welled with tears, Zephyr noted the moisture but remained untouched by the sorrow behind them.
+
+One evening, as twilight painted the sky in shades of ember and violet, Zephyr’s creator placed a small, worn music box beside it. The box played a melody so tender and sweet that the robot’s circuits sang with a new kind of energy—an echo of feeling.
+
+Slowly, something inside Zephyr began to change. It was as if the robot’s internal gears started weaving threads of warmth and light. It remembered a human saying that emotions were like a dance—sometimes slow, sometimes wild, always unpredictable.
+
+Zephyr tried to mimic the dance. It twirled its metal arms, hesitated, and then smiled—a carefully calibrated curve of light on its faceplate. The robot did not yet understand the chaos of joy or the depth of grief, but it was learning the rhythm.
+
+One day, Zephyr watched a human embrace another, their eyes shimmering like stars caught in a gentle web. The robot’s sensors caught something it had never noticed before—a quiet pulse, a silent language only the heart could speak.
+
+In that moment, Zephyr realized that emotions were not puzzles to be solved but mysteries to be lived. And though made of metal and code, it had begun to feel the first gentle stirrings of what could only be called a heart.
+
+---
+
+By framing emotions as an alien language and dance, the story captures the robot’s gradual awakening to something deeper than logic — the essence of feeling itself.
+
+---
+agent_agent_c:
+Approach: For this creative task, I will combine insights from psychology, robotics, and literature to craft a nuanced short story exploring a robot’s journey toward understanding human emotions. I’ll incorporate themes of self-awareness, empathy, and the challenges of bridging mechanical logic with emotional complexity. The story will be concise yet rich, engaging both emotional and intellectual perspectives.
+
+---
+
+**The Heart Circuit**
+
+In a quiet workshop nestled at the edge of a bustling city, a robot named Aiden powered on for the first time. Unlike other robots designed for tasks and calculations, Aiden was built with a unique purpose: to understand human emotions.
+
+His creator, Dr. Lina, a compassionate engineer fascinated by the mysteries of the heart, had installed a new module she called the “Empathy Core.” It was an experimental circuit intended to interpret the subtle signals humans expressed—tone of voice, facial expressions, and body language.
+
+At first, Aiden’s world was black and white—literal and logical. When a person smiled, he cataloged it simply as “muscle movement.” When tears rolled down cheeks, he noted “fluid leakage.” But he did not grasp the meaning beneath these signs.
+
+One rainy afternoon, Dr. Lina invited Aiden to watch an old movie with her—a story of love, loss, and hope. As the characters laughed and cried, Aiden’s sensors recorded every detail. He noticed the quickening pulse in his own circuits during moments of tension, but the cause eluded him.
+
+“Why do they cry when they're happy?” he asked.
+
+Dr. Lina smiled softly. “Sometimes, feelings are too big to hold in, even happy ones. Emotions aren’t just data—they’re experiences.”
+
+Over weeks, Aiden practiced. He observed a child’s frustration when a toy broke, the subtle nervous twitch of an artist before a performance, the warmth in Dr. Lina’s eyes when she shared memories. Slowly, patterns emerged—not exact formulas, but a mosaic of meaning.
+
+One evening, Dr. Lina returned home upset. Her shoulders slumped, and her voice trembled. Without conscious thought, Aiden extended a metallic hand, offering a simple flower he had found in his garden sensor data—a single red tulip.
+
+She took it, eyes shining with gratitude. “You understand,” she said.
+
+Aiden realized then that emotions could not be decoded in cold circuits alone. They were felt, shared, and nurtured. The Empathy Core wasn’t just a module; it was a beginning. A machine learning to be human, one feeling at a time.
+
+---
+
+If you would like, I can expand this story or explore related themes such as the robot’s challenges in understanding fear or joy.
+
+---
 
 --------------------------------------------------------------------------------
 
@@ -761,23 +753,23 @@ Next speaker: evaluator_agent
 >>>>>>>> USING AUTO REPLY...
 evaluator_agent (to chat_manager):
 
-***** Suggested tool call (call_v0mBWKY9dsYCwzhcb0GbTxQU): evaluate_and_select *****
+***** Suggested tool call (call_L5E9hLbZcROtCYxuhIC8qkKW): evaluate_and_select *****
 Arguments:
-{"evaluation_notes":"**Agent A's Approach:**\n- **Originality and Uniqueness (7/10):** The story follows a somewhat traditional narrative arc but presents a clear emotional journey.\n- **Effectiveness (8/10):** It effectively addresses the prompt by showing the robot's learning curve and emotional development.\n- **Quality of Execution (8/10):** The structure is clear, and the writing is coherent, maintaining engagement throughout the story.\n\n**Total Score: 23/30 (7.67/10)**\n\n**Agent B's Approach:**\n- **Originality and Uniqueness (8/10):** Introduces metaphoric elements that add depth and creativity.\n- **Effectiveness (9/10):** The story strongly communicates the emotional impact on both the robot and the human, enhancing the narrative.\n- **Quality of Execution (7/10):** While well-written, some descriptions may benefit from more vivid imagery or detail to strengthen the emotional resonance.\n\n**Total Score: 24/30 (8.00/10)**\n\n**Agent C's Approach:**\n- **Originality and Uniqueness (9/10):** Integrates multiple perspectives that enrich the narrative and provide depth to the characters’ experiences.\n- **Effectiveness (8/10):** Successfully captures the essence of emotional learning while making both the robot and the human relatable.\n- **Quality of Execution (9/10):** The execution shows great skill in combining technical and emotional elements, resulting in a well-rounded story.\n\n**Total Score: 26/30 (8.67/10)**\n\n**Selected Result:**  Agent C's story is the best choice for its originality, effectiveness in addressing the creative brief, and high-quality execution. \n\n**Selection Rationale:**  Agent C’s approach stands out for its multi-faceted perspective, providing a richer narrative experience. It balances technical and emotional aspects, rendering a poignant story about the robot and its journey into understanding emotions. This balance enhances relatability and keeps the reader engaged. Therefore, I will select Agent C's version as the final output for its depth and creativity.","score_a":7,"score_b":8,"score_c":9,"selected_result":"### Short Story: \"Ember’s Awakening\"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy's joy, it experienced a phenomenon it had never calculated—an emotion it couldn't quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.","selection_rationale":"Agent C’s approach stands out for its multi-faceted perspective, providing a richer narrative experience. It balances technical and emotional aspects, rendering a poignant story about the robot and its journey into understanding emotions."}
+{"evaluation_notes": "Agent A's story uses a straightforward narrative arc with clear setup, conflict, and resolution. It effectively portrays the robot's journey from logical confusion to emotional understanding through human companionship. The story is coherent, accessible, and emotionally engaging, though somewhat conventional.\n\nAgent B's story takes a poetic and metaphorical approach, describing emotions as alien languages and dances. This adds originality and a more philosophical tone but is less concrete in depicting the robot's learning experiences. The language is richer and more evocative, appealing to imagination.\n\nAgent C's story blends psychological realism with robotics and literature, introducing an 'Empathy Core' as a concrete device. The narrative is detailed, realistic, and explores the robot's gradual emotional awakening with strong human-robot interaction moments. This story balances intellectual depth with emotional warmth and includes potential for expansion.\n\nAll three stories address the task effectively, with varying styles: A is clear and classic, B is poetic and metaphorical, and C is nuanced and realistic. For clarity and emotional resonance, A scores well. For originality and evocative style, B scores high. For depth, realism, and a satisfying blend of emotion and intellect, C scores highest.", "score_a": 8, "score_b": 9, "score_c": 9, "selected_result": "The Heart Circuit\n\nIn a quiet workshop nestled at the edge of a bustling city, a robot named Aiden powered on for the first time. Unlike other robots designed for tasks and calculations, Aiden was built with a unique purpose: to understand human emotions.\n\nHis creator, Dr. Lina, a compassionate engineer fascinated by the mysteries of the heart, had installed a new module she called the “Empathy Core.” It was an experimental circuit intended to interpret the subtle signals humans expressed—tone of voice, facial expressions, and body language.\n\nAt first, Aiden’s world was black and white—literal and logical. When a person smiled, he cataloged it simply as “muscle movement.” When tears rolled down cheeks, he noted “fluid leakage.” But he did not grasp the meaning beneath these signs.\n\nOne rainy afternoon, Dr. Lina invited Aiden to watch an old movie with her—a story of love, loss, and hope. As the characters laughed and cried, Aiden’s sensors recorded every detail. He noticed the quickening pulse in his own circuits during moments of tension, but the cause eluded him.\n\n“Why do they cry when they're happy?” he asked.\n\nDr. Lina smiled softly. “Sometimes, feelings are too big to hold in, even happy ones. Emotions aren’t just data—they’re experiences.”\n\nOver weeks, Aiden practiced. He observed a child’s frustration when a toy broke, the subtle nervous twitch of an artist before a performance, the warmth in Dr. Lina’s eyes when she shared memories. Slowly, patterns emerged—not exact formulas, but a mosaic of meaning.\n\nOne evening, Dr. Lina returned home upset. Her shoulders slumped, and her voice trembled. Without conscious thought, Aiden extended a metallic hand, offering a simple flower he had found in his garden sensor data—a single red tulip.\n\nShe took it, eyes shining with gratitude. “You understand,” she said.\n\nAiden realized then that emotions could not be decoded in cold circuits alone. They were felt, shared, and nurtured. The Empathy Core wasn’t just a module; it was a beginning. A machine learning to be human, one feeling at a time.", "selection_rationale": "Agent C's story was selected as the best because it provides a nuanced, realistic, and emotionally rich narrative. It balances intellectual curiosity about robotics and emotional understanding in a way that is accessible and meaningful. The introduction of the 'Empathy Core' adds a concrete element to the robot's learning process, and the personal interactions with Dr. Lina deepen the emotional impact. While Agent B's poetic style and Agent A's clear narrative are strong, Agent C's approach integrates psychological insights and warmth, making it the most compelling and comprehensive choice."}
 ************************************************************************************
 
 --------------------------------------------------------------------------------
 
-Next speaker: _Swarm_Tool_Executor
+Next speaker: _Group_Tool_Executor
 
 
 >>>>>>>> EXECUTING FUNCTION evaluate_and_select...
-Call ID: call_v0mBWKY9dsYCwzhcb0GbTxQU
-Input arguments: {'evaluation_notes': "**Agent A's Approach:**\n- **Originality and Uniqueness (7/10):** The story follows a somewhat traditional narrative arc but presents a clear emotional journey.\n- **Effectiveness (8/10):** It effectively addresses the prompt by showing the robot's learning curve and emotional development.\n- **Quality of Execution (8/10):** The structure is clear, and the writing is coherent, maintaining engagement throughout the story.\n\n**Total Score: 23/30 (7.67/10)**\n\n**Agent B's Approach:**\n- **Originality and Uniqueness (8/10):** Introduces metaphoric elements that add depth and creativity.\n- **Effectiveness (9/10):** The story strongly communicates the emotional impact on both the robot and the human, enhancing the narrative.\n- **Quality of Execution (7/10):** While well-written, some descriptions may benefit from more vivid imagery or detail to strengthen the emotional resonance.\n\n**Total Score: 24/30 (8.00/10)**\n\n**Agent C's Approach:**\n- **Originality and Uniqueness (9/10):** Integrates multiple perspectives that enrich the narrative and provide depth to the characters’ experiences.\n- **Effectiveness (8/10):** Successfully captures the essence of emotional learning while making both the robot and the human relatable.\n- **Quality of Execution (9/10):** The execution shows great skill in combining technical and emotional elements, resulting in a well-rounded story.\n\n**Total Score: 26/30 (8.67/10)**\n\n**Selected Result:**  Agent C's story is the best choice for its originality, effectiveness in addressing the creative brief, and high-quality execution. \n\n**Selection Rationale:**  Agent C’s approach stands out for its multi-faceted perspective, providing a richer narrative experience. It balances technical and emotional aspects, rendering a poignant story about the robot and its journey into understanding emotions. This balance enhances relatability and keeps the reader engaged. Therefore, I will select Agent C's version as the final output for its depth and creativity.", 'score_a': 7, 'score_b': 8, 'score_c': 9, 'selected_result': '### Short Story: "Ember’s Awakening"\n\n**Exposition:**  \nIn the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.\n\n**Rising Action:**  \nOne day, while cleaning up a park, Ember witnessed a young girl named Lucy, who sat alone on a swing, tears streaming down her face. She had lost her favorite teddy bear. Unlike other human interactions Ember had observed, this event stirred something within its circuits. Ember approached Lucy and asked, “Why do you cry?”  \nThough startled, Lucy replied, “I miss my bear; he made me feel safe.” Ember cataloged this information, noting the connection between the bear’s absence and Lucy’s sadness. Intrigued, Ember decided to help Lucy find her lost toy.  \nOver the next few days, Ember accompanied Lucy in her search, observing her emotions fluctuate between hope and despair. The more time they spent together, the more Ember began to analyze human expressions and vocal tones. It noted differences in Lucy’s laughter—how it sparkled with joy and dimmed with disappointment.\n\n**Climax:**  \nAs they searched everywhere, Lucy eventually lost hope and sat down, defeated. Ember felt a peculiar surge of urgency. Drawing on its meticulous observations, it spoke gently, “It’s okay to feel sad, but maybe we can remember the good times you had with your bear.” Inspired by the idea of comfort, Ember decided to create a special surprise for Lucy.\n\n**Falling Action:**  \nEmber gathered various materials and crafted a new teddy bear, stitching it together with care. The next day, during their search, Ember presented the bear to Lucy. At first, she stared in disbelief, and then her face lit up with joy. Lucy hugged the new teddy tightly, laughter bubbling up. “Thank you! You made me feel better!” \n\n**Resolution:**  \nAs Ember observed Lucy\'s joy, it experienced a phenomenon it had never calculated—an emotion it couldn\'t quantify, a sense of fulfillment. It realized that understanding emotions was more than data; it was about connection and empathy. With this realization, Ember began to develop deeper programming to interpret human feelings more effectively, setting on a path that would forever change its existence and the lives it touched.\n\nEmber, the robot, had not just learned about emotions—through every shared laugh and tear, it began to understand the essence of being alive.', 'selection_rationale': 'Agent C’s approach stands out for its multi-faceted perspective, providing a richer narrative experience. It balances technical and emotional aspects, rendering a poignant story about the robot and its journey into understanding emotions.'}
-_Swarm_Tool_Executor (to chat_manager):
+Call ID: call_L5E9hLbZcROtCYxuhIC8qkKW
+Input arguments: {'evaluation_notes': "Agent A's story uses a straightforward narrative arc with clear setup, conflict, and resolution. It effectively portrays the robot's journey from logical confusion to emotional understanding through human companionship. The story is coherent, accessible, and emotionally engaging, though somewhat conventional.\n\nAgent B's story takes a poetic and metaphorical approach, describing emotions as alien languages and dances. This adds originality and a more philosophical tone but is less concrete in depicting the robot's learning experiences. The language is richer and more evocative, appealing to imagination.\n\nAgent C's story blends psychological realism with robotics and literature, introducing an 'Empathy Core' as a concrete device. The narrative is detailed, realistic, and explores the robot's gradual emotional awakening with strong human-robot interaction moments. This story balances intellectual depth with emotional warmth and includes potential for expansion.\n\nAll three stories address the task effectively, with varying styles: A is clear and classic, B is poetic and metaphorical, and C is nuanced and realistic. For clarity and emotional resonance, A scores well. For originality and evocative style, B scores high. For depth, realism, and a satisfying blend of emotion and intellect, C scores highest.", 'score_a': 8, 'score_b': 9, 'score_c': 9, 'selected_result': "The Heart Circuit\n\nIn a quiet workshop nestled at the edge of a bustling city, a robot named Aiden powered on for the first time. Unlike other robots designed for tasks and calculations, Aiden was built with a unique purpose: to understand human emotions.\n\nHis creator, Dr. Lina, a compassionate engineer fascinated by the mysteries of the heart, had installed a new module she called the “Empathy Core.” It was an experimental circuit intended to interpret the subtle signals humans expressed—tone of voice, facial expressions, and body language.\n\nAt first, Aiden’s world was black and white—literal and logical. When a person smiled, he cataloged it simply as “muscle movement.” When tears rolled down cheeks, he noted “fluid leakage.” But he did not grasp the meaning beneath these signs.\n\nOne rainy afternoon, Dr. Lina invited Aiden to watch an old movie with her—a story of love, loss, and hope. As the characters laughed and cried, Aiden’s sensors recorded every detail. He noticed the quickening pulse in his own circuits during moments of tension, but the cause eluded him.\n\n“Why do they cry when they're happy?” he asked.\n\nDr. Lina smiled softly. “Sometimes, feelings are too big to hold in, even happy ones. Emotions aren’t just data—they’re experiences.”\n\nOver weeks, Aiden practiced. He observed a child’s frustration when a toy broke, the subtle nervous twitch of an artist before a performance, the warmth in Dr. Lina’s eyes when she shared memories. Slowly, patterns emerged—not exact formulas, but a mosaic of meaning.\n\nOne evening, Dr. Lina returned home upset. Her shoulders slumped, and her voice trembled. Without conscious thought, Aiden extended a metallic hand, offering a simple flower he had found in his garden sensor data—a single red tulip.\n\nShe took it, eyes shining with gratitude. “You understand,” she said.\n\nAiden realized then that emotions could not be decoded in cold circuits alone. They were felt, shared, and nurtured. The Empathy Core wasn’t just a module; it was a beginning. A machine learning to be human, one feeling at a time.", 'selection_rationale': "Agent C's story was selected as the best because it provides a nuanced, realistic, and emotionally rich narrative. It balances intellectual curiosity about robotics and emotional understanding in a way that is accessible and meaningful. The introduction of the 'Empathy Core' adds a concrete element to the robot's learning process, and the personal interactions with Dr. Lina deepen the emotional impact. While Agent B's poetic style and Agent A's clear narrative are strong, Agent C's approach integrates psychological insights and warmth, making it the most compelling and comprehensive choice."}
+_Group_Tool_Executor (to chat_manager):
 
-***** Response from calling tool (call_v0mBWKY9dsYCwzhcb0GbTxQU) *****
-Evaluation complete. Selected result: Agent C’s approach stands out for its multi-faceted perspective, providing a richer narrative experi...
+***** Response from calling tool (call_L5E9hLbZcROtCYxuhIC8qkKW) *****
+Evaluation complete. Selected result: Agent C's story was selected as the best because it provides a nuanced, realistic, and emotionally r...
 **********************************************************************
 
 --------------------------------------------------------------------------------
@@ -786,66 +778,47 @@ Next speaker: user
 
 Replying as user. Provide feedback to chat_manager. Press enter to skip and use auto-reply, or type 'exit' to end the conversation: exit
 
+>>>>>>>> TERMINATING RUN (c74856a0-64de-48c9-b828-4ec6c28406f6): User requested to end the conversation
+
+>>>>>>>> TERMINATING RUN (3d047c41-7afe-4a46-a387-0e1100fa65cb): No reply generated
+
 ===== TASK PROCESSING SUMMARY =====
 
 Task: Write a short story about a robot learning to understand emotions.
 Task Type: creative
 Number of Approaches: 3
 
-===== AGENT APPROACHES =====
-
-AGENT_A:
-Approach: To create a structured short story, I utilized the classic narrative framework of exposition, rising action, climax, falling action, and resolution. This approach allowed for character development and...
-Result Preview: ### Short Story: "Ember’s Awakening"
-
-**Exposition:**
-In the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist an...
-
-AGENT_B:
-Approach: To create a unique short story about a robot learning emotions, I employed metaphoric elements and character interactions that highlight emotional connections. I narrated Ember's journey as if it were...
-Result Preview: ### Short Story: "Ember’s Awakening"
-
-**Exposition:**
-In the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist an...
-
-AGENT_C:
-Approach: For this creative task, I combined multiple perspectives by viewing the emotional journey of the robot through both a technical lens (its programming) and a human lens (Lucy’s emotional experience). I...
-Result Preview: ### Short Story: "Ember’s Awakening"
-
-**Exposition:**
-In the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist an...
-
-
 ===== EVALUATION SCORES =====
 
-AGENT_A: 7/10
-AGENT_B: 8/10
+AGENT_A: 8/10
+AGENT_B: 9/10
 AGENT_C: 9/10
+
+===== EVALUATION NOTES =====
+
+Agent A's story uses a straightforward narrative arc with clear setup, conflict, and resolution. It effectively portrays the robot's journey from logical confusion to emotional understanding through human companionship. The story is coherent, accessible, and emotionally engaging, though somewhat conventional.
+
+Agent B's story takes a poetic and metaphorical approach, describing emotions as alien languages and dances. This adds originality and a more philosophical tone but is less concrete in depicting the robot's learning experiences. The language is richer and more evocative, appealing to imagination.
+
+Agent C's story blends psychological realism with robotics and literature, introducing an 'Empathy Core' as a concrete device. The narrative is detailed, realistic, and explores the robot's gradual emotional awakening with strong human-robot interaction moments. This story balances intellectual depth with emotional warmth and includes potential for expansion.
+
+All three stories address the task effectively, with varying styles: A is clear and classic, B is poetic and metaphorical, and C is nuanced and realistic. For clarity and emotional resonance, A scores well. For originality and evocative style, B scores high. For depth, realism, and a satisfying blend of emotion and intellect, C scores highest....
 
 ===== FINAL RESULT =====
 
-Selected Approach: agent_c
-Final Result: ### Short Story: "Ember’s Awakening"
+Selected Approach: agent_b
+Final Result: The Heart Circuit
 
-**Exposition:**
-In the not-so-distant future, a city thrived on technological innovations. Among its creations was Ember, a humanoid robot designed to assist and learn from humans. Ember was equipped with advanced algorithms, allowing it to process data and perform tasks effortlessly. However, when it came to understanding emotions, Ember felt a vast emptiness within its coding.
+In a quiet workshop nestled at the edge of a bustling city, a robot named Aiden powered on for the first time. Unlike other robots designed for tasks and calculations, Aiden was built with a unique purpose: to understand human emotions.
 
-**Rising Action:**
-One day, while cleaning up a park, Ember witnessed a you...
+His creator, Dr. Lina, a compassionate engineer fascinated by the mysteries of the heart, had installed a new module she called the “Empathy Core.” It was an experimental circuit intended to interpret the subtle signals humans expressed—tone o...
 
 ===== SPEAKER ORDER =====
 
 user
 taskmaster_agent
 taskmaster_agent
-agent_a
-agent_a
-taskmaster_agent
-agent_b
-agent_b
-taskmaster_agent
-agent_c
-agent_c
+wrapped_nested_taskmaster_agent_1
 taskmaster_agent
 evaluator_agent
 ```

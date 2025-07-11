@@ -76,7 +76,7 @@ import os
 import re
 import time
 import warnings
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -96,6 +96,7 @@ with optional_import_block():
 
 
 ANTHROPIC_PRICING_1k = {
+    "claude-3-7-sonnet-20250219": (0.003, 0.015),
     "claude-3-5-sonnet-20241022": (0.003, 0.015),
     "claude-3-5-haiku-20241022": (0.0008, 0.004),
     "claude-3-5-sonnet-20240620": (0.003, 0.015),
@@ -111,12 +112,20 @@ ANTHROPIC_PRICING_1k = {
 @register_llm_config
 class AnthropicLLMConfigEntry(LLMConfigEntry):
     api_type: Literal["anthropic"] = "anthropic"
+    timeout: Optional[int] = Field(default=None, ge=1)
     temperature: float = Field(default=1.0, ge=0.0, le=1.0)
     top_k: Optional[int] = Field(default=None, ge=1)
     top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     stop_sequences: Optional[list[str]] = None
     stream: bool = False
     max_tokens: int = Field(default=4096, ge=1)
+    price: Optional[list[float]] = Field(default=None, min_length=2, max_length=2)
+    tool_choice: Optional[dict] = None
+    thinking: Optional[dict] = None
+
+    gcp_project_id: Optional[str] = None
+    gcp_region: Optional[str] = None
+    gcp_auth_token: Optional[str] = None
 
     def create_client(self):
         raise NotImplementedError("AnthropicLLMConfigEntry.create_client is not implemented.")
@@ -138,6 +147,7 @@ class AnthropicClient:
         self._gcp_project_id = kwargs.get("gcp_project_id")
         self._gcp_region = kwargs.get("gcp_region")
         self._gcp_auth_token = kwargs.get("gcp_auth_token")
+        self._base_url = kwargs.get("base_url")
 
         if not self._api_key:
             self._api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -165,20 +175,28 @@ class AnthropicClient:
                 raise ValueError("API key or AWS credentials or GCP credentials are required to use the Anthropic API.")
 
         if self._api_key is not None:
-            self._client = Anthropic(api_key=self._api_key)
+            client_kwargs = {"api_key": self._api_key}
+            if self._base_url:
+                client_kwargs["base_url"] = self._base_url
+            self._client = Anthropic(**client_kwargs)
         elif self._gcp_region is not None:
             kw = {}
             for i, p in enumerate(inspect.signature(AnthropicVertex).parameters):
                 if hasattr(self, f"_gcp_{p}"):
                     kw[p] = getattr(self, f"_gcp_{p}")
+            if self._base_url:
+                kw["base_url"] = self._base_url
             self._client = AnthropicVertex(**kw)
         else:
-            self._client = AnthropicBedrock(
-                aws_access_key=self._aws_access_key,
-                aws_secret_key=self._aws_secret_key,
-                aws_session_token=self._aws_session_token,
-                aws_region=self._aws_region,
-            )
+            client_kwargs = {
+                "aws_access_key": self._aws_access_key,
+                "aws_secret_key": self._aws_secret_key,
+                "aws_session_token": self._aws_session_token,
+                "aws_region": self._aws_region,
+            }
+            if self._base_url:
+                client_kwargs["base_url"] = self._base_url
+            self._client = AnthropicBedrock(**client_kwargs)
 
         self._last_tooluse_status = {}
 
@@ -196,10 +214,13 @@ class AnthropicClient:
             params, "temperature", (float, int), False, 1.0, (0.0, 1.0), None
         )
         anthropic_params["max_tokens"] = validate_parameter(params, "max_tokens", int, False, 4096, (1, None), None)
+        anthropic_params["timeout"] = validate_parameter(params, "timeout", int, True, None, (1, None), None)
         anthropic_params["top_k"] = validate_parameter(params, "top_k", int, True, None, (1, None), None)
         anthropic_params["top_p"] = validate_parameter(params, "top_p", (float, int), True, None, (0.0, 1.0), None)
         anthropic_params["stop_sequences"] = validate_parameter(params, "stop_sequences", list, True, None, None, None)
         anthropic_params["stream"] = validate_parameter(params, "stream", bool, False, False, None, None)
+        if "thinking" in params:
+            anthropic_params["thinking"] = params["thinking"]
 
         if anthropic_params["stream"]:
             warnings.warn(
@@ -207,6 +228,11 @@ class AnthropicClient:
                 UserWarning,
             )
             anthropic_params["stream"] = False
+
+        # Note the Anthropic API supports "tool" for tool_choice but you must specify the tool name so we will ignore that here
+        # Dictionary, see options here: https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview#controlling-claudes-output
+        # type = auto, any, tool, none | name = the name of the tool if type=tool
+        anthropic_params["tool_choice"] = validate_parameter(params, "tool_choice", dict, True, None, None, None)
 
         return anthropic_params
 
@@ -284,6 +310,8 @@ class AnthropicClient:
             del anthropic_params["top_p"]
         if anthropic_params["stop_sequences"] is None:
             del anthropic_params["stop_sequences"]
+        if anthropic_params["tool_choice"] is None:
+            del anthropic_params["tool_choice"]
 
         response = self._client.messages.create(**anthropic_params)
 
@@ -493,6 +521,60 @@ def _format_json_response(response: Any) -> str:
         return response.model_dump_json()
 
 
+def process_image_content(content_item: dict[str, Any]) -> dict[str, Any]:
+    """Process an OpenAI image content item into Claude format."""
+    if content_item["type"] != "image_url":
+        return content_item
+
+    url = content_item["image_url"]["url"]
+    try:
+        # Handle data URLs
+        if url.startswith("data:"):
+            data_url_pattern = r"data:image/([a-zA-Z]+);base64,(.+)"
+            match = re.match(data_url_pattern, url)
+            if match:
+                media_type, base64_data = match.groups()
+                return {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": f"image/{media_type}", "data": base64_data},
+                }
+
+        else:
+            print("Error processing image.")
+            # Return original content if image processing fails
+            return content_item
+
+    except Exception as e:
+        print(f"Error processing image image: {e}")
+        # Return original content if image processing fails
+        return content_item
+
+
+def process_message_content(message: dict[str, Any]) -> Union[str, list[dict[str, Any]]]:
+    """Process message content, handling both string and list formats with images."""
+    content = message.get("content", "")
+
+    # Handle empty content
+    if content == "":
+        return content
+
+    # If content is already a string, return as is
+    if isinstance(content, str):
+        return content
+
+    # Handle list content (mixed text and images)
+    if isinstance(content, list):
+        processed_content = []
+        for item in content:
+            if item["type"] == "text":
+                processed_content.append({"type": "text", "text": item["text"]})
+            elif item["type"] == "image_url":
+                processed_content.append(process_image_content(item))
+        return processed_content
+
+    return content
+
+
 @require_optional_import("anthropic", "anthropic")
 def oai_messages_to_anthropic_messages(params: dict[str, Any]) -> list[dict[str, Any]]:
     """Convert messages from OAI format to Anthropic format.
@@ -516,7 +598,13 @@ def oai_messages_to_anthropic_messages(params: dict[str, Any]) -> list[dict[str,
     last_tool_result_index = -1
     for message in params["messages"]:
         if message["role"] == "system":
-            params["system"] = params.get("system", "") + ("\n" if "system" in params else "") + message["content"]
+            content = process_message_content(message)
+            if isinstance(content, list):
+                # For system messages with images, concatenate only the text portions
+                text_content = " ".join(item.get("text", "") for item in content if item.get("type") == "text")
+                params["system"] = params.get("system", "") + (" " if "system" in params else "") + text_content
+            else:
+                params["system"] = params.get("system", "") + ("\n" if "system" in params else "") + content
         else:
             # New messages will be added here, manage role alternations
             expected_role = "user" if len(processed_messages) % 2 == 0 else "assistant"
@@ -588,8 +676,11 @@ def oai_messages_to_anthropic_messages(params: dict[str, Any]) -> list[dict[str,
                     processed_messages.append(
                         user_continue_message if expected_role == "user" else assistant_continue_message
                     )
-
-                processed_messages.append(message)
+                # Process messages for images
+                processed_content = process_message_content(message)
+                processed_message = message.copy()
+                processed_message["content"] = processed_content
+                processed_messages.append(processed_message)
 
     # We'll replace the last tool_use if there's no tool_result (occurs if we finish the conversation before running the function)
     if has_tools and tool_use_messages != tool_result_messages:

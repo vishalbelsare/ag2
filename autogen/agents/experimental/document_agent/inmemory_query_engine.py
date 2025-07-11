@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from .... import ConversableAgent
 from ....agentchat.contrib.rag import RAGQueryEngine
 from ....doc_utils import export_module
+from ....llm_config import LLMConfig
 
 __all__ = ["InMemoryQueryEngine"]
 
@@ -45,7 +46,7 @@ class InMemoryQueryEngine:
 
     def __init__(
         self,
-        llm_config: dict[str, Any],
+        llm_config: Union[LLMConfig, dict[str, Any]],
     ) -> None:
         # Deep copy the llm config to avoid changing the original
         structured_config = copy.deepcopy(llm_config)
@@ -90,14 +91,16 @@ class InMemoryQueryEngine:
 
         message = f"Using ONLY the document content in your system message, answer this question: {question}"
 
-        chat_result = self._query_agent.run(
+        response = self._query_agent.run(
             message=message,
             max_turns=1,
         )
 
+        response.process()
+
         try:
             # Get the structured output and return the answer
-            answer_object = QueryAnswer.model_validate(json.loads(chat_result.summary))
+            answer_object = QueryAnswer.model_validate(json.loads(response.summary))  # type: ignore[arg-type]
 
             if answer_object.could_answer:
                 return answer_object.answer

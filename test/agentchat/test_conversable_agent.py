@@ -21,9 +21,11 @@ from pydantic import BaseModel, Field
 import autogen
 from autogen.agentchat import ConversableAgent, UpdateSystemMessage, UserProxyAgent
 from autogen.agentchat.conversable_agent import register_function
+from autogen.agentchat.group import ContextVariables
+from autogen.cache.cache import Cache
 from autogen.exception_utils import InvalidCarryOverTypeError, SenderRequiredError
 from autogen.import_utils import run_for_optional_imports, skip_on_missing_imports
-from autogen.llm_config import LLMConfig, LLMConfigFilter
+from autogen.llm_config import LLMConfig
 from autogen.oai.client import OpenAILLMConfigEntry
 from autogen.tools.tool import Tool
 
@@ -391,6 +393,31 @@ def test_max_consecutive_auto_reply():
     assert agent1.reply_at_receive[agent] == agent.reply_at_receive[agent1] is True
     agent1.stop_reply_at_receive(agent)
     assert agent1.reply_at_receive[agent] is False and agent.reply_at_receive[agent1] is True
+
+
+def test_max_consecutive_auto_reply_with_max_turns(capsys: pytest.CaptureFixture[str]):
+    agent1 = ConversableAgent("agent1", max_consecutive_auto_reply=1, llm_config=False, human_input_mode="NEVER")
+    agent2 = ConversableAgent("agent2", max_consecutive_auto_reply=100, llm_config=False, human_input_mode="NEVER")
+
+    # max_consecutive_auto_reply parameter on the agent that initiates chat
+    agent1.initiate_chat(agent2, message="hello", max_turns=50)
+    assert len(agent2.chat_messages[agent1]) == 4
+    assert len(agent1.chat_messages[agent2]) == 4
+    # checking captured output
+    captured = capsys.readouterr()
+    assert "TERMINATING RUN" in captured.out
+    assert "Maximum number of consecutive auto-replies reached" in captured.out
+
+    _ = capsys.readouterr()  # Explicitly clear buffer
+
+    # max_consecutive_auto_reply parameter on the recipient agent
+    agent2.initiate_chat(agent1, message="hello", max_turns=50)
+    assert len(agent1.chat_messages[agent2]) == 3
+    assert len(agent2.chat_messages[agent1]) == 3
+    # checking captured output
+    captured = capsys.readouterr()
+    assert "TERMINATING RUN" in captured.out
+    assert "Maximum number of consecutive auto-replies reached" in captured.out
 
 
 def test_conversable_agent():
@@ -1554,62 +1581,37 @@ def test_conversable_agent_with_whitespaces_in_name_end2end(
 @run_for_optional_imports("openai", "openai")
 def test_context_variables():
     # Test initialization with context_variables
-    initial_context = {"test_key": "test_value", "number": 42, "nested": {"inner": "value"}}
+    initial_context = ContextVariables(data={"test_key": "test_value", "number": 42, "nested": {"inner": "value"}})
     agent = ConversableAgent(name="context_test_agent", llm_config=False, context_variables=initial_context)
 
     # Check that context was properly initialized
-    assert agent._context_variables == initial_context
+    assert agent.context_variables.to_dict() == initial_context.to_dict()
 
     # Test initialization without context_variables
     agent_no_context = ConversableAgent(name="no_context_agent", llm_config=False)
-    assert agent_no_context._context_variables == {}
+    assert agent_no_context.context_variables.to_dict() == {}
 
     # Test get_context
-    assert agent.get_context("test_key") == "test_value"
-    assert agent.get_context("number") == 42
-    assert agent.get_context("nested") == {"inner": "value"}
-    assert agent.get_context("non_existent") is None
-    assert agent.get_context("non_existent", default="default") == "default"
+    assert agent.context_variables.get("test_key") == "test_value"
+    assert agent.context_variables.get("number") == 42
+    assert agent.context_variables.get("nested") == {"inner": "value"}
+    assert agent.context_variables.get("non_existent") is None
+    assert agent.context_variables.get("non_existent", default="default") == "default"
 
     # Test set_context
-    agent.set_context("new_key", "new_value")
-    assert agent.get_context("new_key") == "new_value"
+    agent.context_variables.set("new_key", "new_value")
+    assert agent.context_variables.get("new_key") == "new_value"
 
     # Test overwriting existing value
-    agent.set_context("test_key", "updated_value")
-    assert agent.get_context("test_key") == "updated_value"
+    agent.context_variables.set("test_key", "updated_value")
+    assert agent.context_variables.get("test_key") == "updated_value"
 
     # Test update_context
     new_values = {"bulk_key1": "bulk_value1", "bulk_key2": "bulk_value2", "test_key": "bulk_updated_value"}
-    agent.update_context(new_values)
-    assert agent.get_context("bulk_key1") == "bulk_value1"
-    assert agent.get_context("bulk_key2") == "bulk_value2"
-    assert agent.get_context("test_key") == "bulk_updated_value"
-
-    # Test pop_context
-    # Pop existing key
-    popped_value = agent.pop_context("bulk_key1")
-    assert popped_value == "bulk_value1"
-    assert agent.get_context("bulk_key1") is None
-
-    # Pop with default value
-    default_value = "default_value"
-    popped_default = agent.pop_context("non_existent", default=default_value)
-    assert popped_default == default_value
-
-    # Pop without default (should return None)
-    popped_none = agent.pop_context("another_non_existent")
-    assert popped_none is None
-
-    # Verify final state of context
-    expected_final_context = {
-        "number": 42,
-        "nested": {"inner": "value"},
-        "new_key": "new_value",
-        "bulk_key2": "bulk_value2",
-        "test_key": "bulk_updated_value",
-    }
-    assert agent._context_variables == expected_final_context
+    agent.context_variables.update(new_values)
+    assert agent.context_variables.get("bulk_key1") == "bulk_value1"
+    assert agent.context_variables.get("bulk_key2") == "bulk_value2"
+    assert agent.context_variables.get("test_key") == "bulk_updated_value"
 
 
 @pytest.mark.skip(reason="'anyOf' parameters works with vertexai setup but it is not supported in google.genai")
@@ -1903,50 +1905,102 @@ def test_validate_llm_config(
     assert actual == expected, f"{actual} != {expected}"
 
 
-@pytest.mark.parametrize(
-    "llm_config, llm_config_filter, expected",
-    [
-        (False, None, False),
-        (False, LLMConfigFilter(model="gpt-3"), False),
-        (
-            LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-4")]),
-            None,
-            LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-4")]),
-        ),
-        pytest.param(
-            LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-4")]),
-            LLMConfigFilter(model="gpt-4"),
-            LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-4")]),
-            marks=pytest.mark.xfail(
-                reason="This doesn't fails when executed with filename but fails when running using scripts"
-            ),
-        ),
-        pytest.param(
-            LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-3"), OpenAILLMConfigEntry(model="gpt-4")]),
-            LLMConfigFilter(
-                model="gpt-4",
-            ),
-            LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-4")]),
-            marks=pytest.mark.xfail(
-                reason="This doesn't fails when executed with filename but fails when running using scripts"
-            ),
-        ),
-    ],
-)
-def test_apply_llm_config_filter(
-    llm_config: Union[LLMConfig, Literal[False]],
-    llm_config_filter: Optional[LLMConfigFilter],
-    expected: Union[LLMConfig, Literal[False]],
-):
-    actual = ConversableAgent._apply_llm_config_filter(llm_config, llm_config_filter)
-    assert actual == expected, f"{actual} != {expected}"
+@run_for_optional_imports("openai", "openai")
+def test_cache_context(credentials_gpt_4o_mini: Credentials) -> None:
+    message = "Hello, make a joke about AI."
+
+    assistant = autogen.AssistantAgent(
+        name="assistant",
+        max_consecutive_auto_reply=10,
+        llm_config=credentials_gpt_4o_mini.llm_config,
+    )
+
+    user_proxy = autogen.UserProxyAgent(name="user", human_input_mode="ALWAYS", code_execution_config=False)
+
+    # Use MagicMock to create a mock get_human_input function
+    user_proxy.get_human_input = MagicMock(return_value="Not funny. Try again.")
+
+    # Test without cache
+    start_time = time.time()
+    res = user_proxy.initiate_chat(assistant, clear_history=True, max_turns=3, message=message, cache=None)
+    end_time = time.time()
+    duration_without_cache = end_time - start_time
+    assert len(res.chat_history) <= 6
+    assert user_proxy.client_cache is None
+
+    # Test with cache context
+    with Cache.disk(cache_seed=39, cache_path_root=".cache"):
+        # Test with cold cache
+        start_time = time.time()
+        # initiate_chat should use the cache context automatically
+        res = user_proxy.initiate_chat(
+            assistant,
+            clear_history=True,
+            max_turns=3,
+            message=message,
+        )
+        end_time = time.time()
+        duration_with_cold_cache = end_time - start_time
+        assert len(res.chat_history) <= 6
+
+        # Test with warm cache
+        start_time = time.time()
+        # initiate_chat should use the cache context automatically
+        res = user_proxy.initiate_chat(
+            assistant,
+            clear_history=True,
+            max_turns=3,
+            message=message,
+        )
+        end_time = time.time()
+        duration_with_warm_cache = end_time - start_time
+        assert len(res.chat_history) <= 6
+
+    # Test that warm cache is faster than cold cache and no cache.
+    assert duration_with_warm_cache < duration_with_cold_cache
+    assert duration_with_warm_cache < duration_without_cache
 
 
-def test_apply_llm_config_filter_with_invalid_filter():
-    llm_config = LLMConfig(config_list=[OpenAILLMConfigEntry(model="gpt-3")])
-    llm_config_filter = LLMConfigFilter(model="gpt-4")
-    with pytest.raises(ValueError):
-        ConversableAgent._apply_llm_config_filter(llm_config, llm_config_filter)
+def test_set_ui_tools(mock_credentials: Credentials):
+    """Test setting UI tools."""
+    agent = ConversableAgent(name="agent", llm_config=mock_credentials.llm_config)
+
+    def sample_tool_func(my_prop: str) -> str:
+        return my_prop * 2
+
+    for i in range(3):
+        mock_tool = Tool(name=f"test_ui_tool_{i}", description="A test UI tool", func_or_tool=sample_tool_func)
+        agent.set_ui_tools([mock_tool])
+
+        # Verify tool was added to llm_config
+        assert len(agent.llm_config.get("tools", [])) == 1
+        tool_schemas = [tool["function"]["name"] for tool in agent.llm_config.get("tools", [])]
+        assert mock_tool.name in tool_schemas
+        assert f"test_ui_tool_{i - 1}" not in tool_schemas
+
+        # Verify tool was registered for execution
+        expected_function_map = {mock_tool.name: mock_tool.func}
+        assert get_origin(agent.function_map) == expected_function_map
+
+
+def test_unset_ui_tools(mock_credentials: Credentials):
+    """Test unsetting UI tools."""
+    agent = ConversableAgent(name="agent", llm_config=mock_credentials.llm_config)
+
+    def sample_tool_func(my_prop: str) -> str:
+        return my_prop * 2
+
+    mock_tool = Tool(name="test_ui_tool", description="A test UI tool", func_or_tool=sample_tool_func)
+
+    # Set the tool first
+    agent.set_ui_tools([mock_tool])
+    assert len(agent.llm_config.get("tools", [])) == 1
+
+    # Unset the tool
+    agent.unset_ui_tools([mock_tool])
+
+    # Verify tool was removed from llm_config
+    assert len(agent.llm_config.get("tools", [])) == 0
 
 
 if __name__ == "__main__":
@@ -1962,4 +2016,5 @@ if __name__ == "__main__":
     # test_process_gemini_carryover()
     # test_process_carryover()
     # test_context_variables()
+    # test_max_consecutive_auto_reply_with_max_turns()
     test_invalid_functions_parameter()
