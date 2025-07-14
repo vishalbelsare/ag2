@@ -34,9 +34,14 @@
     },
     "shutdownAction": "stopContainer",
     "workspaceFolder": "/workspaces/ag2",
+    "initializeCommand": "[ -f ~/.claude.json ] || touch ~/.claude.json && mkdir -p ~/.claude",
     "runArgs": [
         "--name",
         "python-3.10-ag2"
+    ],
+    "mounts": [
+        "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached"
     ],
     "remoteEnv": {
         "OAI_CONFIG_LIST": "${localEnv:OAI_CONFIG_LIST}",
