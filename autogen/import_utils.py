@@ -10,7 +10,6 @@ from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from functools import wraps
-from importlib.metadata import PackageNotFoundError, version
 from logging import getLogger
 from pathlib import Path
 from typing import Any, Generic, Optional, TypeVar
@@ -54,10 +53,11 @@ class ModuleInfo:
                     # Aka similarly named module in the autogen or test directory
                     return f"'{self.name}' is not installed."
 
-        try:
-            installed_version: str | None = version(self.name)
-        except PackageNotFoundError:
-            installed_version = None
+        installed_version = (
+            sys.modules[self.name].__version__ if hasattr(sys.modules[self.name], "__version__") else None
+        )
+        if installed_version is None and (self.min_version or self.max_version):
+            return f"'{self.name}' is installed, but the version is not available."
 
         if installed_version is None and (self.min_version or self.max_version):
             return f"'{self.name}' is not installed, but the version is not available."
