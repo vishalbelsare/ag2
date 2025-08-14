@@ -5,7 +5,7 @@
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
@@ -158,6 +158,7 @@ class DocAgent(ConversableAgent):
         parsed_docs_path: str | Path | None = None,
         collection_name: str | None = None,
         query_engine: RAGQueryEngine | None = None,
+        detail_mode: Optional[bool] = False,
     ):
         """Initialize the DocAgent.
 
@@ -185,6 +186,7 @@ class DocAgent(ConversableAgent):
         llm_config = llm_config or LLMConfig.get_current_llm_config()
         system_message = system_message or DEFAULT_SYSTEM_MESSAGE
         parsed_docs_path = parsed_docs_path or "./parsed_docs"
+        self.detail_mode = detail_mode
 
         # Default Query Engine will be ChromaDB
         if query_engine is None:
@@ -552,7 +554,10 @@ class DocAgent(ConversableAgent):
 
         self._data_ingestion_agent.handoffs.set_after_work(target=AgentTarget(agent=self._task_manager_agent))
 
-        self._query_agent.handoffs.set_after_work(target=AgentTarget(agent=self._task_manager_agent))
+        if self.detail_mode:
+            self._query_agent.handoffs.set_after_work(target=TerminateTarget())
+        else:
+            self._query_agent.handoffs.set_after_work(target=AgentTarget(agent=self._task_manager_agent))
 
         # Summary agent terminates the DocumentAgent
         self._summary_agent.handoffs.set_after_work(target=TerminateTarget())
@@ -621,11 +626,23 @@ class DocAgent(ConversableAgent):
         if last_speaker == self._error_agent:
             # If we finish with the error agent, we return their message which contains the error
             return True, chat_result.summary
-        if last_speaker != self._summary_agent:
-            # If the group chat finished but not with the summary agent, we assume something has gone wrong with the flow
+        if last_speaker != self._summary_agent and last_speaker != self._query_agent:
+            # If the group chat finished but not with the summary agent or query agent, we assume something has gone wrong with the flow
             return True, DEFAULT_ERROR_GROUP_CHAT_MESSAGE
-
-        return True, chat_result.summary
+        
+        # could be customized more depending on the use case - could later support a formatting fn as input
+        def format_query_results(query_results):
+            output_lines = []
+            for i, item in enumerate(query_results, start=1):
+                output_lines.append(f"{i}. **{item['query']}**")
+                output_lines.append(f"   - {item['answer']}")
+            return "\n".join(output_lines)
+        
+        if self.detail_mode:
+            formatted_block = format_query_results(context_variables.get("QueryResults", []))
+            return True, formatted_block
+        else:
+            return True, chat_result.summary
 
     def _get_document_input_message(self, messages: list[dict[str, Any]] | str | None) -> str:  # type: ignore[type-arg]
         """Gets and validates the input message(s) for the document agent.
