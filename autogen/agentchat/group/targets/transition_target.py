@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Callable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..speaker_selection_result import SpeakerSelectionResult
 from .transition_utils import __AGENT_WRAPPER_PREFIX__
@@ -420,5 +420,49 @@ class RandomAgentTarget(TransitionTarget):
         """Create a wrapper agent for the target if needed."""
         raise NotImplementedError("RandomAgentTarget does not require wrapping in an agent.")
 
+if TYPE_CHECKING:
+    from ..reply_result import ReplyResult
+    AfterworkFn = Callable[[str, Any], 'ReplyResult']
+else:
+    AfterworkFn = Callable[[str, Any], Any]
 
+class FunctionTarget(TransitionTarget):
+    """Transition target that invokes a tool function with (prev_output, context)."""
+    fn_name: str = Field(...)
+    fn: AfterworkFn = Field(..., repr=False)
+    broadcast_recipients: Optional[list[str]] = None
+
+    def __init__(self, fn_name_or_fn, fn: AfterworkFn = None, **kwargs):
+        # If the first arg is callable, auto-populate fn and fn_name
+        # allows this to be called simply with FunctionTarget(fn)
+        if callable(fn_name_or_fn) and fn is None:
+            fn = fn_name_or_fn
+            super().__init__(fn_name=fn.__name__, fn=fn, **kwargs)
+        else:
+            # Normal behavior
+            super().__init__(fn_name=fn_name_or_fn, fn=fn, **kwargs)
+
+    # --- TransitionTarget API ---
+    def can_resolve_for_speaker_selection(self) -> bool:
+        return False
+
+    def resolve(self, *args, **kwargs):
+        raise NotImplementedError("ToolTarget does not resolve to a speaker")
+
+    def display_name(self) -> str:
+        return self.fn_name
+
+    def normalized_name(self) -> str:
+        return self.fn_name.replace(" ", "_")
+
+    def __str__(self) -> str:
+        return f"Transfer to tool {self.fn_name}"
+
+    def needs_agent_wrapper(self) -> bool:
+        return False
+
+    def create_wrapper_agent(self, *args, **kwargs):
+        raise NotImplementedError("ToolTarget is executed inline and needs no wrapper")
+    
 # TODO: Consider adding a SequentialChatTarget class
+
