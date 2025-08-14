@@ -132,8 +132,7 @@ user_proxy =  UserProxyAgent(
     is_termination_msg=lambda msg: not msg["content"]
 )
 
-with llm_config:
-    assistant = AssistantAgent(name="assistant")
+assistant = AssistantAgent(name="assistant", llm_config=llm_config)
 ```
 
 ### Start chat
