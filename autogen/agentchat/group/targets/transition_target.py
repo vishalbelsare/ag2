@@ -456,7 +456,9 @@ class FunctionTarget(TransitionTarget):
         current_agent: ConversableAgent = args[1]
         ctx = current_agent.context_variables
 
-        function_target_result = self.fn(last_message, ctx)
+        # Define the signature of the function that can be called (parameters and return type)
+        # Create a message class and object for adding a message to the conversation
+        function_target_result = self.fn(group_chat, current_agent, last_message, ctx)
 
         # resolve_next_target = function_target_result.target.resolve(group_chat, args[1], args[2])
 
