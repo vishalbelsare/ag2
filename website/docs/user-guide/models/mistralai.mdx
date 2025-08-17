@@ -139,14 +139,14 @@ workdir.mkdir(exist_ok=True)
 code_executor = LocalCommandLineCodeExecutor(work_dir=workdir)
 
 # Setting up the LLM configuration
-llm_config = LLMConfig(
+llm_config = LLMConfig({
     # Let's choose the Mixtral 8x22B model
-    model="open-mixtral-8x22b",
+    "model": "open-mixtral-8x22b",
     # Provide your Mistral AI API key here or put it into the MISTRAL_API_KEY environment variable.
-    api_key=os.environ.get("MISTRAL_API_KEY"),
+    "api_key": os.environ.get("MISTRAL_API_KEY"),
     # We specify the API Type as 'mistral' so it uses the Mistral AI client class
-    api_type="mistral",
-)
+    "api_type": "mistral",
+})
 
 # Setting up the agents
 
@@ -287,12 +287,12 @@ We'll change models to Mistral AI's large model for this challenging task.
 ```python
 from autogen import LLMConfig
 
-llm_config = LLMConfig(
+llm_config = LLMConfig({
     # Let's choose the Mistral AI's largest model which is better at Chess than the Mixtral model
-    model="mistral-large-latest",
-    api_key=os.environ.get("MISTRAL_API_KEY"),
-    api_type="mistral",
-)
+    "model": "mistral-large-latest",
+    "api_key": os.environ.get("MISTRAL_API_KEY"),
+    "api_type": "mistral",
+})
 ```
 
 First install the `chess` package by running the following command:

@@ -41,11 +41,11 @@ The simplest approach is to directly specify the model provider, model name, and
 import os
 from autogen import LLMConfig
 
-llm_config = LLMConfig(
-    api_type="openai",                      # The provider
-    model="gpt-4o-mini",                    # The specific model
-    api_key=os.environ["OPENAI_API_KEY"],   # Authentication
-)
+llm_config = LLMConfig({
+    "api_type": "openai",                      # The provider
+    "model": "gpt-4o-mini",                    # The specific model
+    "api_key": os.environ["OPENAI_API_KEY"],   # Authentication
+})
 ```
 
 ### Method 2: Using the `config_list` Parameter
@@ -57,18 +57,16 @@ import os
 from autogen import LLMConfig
 
 llm_config = LLMConfig(
-    config_list=[
-        {
-            "api_type": "openai",
-            "model": "gpt-4o-mini",
-            "api_key": os.environ["OPENAI_API_KEY"]
-        },
-        {
-            "api_type": "openai",
-            "model": "gpt-4o",
-            "api_key": os.environ["OPENAI_API_KEY"]
-        }
-    ],
+    {
+        "api_type": "openai",
+        "model": "gpt-4o-mini",
+        "api_key": os.environ["OPENAI_API_KEY"]
+    },
+    {
+        "api_type": "openai",
+        "model": "gpt-4o",
+        "api_key": os.environ["OPENAI_API_KEY"]
+    }
 )
 ```
 
@@ -135,12 +133,12 @@ from autogen import LLMConfig
 import os
 
 # Basic configuration using environment variable
-llm_config = LLMConfig(
-    api_type="openai",
-    model="gpt-4o-mini",
-    api_key=os.environ["OPENAI_API_KEY"],
-    temperature=0.2  # Lower temperature for more consistent financial analysis
-)
+llm_config = LLMConfig({
+    "api_type": "openai",
+    "model": "gpt-4o-mini",
+    "api_key": os.environ["OPENAI_API_KEY"],
+    "temperature": 0.2  # Lower temperature for more consistent financial analysis
+})
 ```
 
 **Code walkthrough**:

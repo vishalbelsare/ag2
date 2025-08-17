@@ -141,14 +141,14 @@ workdir.mkdir(exist_ok=True)
 code_executor = LocalCommandLineCodeExecutor(work_dir=workdir)
 
 # Setting up the LLM configuration
-llm_config = LLMConfig(
+llm_config = LLMConfig({
     # Let's choose the Meta's Llama 3.1 model (model names must match Ollama exactly)
-    model="llama3.1:8b",
+    "model": "llama3.1:8b",
     # We specify the API Type as 'ollama' so it uses the Ollama client class
-    api_type="ollama",
-    stream=False,
-    client_host="http://192.168.0.1:11434",
-)
+    "api_type": "ollama",
+    "stream": False,
+    "client_host": "http://192.168.0.1:11434",
+})
 
 # Setting up the agents
 
@@ -303,14 +303,14 @@ from typing_extensions import Annotated
 
 import autogen
 
-llm_config = autogen.LLMConfig(
+llm_config = autogen.LLMConfig({
     # Let's choose the Meta's Llama 3.1 model (model names must match Ollama exactly)
-    model="llama3.1:8b",
-    api_type="ollama",
-    stream=False,
-    client_host="http://192.168.0.1:11434",
-    hide_tools="if_any_run",
-)
+    "model": "llama3.1:8b",
+    "api_type": "ollama",
+    "stream": False,
+    "client_host": "http://192.168.0.1:11434",
+    "hide_tools": "if_any_run",
+})
 
 # We'll create our agents. Importantly, we're using native Ollama tool calling and to help guide it we add the JSON to the system_message so that the number fields aren't wrapped in quotes (becoming strings).
 

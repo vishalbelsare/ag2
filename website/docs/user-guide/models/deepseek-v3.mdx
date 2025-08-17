@@ -98,11 +98,12 @@ workdir.mkdir(exist_ok=True)
 code_executor = LocalCommandLineCodeExecutor(work_dir=workdir)
 
 # Setting up the configuration for DeepSeek-V3
-llm_config = LLMConfig(
-    model="deepseek-chat",
-    base_url="https://api.deepseek.com/v1",
-    api_key=os.environ.get("DEEPSEEK_API_KEY"),
-    api_type="deepseek",
+llm_config = LLMConfig({
+        "model": "deepseek-chat",
+        "base_url": "https://api.deepseek.com/v1",
+        "api_key": os.environ.get("DEEPSEEK_API_KEY"),
+        "api_type": "deepseek",
+    },
     tags=["deepseek"],
 )
 
@@ -223,21 +224,23 @@ from typing_extensions import Annotated
 import autogen
 
 llm_config = autogen.LLMConfig(
-    model="deepseek-chat",
-    base_url="https://api.deepseek.com/v1",
-    api_key=os.environ.get("DEEPSEEK_API_KEY"),
-    api_type="deepseek",
+    {
+        "model": "deepseek-chat",
+        "base_url": "https://api.deepseek.com/v1",
+        "api_key": os.environ.get("DEEPSEEK_API_KEY"),
+        "api_type": "deepseek",
+    },
     tags=["deepseek"],
 )
 
 # Create the agent for tool calling
-with llm_config:
-    chatbot = autogen.AssistantAgent(
-        name="chatbot",
-        system_message="""For currency exchange and weather forecasting tasks,
-            only use the functions you have been provided with.
-            Output 'HAVE FUN!' when an answer has been provided.""",
-    )
+chatbot = autogen.AssistantAgent(
+    name="chatbot",
+    system_message="""For currency exchange and weather forecasting tasks,
+        only use the functions you have been provided with.
+        Output 'HAVE FUN!' when an answer has been provided.""",
+    llm_config=llm_config,
+)
 
 # Note that we have changed the termination string to be "HAVE FUN!"
 user_proxy = autogen.UserProxyAgent(

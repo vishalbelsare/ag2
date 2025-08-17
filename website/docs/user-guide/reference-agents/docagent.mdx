@@ -145,11 +145,10 @@ Note that the request is handled in natural language and the output will show th
 from autogen import LLMConfig
 from autogen.agents.experimental import DocAgent
 
-llm_config = LLMConfig(api_type="openai", model="gpt-4o")
+llm_config = LLMConfig({"api_type": "openai", "model": "gpt-4o"})
 
 # Create our DocAgent
-with llm_config:
-    document_agent = DocAgent()
+document_agent = DocAgent(llm_config=llm_config)
 
 # Update this path to suit your environment
 response = document_agent.run(
@@ -461,7 +460,7 @@ However, if you want to run multiple [`DocAgent`](/docs/api-reference/autogen/ag
 from autogen import LLMConfig
 from autogen.agents.experimental import DocAgent
 
-llm_config = LLMConfig(api_type="openai", model="gpt-4o")
+llm_config = LLMConfig({"api_type": "openai", "model": "gpt-4o"})
 
 # Create our DocAgents with their own collections
 # so that their ingested data and queries will be unique to them

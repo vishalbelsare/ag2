@@ -134,14 +134,14 @@ workdir.mkdir(exist_ok=True)
 code_executor = LocalCommandLineCodeExecutor(work_dir=workdir)
 
 # Setting up the Groq LLM configuration
-llm_config = LLMConfig(
+llm_config = LLMConfig({
     # Let's choose the Llama 3 model
-    model="llama3-8b-8192",
+    "model": "llama3-8b-8192",
     # Put your Groq API key here or put it into the GROQ_API_KEY environment variable.
-    api_key=os.environ.get("GROQ_API_KEY"),
+    "api_key": os.environ.get("GROQ_API_KEY"),
     # We specify the API Type as 'groq' so it uses the Groq client class
-    api_type="groq",
-)
+    "api_type": "groq",
+})
 
 # Setting up the agents
 
@@ -249,7 +249,12 @@ from typing_extensions import Annotated
 
 import autogen
 
-llm_config = autogen.LLMConfig(api_type="groq", model="llama3-8b-8192", api_key=os.getenv("GROQ_API_KEY"), cache_seed=None)
+llm_config = autogen.LLMConfig({
+    "api_type": "groq",
+    "model": "llama3-8b-8192",
+    "api_key": os.getenv("GROQ_API_KEY"),
+    "cache_seed": None,
+})
 
 # Create the agent for tool calling
 with llm_config:

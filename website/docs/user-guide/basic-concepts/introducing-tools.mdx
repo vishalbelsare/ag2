@@ -92,12 +92,12 @@ from autogen.agentchat.group.patterns import AutoPattern
 # Note: Make sure to set your API key in your environment first
 
 # Configure the LLM
-llm_config = LLMConfig(
-    api_type="openai",
-    model="gpt-4o-mini",
-    api_key=os.environ.get("OPENAI_API_KEY"),
-    temperature=0.2,
-)
+llm_config = LLMConfig({
+    "api_type": "openai",
+    "model": "gpt-4o-mini",
+    "api_key": os.environ.get("OPENAI_API_KEY"),
+    "temperature": 0.2,
+})
 
 # Mock database of previous transactions
 def get_previous_transactions() -> list[dict[str, Any]]:
@@ -330,12 +330,12 @@ Here's the complete, ready-to-run code for our enhanced financial compliance sys
     # Note: Make sure to set your API key in your environment first
 
     # Configure the LLM
-    llm_config = LLMConfig(
-        api_type="openai",
-        model="gpt-4o-mini",
-        api_key=os.environ.get("OPENAI_API_KEY"),
-        temperature=0.2,
-    )
+    llm_config = LLMConfig({
+        "api_type": "openai",
+        "model": "gpt-4o-mini",
+        "api_key": os.environ.get("OPENAI_API_KEY"),
+        "temperature": 0.2,
+    })
 
     # Mock database of previous transactions
     def get_previous_transactions() -> list[dict[str, Any]]:

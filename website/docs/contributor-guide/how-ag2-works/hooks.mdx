@@ -178,7 +178,7 @@ In the following example we will update an agent's system message to have the cu
 from autogen import ConversableAgent, LLMConfig
 from typing import Any
 
-llm_config = LLMConfig(model="gpt-4o-mini", api_type="openai")
+llm_config = LLMConfig({"model": "gpt-4o-mini", "api_type": "openai"})
 
 calendar_prompt = ("You are a calendar agent who answers questions on the date and day.\n"
                    "The current date is: [CURRENT_DATE]\n"

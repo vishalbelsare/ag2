@@ -193,9 +193,7 @@ Reply 'TERMINATE' in the end when everything is done.
 code_writer_agent = ConversableAgent(
     "code_writer_agent",
     system_message=code_writer_system_message,
-    llm_config=LLMConfig(
-        api_type="openai", model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"]
-    ),
+    llm_config=LLMConfig({"api_type": "openai", "model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}),
     code_execution_config=False,  # Turn off code execution for this agent.
 )
 
@@ -351,7 +349,7 @@ print("The 'stock_gains.png' file has been successfully saved")
 '''
 This script will download the historical data for TSLA and META from the start of the year to the specified date and calculates the YTD gains. It then generates the plot showing these gains and saves it to 'stock_gains.png'.
 
-Please save the script to a file named 'stock_gains.py' and run it using Python. Remember to have the correct start and end dates for the YTD value when running the script. If your Python version is below 3.9, you should update it to execute this code perfectly.
+Please save the script to a file named 'stock_gains.py' and run it using Python. Remember to have the correct start and end dates for the YTD value when running the script. If your Python version is below 3.10, you should update it to execute this code perfectly.
 
 --------------------------------------------------------------------------------
 
