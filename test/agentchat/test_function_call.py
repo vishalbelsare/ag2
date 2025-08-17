@@ -218,7 +218,6 @@ async def test_a_execute_function():
     not sys.version.startswith("3.10"),
     reason=reason,
 )
-@run_for_optional_imports(["openai"], "openai")
 def test_update_function(credentials_gpt_4o_mini: Credentials):
     llm_config = {
         "config_list": credentials_gpt_4o_mini.config_list,
