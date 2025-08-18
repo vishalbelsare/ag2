@@ -627,11 +627,11 @@ import autogen
 from autogen import AssistantAgent, UserProxyAgent
 from autogen.agentchat.contrib.multimodal_conversable_agent import MultimodalConversableAgent
 
-with llm_config_sonnet:
-    image_agent = MultimodalConversableAgent(
-        name="image-explainer",
-        max_consecutive_auto_reply=10,
-    )
+image_agent = MultimodalConversableAgent(
+    name="image-explainer",
+    max_consecutive_auto_reply=10,
+    llm_config=llm_config_sonnet,
+)
 
 user_proxy = autogen.UserProxyAgent(
     name="User_proxy",

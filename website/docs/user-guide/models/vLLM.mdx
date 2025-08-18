@@ -113,8 +113,7 @@ local_llm_config = LLMConfig({
 })
 
 # Create the agent that uses the LLM.
-with llm_config:
-    assistant = ConversableAgent("agent", system_message="")
+assistant = ConversableAgent("agent", system_message="", llm_config=llm_config)
 
 # Create the agent that represents the user in the conversation.
 user_proxy = UserProxyAgent("user", code_execution_config=False,system_message="")

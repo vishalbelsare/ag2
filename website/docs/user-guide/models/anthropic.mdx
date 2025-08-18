@@ -137,8 +137,7 @@ llm_config_vertexai = LLMConfig({
     "api_type": "anthropic",
 })
 
-with llm_config_vertexai:
-    assistant = autogen.AssistantAgent("assistant")
+assistant = autogen.AssistantAgent("assistant", llm_config=llm_config_vertexai)
 ```
 
 ### Alternative Anthropic VertexAI Client (Google Default Authentication)
@@ -164,8 +163,7 @@ This allows seamless integration without explicitly specifying the authenticatio
 Construct a simple conversation between a User proxy and an ConversableAgent based on Claude-3 model.
 
 ```python
-with llm_config_claude:
-    assistant = autogen.AssistantAgent("assistant")
+assistant = autogen.AssistantAgent("assistant", llm_config=llm_config_claude)
 
 user_proxy = autogen.UserProxyAgent(
     "user_proxy",
@@ -591,11 +589,11 @@ While we're proud of our record and the merits you've recognized in our argument
 ### Same group chat with Claude 3.5 Sonnet as the judge
 
 ```python
-with llm_config_claude:
-    dan = AssistantAgent(
-        "Judge",
-        system_message="You are a judge. You will evaluate the arguments and make a decision on which one is more convincing.",
-    )
+dan = AssistantAgent(
+    "Judge",
+    system_message="You are a judge. You will evaluate the arguments and make a decision on which one is more convincing.",
+    llm_config=llm_config_claude,
+)
 
 groupchat = GroupChat(
     agents=[alice, bob, charlie, dan, code_interpreter],

@@ -43,8 +43,10 @@ user_proxy = UserProxyAgent(
     human_input_mode="NEVER",
 )
 
-with llm_config:
-    chatbot = AssistantAgent(name="chatbot")
+chatbot = AssistantAgent(
+    name="chatbot",
+    llm_config=llm_config,
+)
 ```
 
 ### Tool Integration

@@ -112,16 +112,17 @@ The context manager approach applies the LLM configuration to all agents created
 ```python hl_lines="3-12"
 from autogen import ConversableAgent
 
-with llm_config:
-    finance_bot = ConversableAgent(
-        name="finance_bot",
-        system_message="You are a financial compliance assistant",
-    )
+finance_bot = ConversableAgent(
+    name="finance_bot",
+    system_message="You are a financial compliance assistant",
+    llm_config=llm_config,
+)
 
-    analysis_bot = ConversableAgent(
-        name="analysis_bot",
-        system_message="You analyze financial data for anomalies",
-    )
+analysis_bot = ConversableAgent(
+    name="analysis_bot",
+    system_message="You analyze financial data for anomalies",
+    llm_config=llm_config,
+)
 ```
 
 ## Financial Compliance Example: LLM Configuration

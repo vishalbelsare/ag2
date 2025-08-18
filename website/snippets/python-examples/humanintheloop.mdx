@@ -12,11 +12,11 @@ Use the following format:
 <script>How to introduce the topic to the kids</script>
 """
 
-with llm_config:
-    my_agent = ConversableAgent(
-        name="lesson_agent",
-        system_message=planner_system_message,
-    )
+my_agent = ConversableAgent(
+    name="lesson_agent",
+    system_message=planner_system_message,
+    llm_config=llm_config,
+)
 
 # 1. Create our "human" agent
 the_human = ConversableAgent(

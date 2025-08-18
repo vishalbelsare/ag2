@@ -43,9 +43,8 @@ Implementing a swarm in AG2 is straightforward using the [`initiate_swarm_chat`]
 from autogen import ConversableAgent, AfterWorkOption, initiate_swarm_chat, LLMConfig
 
 # Create your specialized agents
-with llm_config:
-    agent_1 = ConversableAgent(name="agent_1", system_message="...")
-    agent_2 = ConversableAgent(name="agent_2", system_message="...")
+agent_1 = ConversableAgent(name="agent_1", llm_config=llm_config, system_message="...")
+agent_2 = ConversableAgent(name="agent_2", llm_config=llm_config, system_message="...")
 
 # Create human agent if needed
 human = ConversableAgent(name="human", human_input_mode="ALWAYS")
@@ -133,15 +132,16 @@ The summary should be concise and clear.
 """
 
 # Create the finance agent with LLM intelligence
-with llm_config:
-    finance_bot = ConversableAgent(
-        name="finance_bot",
-        system_message=finance_system_message,
-    )
-    summary_bot = ConversableAgent(
-        name="summary_bot",
-        system_message=summary_system_message,
-    )
+finance_bot = ConversableAgent(
+    name="finance_bot",
+    llm_config=llm_config,
+    system_message=finance_system_message,
+)
+summary_bot = ConversableAgent(
+    name="summary_bot",
+    llm_config=llm_config,
+    system_message=summary_system_message,
+)
 
 # Create the human agent for oversight
 human = ConversableAgent(
@@ -279,15 +279,16 @@ Here's the complete, ready-to-run code for our enhanced financial compliance sys
     """
 
     # Create the finance agent with LLM intelligence
-    with llm_config:
-        finance_bot = ConversableAgent(
-            name="finance_bot",
-            system_message=finance_system_message,
-        )
-        summary_bot = ConversableAgent(
-            name="summary_bot",
-            system_message=summary_system_message,
-        )
+    finance_bot = ConversableAgent(
+        name="finance_bot",
+        llm_config=llm_config,
+        system_message=finance_system_message,
+    )
+    summary_bot = ConversableAgent(
+        name="summary_bot",
+        llm_config=llm_config,
+        system_message=summary_system_message,
+    )
 
     # Create the human agent for oversight
     human = ConversableAgent(
@@ -551,16 +552,16 @@ Here's the updated code that incorporates automatic termination:
     """
 
     # Create the finance agent with LLM intelligence
-    with llm_config:
-        finance_bot = ConversableAgent(
-            name="finance_bot",
-            system_message=finance_system_message,
-        )
-        summary_bot = ConversableAgent(
-            name="summary_bot",
-            system_message=summary_system_message,
-        )
-
+    finance_bot = ConversableAgent(
+        name="finance_bot",
+        llm_config=llm_config,
+        system_message=finance_system_message,
+    )
+    summary_bot = ConversableAgent(
+        name="summary_bot",
+        llm_config=llm_config,
+        system_message=summary_system_message,
+    )
 
     def is_termination_msg(x: dict[str, Any]) -> bool:
         content = x.get("content", "")
