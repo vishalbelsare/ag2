@@ -17,7 +17,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import signature
 from typing import (
     TYPE_CHECKING,
@@ -72,6 +72,7 @@ from ..tools import ChatContext, Tool, load_basemodels_if_needed, serialize_to_s
 from .agent import Agent, LLMAgent
 from .chat import (
     ChatResult,
+    CostDict,
     _post_process_carryover_item,
     _validate_recipients,
     a_initiate_chats,
@@ -123,6 +124,26 @@ class UpdateSystemMessage:
                 raise ValueError("The update function must return a string")
         else:
             raise ValueError("The update function must be either a string or a callable")
+
+
+@dataclass
+class Chat:
+    chat_id: int = field(default_factory=lambda: uuid.uuid4().int)
+    agents: list["ConversableAgent"] = field(default_factory=list)
+    stream: IOStream = field(default_factory=IOStream.get_default)
+
+    def terminate(self, sender: "ConversableAgent", recipient: "ConversableAgent", termination_reason: str) -> None:
+        self.stream.send(
+            TerminationEvent(
+                termination_reason=termination_reason,
+                sender=sender,
+                recipient=recipient,
+            )
+        )
+
+    @property
+    def cost(self) -> "CostDict":
+        return gather_usage_summary(self.agents)
 
 
 @export_module("autogen")
@@ -486,11 +507,6 @@ class ConversableAgent(LLMAgent):
     def _validate_llm_config(
         cls, llm_config: LLMConfig | dict[str, Any] | Literal[False] | None
     ) -> LLMConfig | Literal[False]:
-        # if not(llm_config in (None, False) or isinstance(llm_config, [dict, LLMConfig])):
-        #     raise ValueError(
-        #         "llm_config must be a dict or False or None."
-        #     )
-
         if llm_config is None:
             llm_config = LLMConfig.get_current_llm_config()
             if llm_config is None:
@@ -1115,7 +1131,10 @@ class ConversableAgent(LLMAgent):
         hook_list = self.hook_lists["process_message_before_send"]
         for hook in hook_list:
             message = hook(
-                sender=self, message=message, recipient=recipient, silent=ConversableAgent._is_silent(self, silent)
+                sender=self,
+                message=message,
+                recipient=recipient,
+                silent=silent,
             )
         return message
 
@@ -1466,29 +1485,33 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
-        chat_id = uuid.uuid4().int
+        chat = Chat(agents=[self, recipient])
 
-        iostream = IOStream.get_default()
+        if isinstance(message, Callable):
+            initial_message = message(self, recipient, kwargs)
+        else:
+            initial_message = self.generate_init_message(message, **kwargs)
 
         cache = Cache.get_current_cache(cache)
         _chat_info = locals().copy()
         _chat_info["sender"] = self
         consolidate_chat_info(_chat_info, uniform_sender=self)
+
         for agent in [self, recipient]:
             agent._raise_exception_on_async_reply_functions()
             agent.previous_cache = agent.client_cache
             agent.client_cache = cache
+
         if isinstance(max_turns, int):
-            self._prepare_chat(recipient, chat_id, clear_history, reply_at_receive=False)
+            self._prepare_chat(recipient, chat.chat_id, clear_history, reply_at_receive=False)
             for i in range(max_turns):
                 # check recipient max consecutive auto reply limit
                 if self._consecutive_auto_reply_counter[recipient] >= recipient._max_consecutive_auto_reply:
                     break
+
                 if i == 0:
-                    if isinstance(message, Callable):
-                        msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-                    else:
-                        msg2send = self.generate_init_message(message, **kwargs)
+                    msg2send = initial_message
+
                 else:
                     last_message = self.chat_messages[recipient][-1]
                     if self._should_terminate_chat(recipient, last_message):
@@ -1496,36 +1519,35 @@ class ConversableAgent(LLMAgent):
                     msg2send = self.generate_reply(messages=self.chat_messages[recipient], sender=recipient)
                 if msg2send is None:
                     break
+
                 self.send(msg2send, recipient, request_reply=True, silent=silent)
+
             else:  # No breaks in the for loop, so we have reached max turns
-                iostream.send(
-                    TerminationEvent(
-                        termination_reason=f"Maximum turns ({max_turns}) reached", sender=self, recipient=recipient
-                    )
-                )
+                chat.terminate(self, recipient, f"Maximum turns ({max_turns}) reached")
+
         else:
-            self._prepare_chat(recipient, chat_id, clear_history)
-            if isinstance(message, Callable):
-                msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-            else:
-                msg2send = self.generate_init_message(message, **kwargs)
-            self.send(msg2send, recipient, silent=silent)
+            self._prepare_chat(recipient, chat.chat_id, clear_history)
+            self.send(initial_message, recipient, silent=silent)
+
         summary = self._summarize_chat(
             summary_method,
             summary_args,
             recipient,
             cache=cache,
         )
+
         for agent in [self, recipient]:
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
+
         chat_result = ChatResult(
-            chat_id=chat_id,
+            chat_id=chat.chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
-            cost=gather_usage_summary([self, recipient]),
+            cost=chat.cost,
             human_input=self._human_input,
         )
+
         return chat_result
 
     def run(
