@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import threading
+import uuid
 import warnings
 from collections import defaultdict
 from collections.abc import Callable, Generator, Iterable
@@ -1312,6 +1313,7 @@ class ConversableAgent(LLMAgent):
     def _prepare_chat(
         self,
         recipient: "ConversableAgent",
+        chat_id: int,
         clear_history: bool,
         prepare_recipient: bool = True,
         reply_at_receive: bool = True,
@@ -1322,7 +1324,7 @@ class ConversableAgent(LLMAgent):
             self.clear_history(recipient)
             self._human_input = []
         if prepare_recipient:
-            recipient._prepare_chat(self, clear_history, False, reply_at_receive)
+            recipient._prepare_chat(self, chat_id, clear_history, False, reply_at_receive)
 
     def _raise_exception_on_async_reply_functions(self) -> None:
         """Raise an exception if any async reply functions are registered.
@@ -1464,6 +1466,8 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
+        chat_id = uuid.uuid4().int
+
         iostream = IOStream.get_default()
 
         cache = Cache.get_current_cache(cache)
@@ -1475,8 +1479,7 @@ class ConversableAgent(LLMAgent):
             agent.previous_cache = agent.client_cache
             agent.client_cache = cache
         if isinstance(max_turns, int):
-            self._prepare_chat(recipient, clear_history, reply_at_receive=False)
-            is_termination = False
+            self._prepare_chat(recipient, chat_id, clear_history, reply_at_receive=False)
             for i in range(max_turns):
                 # check recipient max consecutive auto reply limit
                 if self._consecutive_auto_reply_counter[recipient] >= recipient._max_consecutive_auto_reply:
@@ -1501,7 +1504,7 @@ class ConversableAgent(LLMAgent):
                     )
                 )
         else:
-            self._prepare_chat(recipient, clear_history)
+            self._prepare_chat(recipient, chat_id, clear_history)
             if isinstance(message, Callable):
                 msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
             else:
@@ -1517,6 +1520,7 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
         chat_result = ChatResult(
+            chat_id=chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),
@@ -1657,6 +1661,8 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
+        chat_id = uuid.uuid4().int
+
         iostream = IOStream.get_default()
 
         _chat_info = locals().copy()
@@ -1666,8 +1672,7 @@ class ConversableAgent(LLMAgent):
             agent.previous_cache = agent.client_cache
             agent.client_cache = cache
         if isinstance(max_turns, int):
-            self._prepare_chat(recipient, clear_history, reply_at_receive=False)
-            is_termination = False
+            self._prepare_chat(recipient, chat_id, clear_history, reply_at_receive=False)
             for _ in range(max_turns):
                 if _ == 0:
                     if isinstance(message, Callable):
@@ -1689,7 +1694,7 @@ class ConversableAgent(LLMAgent):
                     )
                 )
         else:
-            self._prepare_chat(recipient, clear_history)
+            self._prepare_chat(recipient, chat_id, clear_history)
             if isinstance(message, Callable):
                 msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
             else:
@@ -1705,6 +1710,7 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
         chat_result = ChatResult(
+            chat_id=chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),
