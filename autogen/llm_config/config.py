@@ -15,25 +15,21 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import deprecated
 
 from autogen.doc_utils import export_module
-from autogen.oai.anthropic import AnthropicEntryDict, AnthropicLLMConfigEntry
-from autogen.oai.bedrock import BedrockEntryDict, BedrockLLMConfigEntry
-from autogen.oai.cerebras import CerebrasEntryDict, CerebrasLLMConfigEntry
+from autogen.oai.anthropic import AnthropicLLMConfigEntry
+from autogen.oai.bedrock import BedrockLLMConfigEntry
+from autogen.oai.cerebras import CerebrasLLMConfigEntry
 from autogen.oai.client import (
-    AzureOpenAIEntryDict,
     AzureOpenAILLMConfigEntry,
-    DeepSeekEntyDict,
     DeepSeekLLMConfigEntry,
-    OpenAIEntryDict,
     OpenAILLMConfigEntry,
-    OpenAIResponsesEntryDict,
     OpenAIResponsesLLMConfigEntry,
 )
-from autogen.oai.cohere import CohereEntryDict, CohereLLMConfigEntry
-from autogen.oai.gemini import GeminiEntryDict, GeminiLLMConfigEntry
-from autogen.oai.groq import GroqEntryDict, GroqLLMConfigEntry
-from autogen.oai.mistral import MistralEntryDict, MistralLLMConfigEntry
-from autogen.oai.ollama import OllamaEntryDict, OllamaLLMConfigEntry
-from autogen.oai.together import TogetherEntryDict, TogetherLLMConfigEntry
+from autogen.oai.cohere import CohereLLMConfigEntry
+from autogen.oai.gemini import GeminiLLMConfigEntry
+from autogen.oai.groq import GroqLLMConfigEntry
+from autogen.oai.mistral import MistralLLMConfigEntry
+from autogen.oai.ollama import OllamaLLMConfigEntry
+from autogen.oai.together import TogetherLLMConfigEntry
 
 from .entry import ApplicationConfig, LLMConfigEntry
 from .utils import config_list_from_json, filter_config
@@ -66,23 +62,23 @@ class MetaLLMConfig(type):
         return cls.current
 
 
-ConfigItem: TypeAlias = (
-    LLMConfigEntry
-    | AnthropicEntryDict
-    | BedrockEntryDict
-    | CerebrasEntryDict
-    | CohereEntryDict
-    | AzureOpenAIEntryDict
-    | OpenAIEntryDict
-    | DeepSeekEntyDict
-    | MistralEntryDict
-    | GroqEntryDict
-    | OllamaEntryDict
-    | GeminiEntryDict
-    | OpenAIResponsesEntryDict
-    | TogetherEntryDict
-    | dict[str, Any]
+ConfigEntries = (
+    AnthropicLLMConfigEntry
+    | CerebrasLLMConfigEntry
+    | BedrockLLMConfigEntry
+    | AzureOpenAILLMConfigEntry
+    | DeepSeekLLMConfigEntry
+    | OpenAILLMConfigEntry
+    | OpenAIResponsesLLMConfigEntry
+    | CohereLLMConfigEntry
+    | GeminiLLMConfigEntry
+    | GroqLLMConfigEntry
+    | MistralLLMConfigEntry
+    | OllamaLLMConfigEntry
+    | TogetherLLMConfigEntry
 )
+
+ConfigItem: TypeAlias = LLMConfigEntry | ConfigEntries | dict[str, Any]
 
 
 @export_module("autogen")
@@ -476,19 +472,7 @@ class _LLMConfig(ApplicationConfig):
 
     config_list: list[
         Annotated[
-            AnthropicLLMConfigEntry
-            | CerebrasLLMConfigEntry
-            | BedrockLLMConfigEntry
-            | AzureOpenAILLMConfigEntry
-            | DeepSeekLLMConfigEntry
-            | OpenAILLMConfigEntry
-            | OpenAIResponsesLLMConfigEntry
-            | CohereLLMConfigEntry
-            | GeminiLLMConfigEntry
-            | GroqLLMConfigEntry
-            | MistralLLMConfigEntry
-            | OllamaLLMConfigEntry
-            | TogetherLLMConfigEntry,
+            ConfigEntries,
             Field(discriminator="api_type"),
         ],
     ] = Field(..., min_length=1)
