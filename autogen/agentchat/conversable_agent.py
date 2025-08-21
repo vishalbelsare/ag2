@@ -608,9 +608,13 @@ class ConversableAgent(LLMAgent):
             old_reply_func (Callable): the old reply function to be replaced.
             new_reply_func (Callable): the new reply function to replace the old one.
         """
+        found = False
         for f in self._reply_func_list:
             if f["reply_func"] == old_reply_func:
                 f["reply_func"] = new_reply_func
+                found = True
+        if not found:
+            raise ValueError(f"Reply function {old_reply_func} not found")
 
     @staticmethod
     def _get_chats_to_run(
