@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-import uuid
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
@@ -212,8 +211,6 @@ class SwarmableAgent(Agent):
         summary_args: dict[str, Any] | None = {},
         **kwargs: dict[str, Any],
     ) -> ChatResult:
-        chat_id = uuid.uuid4().int
-
         _chat_info = locals().copy()
         _chat_info["sender"] = self
         consolidate_chat_info(_chat_info, uniform_sender=self)
@@ -221,7 +218,7 @@ class SwarmableAgent(Agent):
         recipient.previous_cache = recipient.client_cache  # type: ignore[attr-defined]
         recipient.client_cache = cache  # type: ignore[attr-defined, assignment]
 
-        self._prepare_chat(recipient, chat_id, clear_history)
+        self._prepare_chat(recipient, clear_history)
         self.send(message, recipient, silent=silent)
         summary = self._last_msg_as_summary(self, recipient, summary_args)
 
@@ -229,7 +226,6 @@ class SwarmableAgent(Agent):
         recipient.previous_cache = None  # type: ignore[attr-defined]
 
         chat_result = ChatResult(
-            chat_id=chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),  # type: ignore[arg-type]
@@ -284,7 +280,6 @@ class SwarmableAgent(Agent):
     def _prepare_chat(
         self,
         recipient: ConversableAgent,
-        chat_id: int,
         clear_history: bool,
         prepare_recipient: bool = True,
         reply_at_receive: bool = True,
@@ -293,7 +288,7 @@ class SwarmableAgent(Agent):
         if clear_history:
             self._oai_messages[recipient].clear()
         if prepare_recipient:
-            recipient._prepare_chat(self, chat_id, clear_history, False, reply_at_receive)  # type: ignore[arg-type]
+            recipient._prepare_chat(self, clear_history, False, reply_at_receive)  # type: ignore[arg-type]
 
     def _raise_exception_on_async_reply_functions(self) -> None:
         pass
