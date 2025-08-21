@@ -1214,7 +1214,6 @@ class ConversableAgent(LLMAgent):
         message = self._message_to_dict(message)
         message_model = create_received_event_model(event=message, sender=sender, recipient=self)
         iostream = IOStream.get_default()
-        # message_model.print(iostream.print)
         iostream.send(message_model)
 
     def _process_received_message(self, message: dict[str, Any] | str, sender: Agent, silent: bool):
@@ -1463,26 +1462,26 @@ class ConversableAgent(LLMAgent):
         chat_id = uuid.uuid4().int
         iostream = IOStream.get_default()
 
+        if callable(message):
+            initial_msg = message(self, recipient, kwargs)
+        else:
+            initial_msg = self.generate_init_message(message, **kwargs)
+
         cache = Cache.get_current_cache(cache)
-        _chat_info = locals().copy()
-        _chat_info["sender"] = self
-        consolidate_chat_info(_chat_info, uniform_sender=self)
+
         for agent in [self, recipient]:
             agent._raise_exception_on_async_reply_functions()
             agent.previous_cache = agent.client_cache
             agent.client_cache = cache
+
         if isinstance(max_turns, int):
             self._prepare_chat(recipient, clear_history, reply_at_receive=False)
-            is_termination = False
             for i in range(max_turns):
                 # check recipient max consecutive auto reply limit
                 if self._consecutive_auto_reply_counter[recipient] >= recipient._max_consecutive_auto_reply:
                     break
                 if i == 0:
-                    if isinstance(message, Callable):
-                        msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-                    else:
-                        msg2send = self.generate_init_message(message, **kwargs)
+                    msg2send = initial_msg
                 else:
                     last_message = self.chat_messages[recipient][-1]
                     if self._should_terminate_chat(recipient, last_message):
@@ -1499,11 +1498,7 @@ class ConversableAgent(LLMAgent):
                 )
         else:
             self._prepare_chat(recipient, clear_history)
-            if isinstance(message, Callable):
-                msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-            else:
-                msg2send = self.generate_init_message(message, **kwargs)
-            self.send(msg2send, recipient, silent=silent)
+            self.send(initial_msg, recipient, silent=silent)
         summary = self._summarize_chat(
             summary_method,
             summary_args,
@@ -1650,21 +1645,25 @@ class ConversableAgent(LLMAgent):
         chat_id = uuid.uuid4().int
         iostream = IOStream.get_default()
 
-        _chat_info = locals().copy()
-        _chat_info["sender"] = self
-        consolidate_chat_info(_chat_info, uniform_sender=self)
+        if callable(message):
+            initial_msg = message(self, recipient, kwargs)
+        else:
+            initial_msg = await self.a_generate_init_message(message, **kwargs)
+
+        cache = Cache.get_current_cache(cache)
+
         for agent in [self, recipient]:
             agent.previous_cache = agent.client_cache
             agent.client_cache = cache
-        if isinstance(max_turns, int):
+
+        if max_turns:
             self._prepare_chat(recipient, clear_history, reply_at_receive=False)
-            is_termination = False
-            for _ in range(max_turns):
-                if _ == 0:
-                    if isinstance(message, Callable):
-                        msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-                    else:
-                        msg2send = await self.a_generate_init_message(message, **kwargs)
+            for turn in range(max_turns):
+                # check recipient max consecutive auto reply limit
+                if self._consecutive_auto_reply_counter[recipient] >= recipient._max_consecutive_auto_reply:
+                    break
+                if turn == 0:
+                    msg2send = initial_msg
                 else:
                     last_message = self.chat_messages[recipient][-1]
                     if self._should_terminate_chat(recipient, last_message):
@@ -1681,11 +1680,7 @@ class ConversableAgent(LLMAgent):
                 )
         else:
             self._prepare_chat(recipient, clear_history)
-            if isinstance(message, Callable):
-                msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-            else:
-                msg2send = await self.a_generate_init_message(message, **kwargs)
-            await self.a_send(msg2send, recipient, silent=silent)
+            await self.a_send(initial_msg, recipient, silent=silent)
         summary = self._summarize_chat(
             summary_method,
             summary_args,
