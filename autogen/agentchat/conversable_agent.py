@@ -1551,23 +1551,19 @@ class ConversableAgent(LLMAgent):
                 ):
                     try:
                         if msg_to == "agent":
-                            chat_result = executor.initiate_chat(
-                                self,
-                                message=message,
-                                clear_history=clear_history,
-                                max_turns=max_turns,
-                                summary_method=summary_method,
-                            )
+                            sender, recipient = executor, self
                         else:
-                            chat_result = self.initiate_chat(
-                                executor,
-                                message=message,
-                                clear_history=clear_history,
-                                max_turns=max_turns,
-                                summary_method=summary_method,
-                            )
+                            sender, recipient = self, executor
 
-                        IOStream.get_default().send(
+                        chat_result = sender.initiate_chat(
+                            recipient,
+                            message=message,
+                            clear_history=clear_history,
+                            max_turns=max_turns,
+                            summary_method=summary_method,
+                        )
+
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1576,7 +1572,7 @@ class ConversableAgent(LLMAgent):
                             )
                         )
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
         else:
 
@@ -1602,7 +1598,7 @@ class ConversableAgent(LLMAgent):
                         if hasattr(recipient, "last_speaker"):
                             _last_speaker = recipient.last_speaker
 
-                        IOStream.get_default().send(
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1611,7 +1607,7 @@ class ConversableAgent(LLMAgent):
                             )
                         )
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
         threading.Thread(
             target=initiate_chat,
@@ -1733,23 +1729,19 @@ class ConversableAgent(LLMAgent):
                 ):
                     try:
                         if msg_to == "agent":
-                            chat_result = await executor.a_initiate_chat(
-                                self,
-                                message=message,
-                                clear_history=clear_history,
-                                max_turns=max_turns,
-                                summary_method=summary_method,
-                            )
+                            sender, recipient = executor, self
                         else:
-                            chat_result = await self.a_initiate_chat(
-                                executor,
-                                message=message,
-                                clear_history=clear_history,
-                                max_turns=max_turns,
-                                summary_method=summary_method,
-                            )
+                            sender, recipient = self, executor
 
-                        IOStream.get_default().send(
+                        chat_result = await sender.a_initiate_chat(
+                            recipient,
+                            message=message,
+                            clear_history=clear_history,
+                            max_turns=max_turns,
+                            summary_method=summary_method,
+                        )
+
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1758,7 +1750,7 @@ class ConversableAgent(LLMAgent):
                             )
                         )
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
         else:
 
@@ -1781,7 +1773,7 @@ class ConversableAgent(LLMAgent):
                         if hasattr(recipient, "last_speaker"):
                             last_speaker = recipient.last_speaker
 
-                        IOStream.get_default().send(
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1791,7 +1783,7 @@ class ConversableAgent(LLMAgent):
                         )
 
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
         task = asyncio.create_task(initiate_chat())
         # prevent the task from being garbage collected
