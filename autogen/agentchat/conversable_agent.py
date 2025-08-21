@@ -1544,11 +1544,7 @@ class ConversableAgent(LLMAgent):
 
         if recipient is None:
 
-            def initiate_chat(
-                self=self,
-                iostream: ThreadIOStream = iostream,
-                response: RunResponse = response,
-            ) -> None:
+            def initiate_chat() -> None:
                 with (
                     IOStream.set_default(iostream),
                     self._create_or_get_executor(
@@ -1589,11 +1585,7 @@ class ConversableAgent(LLMAgent):
 
         else:
 
-            def initiate_chat(
-                self=self,
-                iostream: ThreadIOStream = iostream,
-                response: RunResponse = response,
-            ) -> None:
+            def initiate_chat() -> None:
                 with IOStream.set_default(iostream):  # type: ignore[arg-type]
                     try:
                         chat_result = self.initiate_chat(
@@ -1734,11 +1726,7 @@ class ConversableAgent(LLMAgent):
 
         if recipient is None:
 
-            async def initiate_chat(
-                self=self,
-                iostream: AsyncThreadIOStream = iostream,
-                response: AsyncRunResponse = response,
-            ) -> None:
+            async def initiate_chat() -> None:
                 with (
                     IOStream.set_default(iostream),
                     self._create_or_get_executor(
@@ -1779,11 +1767,7 @@ class ConversableAgent(LLMAgent):
 
         else:
 
-            async def initiate_chat(
-                self=self,
-                iostream: AsyncThreadIOStream = iostream,
-                response: AsyncRunResponse = response,
-            ) -> None:
+            async def initiate_chat() -> None:
                 with IOStream.set_default(iostream):  # type: ignore[arg-type]
                     try:
                         chat_result = await self.a_initiate_chat(
