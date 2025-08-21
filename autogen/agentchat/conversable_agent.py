@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import threading
+import uuid
 import warnings
 from collections import defaultdict
 from collections.abc import Callable, Generator, Iterable
@@ -1457,6 +1458,7 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
+        chat_id = uuid.uuid4().int
         iostream = IOStream.get_default()
 
         cache = Cache.get_current_cache(cache)
@@ -1510,6 +1512,7 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
         chat_result = ChatResult(
+            chat_id=chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),
@@ -1650,6 +1653,7 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
+        chat_id = uuid.uuid4().int
         iostream = IOStream.get_default()
 
         _chat_info = locals().copy()
@@ -1698,6 +1702,7 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
         chat_result = ChatResult(
+            chat_id=chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),
