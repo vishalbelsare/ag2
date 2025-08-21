@@ -15,18 +15,12 @@ import threading
 import uuid
 import warnings
 from collections import defaultdict
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable, Generator, Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from inspect import signature
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    Optional,
-    TypeVar,
-    Union,
-)
+from itertools import chain, count, cycle
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypeVar, Union
 
 from ..cache.cache import AbstractCache, Cache
 from ..code_utils import (
@@ -618,7 +612,7 @@ class ConversableAgent(LLMAgent):
                 "config": copy.copy(config),
                 "init_config": config,
                 "reset_config": reset_config,
-                "ignore_async_in_sync_chat": ignore_async_in_sync_chat and inspect.iscoroutinefunction(reply_func),
+                "ignore_async_in_sync_chat": ignore_async_in_sync_chat and is_coroutine_callable(reply_func),
             },
         )
 
@@ -629,9 +623,13 @@ class ConversableAgent(LLMAgent):
             old_reply_func (Callable): the old reply function to be replaced.
             new_reply_func (Callable): the new reply function to replace the old one.
         """
+        found = False
         for f in self._reply_func_list:
             if f["reply_func"] == old_reply_func:
                 f["reply_func"] = new_reply_func
+                found = True
+        if not found:
+            raise ValueError(f"Reply function `{old_reply_func}` not found.")
 
     @staticmethod
     def _get_chats_to_run(
@@ -929,9 +927,7 @@ class ConversableAgent(LLMAgent):
         if use_async:
             if reply_func_from_nested_chats == "summary_from_nested_chats":
                 reply_func_from_nested_chats = self._a_summary_from_nested_chats
-            if not callable(reply_func_from_nested_chats) or not inspect.iscoroutinefunction(
-                reply_func_from_nested_chats
-            ):
+            if not callable(reply_func_from_nested_chats) or not is_coroutine_callable(reply_func_from_nested_chats):
                 raise ValueError("reply_func_from_nested_chats must be a callable and a coroutine")
 
             async def wrapped_reply_func(recipient, messages=None, sender=None, config=None):
@@ -1178,7 +1174,7 @@ class ConversableAgent(LLMAgent):
         # unless it's "function".
         valid = self._append_oai_message(message, "assistant", recipient, is_sending=True)
         if valid:
-            recipient.receive(message, self, request_reply, silent)
+            return recipient.receive(message, self, request_reply, silent)
         else:
             raise ValueError(
                 "Message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
@@ -1226,7 +1222,7 @@ class ConversableAgent(LLMAgent):
         # unless it's "function".
         valid = self._append_oai_message(message, "assistant", recipient, is_sending=True)
         if valid:
-            await recipient.a_receive(message, self, request_reply, silent)
+            return await recipient.a_receive(message, self, request_reply, silent)
         else:
             raise ValueError(
                 "Message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
@@ -1236,7 +1232,6 @@ class ConversableAgent(LLMAgent):
         message = self._message_to_dict(message)
         message_model = create_received_event_model(event=message, sender=sender, recipient=self)
         iostream = IOStream.get_default()
-        # message_model.print(iostream.print)
         iostream.send(message_model)
 
     def _process_received_message(self, message: dict[str, Any] | str, sender: Agent, silent: bool):
@@ -1284,9 +1279,13 @@ class ConversableAgent(LLMAgent):
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
         self._process_received_message(message, sender, silent)
-        if request_reply is False or (request_reply is None and self.reply_at_receive[sender] is False):
-            return
+        request_reply = self.reply_at_receive[sender] if request_reply is None else request_reply
+
         reply = self.generate_reply(messages=self.chat_messages[sender], sender=sender)
+
+        if not request_reply:
+            return reply
+
         if reply is not None:
             self.send(reply, sender, silent=silent)
 
@@ -1321,9 +1320,13 @@ class ConversableAgent(LLMAgent):
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
         self._process_received_message(message, sender, silent)
-        if request_reply is False or (request_reply is None and self.reply_at_receive[sender] is False):
-            return
+        request_reply = self.reply_at_receive[sender] if request_reply is None else request_reply
+
         reply = await self.a_generate_reply(messages=self.chat_messages[sender], sender=sender)
+
+        if not request_reply:
+            return reply
+
         if reply is not None:
             await self.a_send(reply, sender, silent=silent)
 
@@ -1353,7 +1356,7 @@ class ConversableAgent(LLMAgent):
             f["reply_func"] for f in self._reply_func_list if not f.get("ignore_async_in_sync_chat", False)
         }
 
-        async_reply_functions = [f for f in reply_functions if inspect.iscoroutinefunction(f)]
+        async_reply_functions = [f for f in reply_functions if is_coroutine_callable(f)]
         if async_reply_functions:
             msg = (
                 "Async reply functions can only be used with ConversableAgent.a_initiate_chat(). The following async reply functions are found: "
@@ -1491,41 +1494,26 @@ class ConversableAgent(LLMAgent):
             initial_message = self.generate_init_message(message, **kwargs)
 
         cache = Cache.get_current_cache(cache)
-        _chat_info = locals().copy()
-        _chat_info["sender"] = self
-        consolidate_chat_info(_chat_info, uniform_sender=self)
 
-        for agent in [self, recipient]:
+        for agent in chat.agents:
             agent._raise_exception_on_async_reply_functions()
-            agent.previous_cache = agent.client_cache
-            agent.client_cache = cache
+            agent.previous_cache, agent.client_cache = agent.client_cache, cache
 
-        if isinstance(max_turns, int):
-            self._prepare_chat(recipient, chat.chat_id, clear_history, reply_at_receive=False)
-            for i in range(max_turns):
-                # check recipient max consecutive auto reply limit
+        self._prepare_chat(recipient, chat.chat_id, clear_history)
+
+        last_message = initial_message
+        for (from_agent, to_agent), turn in zip(iter_agents_sequintial(*chat.agents), count()):
+            if max_turns:
+                if turn == max_turns:
+                    chat.terminate(self, recipient, f"Maximum turns ({max_turns}) reached")
+                    break
                 if self._consecutive_auto_reply_counter[recipient] >= recipient._max_consecutive_auto_reply:
                     break
 
-                if i == 0:
-                    msg2send = initial_message
+            last_message = from_agent.send(last_message, recipient=to_agent, request_reply=False, silent=silent)
 
-                else:
-                    last_message = self.chat_messages[recipient][-1]
-                    if self._should_terminate_chat(recipient, last_message):
-                        break
-                    msg2send = self.generate_reply(messages=self.chat_messages[recipient], sender=recipient)
-                if msg2send is None:
-                    break
-
-                self.send(msg2send, recipient, request_reply=True, silent=silent)
-
-            else:  # No breaks in the for loop, so we have reached max turns
-                chat.terminate(self, recipient, f"Maximum turns ({max_turns}) reached")
-
-        else:
-            self._prepare_chat(recipient, chat.chat_id, clear_history)
-            self.send(initial_message, recipient, silent=silent)
+            if not last_message:
+                break
 
         summary = self._summarize_chat(
             summary_method,
@@ -1534,9 +1522,8 @@ class ConversableAgent(LLMAgent):
             cache=cache,
         )
 
-        for agent in [self, recipient]:
-            agent.client_cache = agent.previous_cache
-            agent.previous_cache = None
+        for agent in chat.agents:
+            agent.client_cache, agent.previous_cache = agent.previous_cache, None
 
         chat_result = ChatResult(
             chat_id=chat.chat_id,
@@ -1570,11 +1557,7 @@ class ConversableAgent(LLMAgent):
 
         if recipient is None:
 
-            def initiate_chat(
-                self=self,
-                iostream: ThreadIOStream = iostream,
-                response: RunResponse = response,
-            ) -> None:
+            def initiate_chat() -> None:
                 with (
                     IOStream.set_default(iostream),
                     self._create_or_get_executor(
@@ -1586,23 +1569,19 @@ class ConversableAgent(LLMAgent):
                 ):
                     try:
                         if msg_to == "agent":
-                            chat_result = executor.initiate_chat(
-                                self,
-                                message=message,
-                                clear_history=clear_history,
-                                max_turns=max_turns,
-                                summary_method=summary_method,
-                            )
+                            sender, recipient = executor, self
                         else:
-                            chat_result = self.initiate_chat(
-                                executor,
-                                message=message,
-                                clear_history=clear_history,
-                                max_turns=max_turns,
-                                summary_method=summary_method,
-                            )
+                            sender, recipient = self, executor
 
-                        IOStream.get_default().send(
+                        chat_result = sender.initiate_chat(
+                            recipient,
+                            message=message,
+                            clear_history=clear_history,
+                            max_turns=max_turns,
+                            summary_method=summary_method,
+                        )
+
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1611,15 +1590,11 @@ class ConversableAgent(LLMAgent):
                             )
                         )
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
         else:
 
-            def initiate_chat(
-                self=self,
-                iostream: ThreadIOStream = iostream,
-                response: RunResponse = response,
-            ) -> None:
+            def initiate_chat() -> None:
                 with IOStream.set_default(iostream):  # type: ignore[arg-type]
                     try:
                         chat_result = self.initiate_chat(
@@ -1641,7 +1616,7 @@ class ConversableAgent(LLMAgent):
                         if hasattr(recipient, "last_speaker"):
                             _last_speaker = recipient.last_speaker
 
-                        IOStream.get_default().send(
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1650,11 +1625,9 @@ class ConversableAgent(LLMAgent):
                             )
                         )
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
-        threading.Thread(
-            target=initiate_chat,
-        ).start()
+        threading.Thread(target=initiate_chat).start()
 
         return response
 
@@ -1681,59 +1654,49 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
-        chat_id = uuid.uuid4().int
+        chat = Chat(agents=[self, recipient])
 
-        iostream = IOStream.get_default()
-
-        _chat_info = locals().copy()
-        _chat_info["sender"] = self
-        consolidate_chat_info(_chat_info, uniform_sender=self)
-        for agent in [self, recipient]:
-            agent.previous_cache = agent.client_cache
-            agent.client_cache = cache
-        if isinstance(max_turns, int):
-            self._prepare_chat(recipient, chat_id, clear_history, reply_at_receive=False)
-            for _ in range(max_turns):
-                if _ == 0:
-                    if isinstance(message, Callable):
-                        msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-                    else:
-                        msg2send = await self.a_generate_init_message(message, **kwargs)
-                else:
-                    last_message = self.chat_messages[recipient][-1]
-                    if self._should_terminate_chat(recipient, last_message):
-                        break
-                    msg2send = await self.a_generate_reply(messages=self.chat_messages[recipient], sender=recipient)
-                    if msg2send is None:
-                        break
-                await self.a_send(msg2send, recipient, request_reply=True, silent=silent)
-            else:  # No breaks in the for loop, so we have reached max turns
-                iostream.send(
-                    TerminationEvent(
-                        termination_reason=f"Maximum turns ({max_turns}) reached", sender=self, recipient=recipient
-                    )
-                )
+        if isinstance(message, Callable):
+            initial_message = message(self, recipient, kwargs)
         else:
-            self._prepare_chat(recipient, chat_id, clear_history)
-            if isinstance(message, Callable):
-                msg2send = message(_chat_info["sender"], _chat_info["recipient"], kwargs)
-            else:
-                msg2send = await self.a_generate_init_message(message, **kwargs)
-            await self.a_send(msg2send, recipient, silent=silent)
+            initial_message = await self.a_generate_init_message(message, **kwargs)
+
+        cache = Cache.get_current_cache(cache)
+
+        for agent in chat.agents:
+            agent.previous_cache, agent.client_cache = agent.client_cache, cache
+
+        self._prepare_chat(recipient, chat.chat_id, clear_history)
+
+        last_message = initial_message
+        for (from_agent, to_agent), turn in zip(iter_agents_sequintial(*chat.agents), count()):
+            if max_turns:
+                if turn == max_turns:
+                    chat.terminate(self, recipient, f"Maximum turns ({max_turns}) reached")
+                    break
+                if self._consecutive_auto_reply_counter[recipient] >= recipient._max_consecutive_auto_reply:
+                    break
+
+            last_message = await from_agent.a_send(last_message, recipient=to_agent, request_reply=False, silent=silent)
+
+            if not last_message:
+                break
+
         summary = self._summarize_chat(
             summary_method,
             summary_args,
             recipient,
             cache=cache,
         )
-        for agent in [self, recipient]:
-            agent.client_cache = agent.previous_cache
-            agent.previous_cache = None
+
+        for agent in chat.agents:
+            agent.client_cache, agent.previous_cache = agent.previous_cache, None
+
         chat_result = ChatResult(
-            chat_id=chat_id,
+            chat_id=chat.chat_id,
             chat_history=self.chat_messages[recipient],
             summary=summary,
-            cost=gather_usage_summary([self, recipient]),
+            cost=chat.cost,
             human_input=self._human_input,
         )
         return chat_result
@@ -1760,11 +1723,7 @@ class ConversableAgent(LLMAgent):
 
         if recipient is None:
 
-            async def initiate_chat(
-                self=self,
-                iostream: AsyncThreadIOStream = iostream,
-                response: AsyncRunResponse = response,
-            ) -> None:
+            async def initiate_chat() -> None:
                 with (
                     IOStream.set_default(iostream),
                     self._create_or_get_executor(
@@ -1792,7 +1751,7 @@ class ConversableAgent(LLMAgent):
                                 summary_method=summary_method,
                             )
 
-                        IOStream.get_default().send(
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1801,15 +1760,11 @@ class ConversableAgent(LLMAgent):
                             )
                         )
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
         else:
 
-            async def initiate_chat(
-                self=self,
-                iostream: AsyncThreadIOStream = iostream,
-                response: AsyncRunResponse = response,
-            ) -> None:
+            async def initiate_chat() -> None:
                 with IOStream.set_default(iostream):  # type: ignore[arg-type]
                     try:
                         chat_result = await self.a_initiate_chat(
@@ -1828,7 +1783,7 @@ class ConversableAgent(LLMAgent):
                         if hasattr(recipient, "last_speaker"):
                             last_speaker = recipient.last_speaker
 
-                        IOStream.get_default().send(
+                        iostream.send(
                             RunCompletionEvent(
                                 history=chat_result.chat_history,
                                 summary=chat_result.summary,
@@ -1838,10 +1793,10 @@ class ConversableAgent(LLMAgent):
                         )
 
                     except Exception as e:
-                        response.iostream.send(ErrorEvent(error=e))
+                        iostream.send(ErrorEvent(error=e))
 
-        asyncio.create_task(initiate_chat())
-
+        task = asyncio.create_task(initiate_chat())
+        response._task_ref = task  # protect task of GC
         return response
 
     def _summarize_chat(
@@ -2017,10 +1972,7 @@ class ConversableAgent(LLMAgent):
         # todo: add agents
         responses = [RunResponse(iostream, agents=[]) for iostream in iostreams]
 
-        def _initiate_chats(
-            iostreams: list[ThreadIOStream] = iostreams,
-            responses: list[RunResponseProtocol] = responses,
-        ) -> None:
+        def _initiate_chats() -> None:
             response = responses[0]
             try:
                 _chat_queue = self._check_chat_queue_for_sender(chat_queue)
@@ -2133,7 +2085,8 @@ class ConversableAgent(LLMAgent):
             except Exception as e:
                 response.iostream.send(ErrorEvent(error=e))
 
-        asyncio.create_task(_a_initiate_chats())
+        task = asyncio.create_task(_a_initiate_chats())
+        responses[0]._task_ref = task  # protect task of GC
 
         return responses
 
@@ -2420,7 +2373,7 @@ class ConversableAgent(LLMAgent):
             call_id = message.get("id", None)
             func_call = message["function_call"]
             func = self._function_map.get(func_call.get("name", None), None)
-            if inspect.iscoroutinefunction(func):
+            if is_coroutine_callable(func):
                 coro = self.a_execute_function(func_call, call_id=call_id)
                 _, func_return = self._run_async_in_thread(coro)
             else:
@@ -2449,7 +2402,7 @@ class ConversableAgent(LLMAgent):
             func_call = message["function_call"]
             func_name = func_call.get("name", "")
             func = self._function_map.get(func_name, None)
-            if func and inspect.iscoroutinefunction(func):
+            if func and is_coroutine_callable(func):
                 _, func_return = await self.a_execute_function(func_call, call_id=call_id)
             else:
                 _, func_return = self.execute_function(func_call, call_id=call_id)
@@ -2477,7 +2430,7 @@ class ConversableAgent(LLMAgent):
             function_call = tool_call.get("function", {})
             tool_call_id = tool_call.get("id", None)
             func = self._function_map.get(function_call.get("name", None), None)
-            if inspect.iscoroutinefunction(func):
+            if is_coroutine_callable(func):
                 coro = self.a_execute_function(function_call, call_id=tool_call_id)
                 _, func_return = self._run_async_in_thread(coro)
             else:
@@ -2884,7 +2837,7 @@ class ConversableAgent(LLMAgent):
             reply_func = reply_func_tuple["reply_func"]
             if "exclude" in kwargs and reply_func in kwargs["exclude"]:
                 continue
-            if inspect.iscoroutinefunction(reply_func):
+            if is_coroutine_callable(reply_func):
                 continue
             if self._match_trigger(reply_func_tuple["trigger"], sender):
                 final, reply = reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
@@ -2960,7 +2913,7 @@ class ConversableAgent(LLMAgent):
                 continue
 
             if self._match_trigger(reply_func_tuple["trigger"], sender):
-                if inspect.iscoroutinefunction(reply_func):
+                if is_coroutine_callable(reply_func):
                     final, reply = await reply_func(
                         self, messages=messages, sender=sender, config=reply_func_tuple["config"]
                     )
@@ -3239,7 +3192,7 @@ class ConversableAgent(LLMAgent):
                     ExecuteFunctionEvent(func_name=func_name, call_id=call_id, arguments=arguments, recipient=self)
                 )
                 try:
-                    if inspect.iscoroutinefunction(func):
+                    if is_coroutine_callable(func):
                         content = await func(**arguments)
                     else:
                         # Fallback to sync function if the function is not async
@@ -3536,7 +3489,7 @@ class ConversableAgent(LLMAgent):
                 log_function_use(self, func, kwargs, retval)
             return serialize_to_str(retval) if serialize else retval
 
-        wrapped_func = _a_wrapped_func if inspect.iscoroutinefunction(func) else _wrapped_func
+        wrapped_func = _a_wrapped_func if is_coroutine_callable(func) else _wrapped_func
 
         # needed for testing
         wrapped_func._origin = func
@@ -4109,3 +4062,10 @@ def register_function(
     """
     f = caller.register_for_llm(name=name, description=description)(f)
     executor.register_for_execution(name=name)(f)
+
+
+T = TypeVar("T")
+
+
+def iter_agents_sequintial(*agents: T) -> Iterator[tuple[T, T]]:
+    yield from zip(cycle(agents), chain(agents[1:], cycle(agents)))
