@@ -1814,8 +1814,9 @@ class ConversableAgent(LLMAgent):
                     except Exception as e:
                         response.iostream.send(ErrorEvent(error=e))
 
-        asyncio.create_task(initiate_chat())
-
+        task = asyncio.create_task(initiate_chat())
+        # prevent the task from being garbage collected
+        response._task_ref = task  # type: ignore[attr-defined]
         return response
 
     def _summarize_chat(
@@ -2107,8 +2108,9 @@ class ConversableAgent(LLMAgent):
             except Exception as e:
                 response.iostream.send(ErrorEvent(error=e))
 
-        asyncio.create_task(_a_initiate_chats())
-
+        task = asyncio.create_task(_a_initiate_chats())
+        # prevent the task from being garbage collected
+        responses[0]._task_ref = task  # type: ignore[attr-defined]
         return responses
 
     def get_chat_results(self, chat_index: int | None = None) -> list[ChatResult] | ChatResult:
