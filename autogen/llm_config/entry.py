@@ -34,7 +34,7 @@ class LLMConfigEntryDict(TypedDict, total=False):
 
 class ApplicationConfig(BaseModel):
     max_tokens: int | None = Field(default=None, ge=0)
-    top_p: float | None = Field(default=None, gt=0, lt=1)
+    top_p: float | None = Field(default=None, ge=0, le=1)
     temperature: float | None = Field(default=None, ge=0, le=1)
 
 
